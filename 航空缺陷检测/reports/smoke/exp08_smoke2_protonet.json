@@ -1,0 +1,28 @@
+{
+  "timestamp": "2026-07-28T20:56:27",
+  "smoke_type": "protonet_eval_5tasks",
+  "checkpoint": "D:\\元强化学习\\代码\\航空缺陷检测\\checkpoints\\exp08_protonet_unfreeze\\best.pt",
+  "data_dir_path": "D:\\元强化学习\\代码\\data\\航天\\processed",
+  "eval_tasks": 5,
+  "mean_acc": 1.0,
+  "std_acc": 0.0,
+  "min_acc": 1.0,
+  "max_acc": 1.0,
+  "all_accs": [
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0
+  ],
+  "eval_seconds": 9.8,
+  "total_seconds": 16.62,
+  "baseline_pooled_300": 0.8516666855414708,
+  "baseline_per_seed": [
+    0.847,
+    0.846,
+    0.862
+  ],
+  "verdict": "PASS",
+  "note": "5-task smoke on CPU; baseline 300-task pooled mean=0.852. With only 5 tasks we expect high std; range check only."
+}

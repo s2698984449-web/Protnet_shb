@@ -1,0 +1,57 @@
+{
+  "device": "cuda",
+  "track": "automotive",
+  "data_dir": "D:\\元强化学习\\代码\\data\\车\\processed\\cmpl",
+  "weights": {
+    "pretrained": "D:\\元强化学习\\代码\\车\\weights\\cmpl_yolo26_pretrained.pt",
+    "yolo26n": "D:\\元强化学习\\代码\\车\\weights\\yolo26n.pt"
+  },
+  "preprocess": "Resize(256) + normalize; backbone encode interpolates to 640",
+  "binary_task": "scratch vs dent",
+  "train_domains": [
+    0
+  ],
+  "test_domain": 3,
+  "task_diversity": {
+    "per_domain": {
+      "0": {
+        "scratch": 3552,
+        "contamination": 0,
+        "positive_class": 2798,
+        "independent_tasks_binary": 279
+      },
+      "3": {
+        "scratch": 307,
+        "contamination": 0,
+        "positive_class": 236,
+        "independent_tasks_binary": 23
+      }
+    },
+    "combined_train_domains": {
+      "scratch": 3552,
+      "positive_class": 2798,
+      "independent_tasks_upper_bound": 279
+    },
+    "test_domain": {
+      "0": 307,
+      "2": 236
+    }
+  },
+  "separability": {
+    "pretrained": {
+      "test_mean": 0.6445293917770982,
+      "test_std": 0.03418724795156389,
+      "train_mean": 0.7781102362204725,
+      "train_std": 0.009687279684554125,
+      "feature_dim": 128
+    },
+    "yolo26n": {
+      "test_mean": 0.6390757730207272,
+      "test_std": 0.0327188808379451,
+      "train_mean": 0.7817322834645669,
+      "train_std": 0.008802008574791876,
+      "feature_dim": 128
+    }
+  },
+  "p0_3_feature_diff_note": "no_gain"
+}

@@ -1,0 +1,286 @@
+================================================================================
+  车漆 CMPL 完整技术方案 v2.0（诊断门控 → 实验 → 论文）
+  路径: D:\元强化学习\代码\training_logs.txt\车\plan_v2.txt
+  日期: 2026-07-12
+  状态: 执行中 · Gate D1–D3 优先于 M1 主实验
+================================================================================
+
+------------------------------------------------------------------------------
+零、第一性原理
+------------------------------------------------------------------------------
+
+本质问题:
+  给定极少标注（5 张/类），在未见域上做二分类（scratch vs dent）
+
+充分条件（缺一不可）:
+  1. 特征空间可分 — Holdout LogReg 足够高
+  2. Meta-train 任务分布覆盖 test 域变化 — 域划分有物理/视觉意义
+  3. 推理协议与训练一致 — 同类 taxonomy；ProtoNet 5-shot
+
+失败模式:
+  缺 1 → Meta 上限 = LogReg，调 iter 无效
+  缺 2 → train 域内高分、test 掉回 62%（Track2 已见）
+  缺 3 → intact 代理 dent，语义错（Track2 已见）
+
+------------------------------------------------------------------------------
+一、已有资产与实测（2026-07-12）
+------------------------------------------------------------------------------
+
+Phase0 v3:
+  CarDD 80% + NEU 15% + ASDE 5%, frozen-only, ep28 best
+  val[cardd]=57.5%, weights=车/weights/cmpl_yolo26_pretrained.pt
+
+Track2 Meta P0 (ASDE→CarDD test):
+  ProtoNet unfreeze, 400 iter, best eval=62.5% @iter400
+  checkpoint=车/checkpoints/cmpl_protonet_track2/best.pt
+
+B2 LogReg (domain_3, Phase0 v3):
+  test LogReg=64.5%±3.4%, train(ASDE)=77.8%
+  Phase0 vs yolo26n on test: +0.5pt（几乎无跨域增益）
+
+Legacy 同域 (CarDD train/val meta, 有泄漏风险):
+  ProtoNet unfreeze best=72.1% @200
+
+航天参照 (exp08):
+  LogReg domain_3=87.4%, Meta=85.2%, 利用率~98%
+
+------------------------------------------------------------------------------
+二、对抗性审查 — 3 个月最可能翻车点
+------------------------------------------------------------------------------
+
+P0 风险（必须先验证）:
+
+  R1 CarDD 三分域差异不足（概率~70%）
+    随机/image 顺序切域 → 三域同分布 → M1≈Track2
+    判据: 跨域 LogReg 矩阵 mean
+      >85%  → 域太像，M1 叙事弱
+      65–80% → 理想 sweet spot
+      <60%  → 域太散，meta-train 不迁移 test
+    禁止: 用 Phase0 同一权重做 K-means 再在同一权重上评测（循环论证）
+    推荐: image stem 贪心三分 或 冻结 yolo26n embedding K=3
+
+  R2 Vehicle-level 泄漏（概率中，致命）
+    CarDD 同车多图 → train 见过 test 车纹理 → M1 虚高
+    必做: COCO image_id / file_name 与 test 交集=0
+
+  R3 Phase0→Meta 接口断层（概率中）
+    分类 CE vs 原型距离 目标不一致
+    判据 Gate D1: LogReg vs frozen ProtoNet 5-shot gap
+      gap>5% → Phase0 v4 SupCon+CE
+      gap≤3% → v3 够用，推进 M1
+    已有: Meta 62.5% vs LogReg 64.5% gap≈2pt（接口非主因）
+
+P1 风险:
+
+  R4 统计检验: test 独立 task 上界≈23，100 tasks 大量重采样
+    主表仍报 100×3seed；附录 bootstrap CI + 注明独立 task 数
+
+  R5 Protocol-C 天花板低: 若 C≈62% 且 M1≈62% → 任务本身难，改 narrative
+
+  R6 M1 > Protocol-C → 先查泄漏/评测 bug，不可直接写进主表
+
+------------------------------------------------------------------------------
+三、三协议设计（论文主结构）
+------------------------------------------------------------------------------
+
+| 协议 | 问题 | Meta-train | Meta-test | 预期 | 角色 |
+|------|------|------------|-----------|------|------|
+| Protocol-C | 全监督上限 | — | CarDD test cls | 65–75% | 熔断 baseline |
+| Protocol-M1 | 同数据集新批次 5-shot | CarDD train d0/1/2 | CarDD test d3 | 66–72% | 主 claim |
+| Protocol-M2 | 产线→定损跨域 | ASDE+Kolektor | CarDD test d3 | 58–65% | 副实验 |
+| Track2 | 语义错 ablation | ASDE d0 | CarDD test | 62.5%✓ | 反例 |
+| Random | 随机 episodic | CarDD train 池 | CarDD test | 50–58% | 下界 |
+
+M1 硬约束:
+  train & test 均为 0_scratch vs 3_dent（真 dent，无 intact 代理）
+  CarDD test 永不进 Phase0 / meta-train
+
+M2 语义修正:
+  0_scratch vs 1_defect（ASDE intact→normal 侧，CarDD dent→defect）
+
+------------------------------------------------------------------------------
+四、诊断门控（Gate，未通过不跑 M1 300iter）
+------------------------------------------------------------------------------
+
+Gate D1 — Phase0 接口诊断（今天，~2h）
+  脚本: python scripts/diagnose_phase0_interface.py --track automotive
+  输出: reports/diagnose/automotive/interface_diagnosis.json
+  决策:
+    gap>0.05 → 启动 Phase0 v4 SupCon+CE
+    gap≤0.03 → v3 保留
+
+Gate D2 — CarDD 域划分 + 泄漏（本周，2–3d）
+  1) vehicle/image_id 与 test 零交集审计
+  2) 三分域（stem 贪心 或 yolo26n K-means，非 Phase0 权重）
+  3) 跨域 LogReg 6 对矩阵 + mean
+  4) 每域 min(scratch,dent)≥50 ROI
+  不过 → 放弃 M1 主 claim，改 M2+C 叙事
+
+Gate D3 — Protocol-C（本周，1–2d，与 D2 并行）
+  Phase0 ckpt + CarDD train 全量 2-way finetune → test
+  决策:
+    C<65% → 天花板 narrative
+    C≥65% → M1 主实验 worth it
+
+Gate D4 — Track2 收尾
+  cmpl_eval_track2 3-seed → 坐实 62.5%
+
+决策流:
+  D1 → D2+D3 并行 → 全过 → M1 300iter + 3seed + random baseline
+
+------------------------------------------------------------------------------
+五、数据流程
+------------------------------------------------------------------------------
+
+raw:
+  data/车/raw/CarDD, ASDE, NEU-DET, KolektorSDD2(可选)
+
+processed (目标):
+  pretrain/
+    cardd_cls/{train,val}/{4cls}/
+    neu_cls/ (v3) 或 去掉 (v4)
+    asde_binary/
+  cmpl/
+    domain_0/1/2  ← M1: CarDD train 三分
+    domain_3      ← CarDD test holdout（永不动）
+    domain_4/5    ← M2: ASDE / Kolektor（可选）
+
+convert 策略:
+  track2   (现有) ASDE d0 + CarDD test d3
+  m1_cardd (待实现) CarDD train 三分 + test d3
+  m2_cross (待实现) 修正二类语义 + 多源 meta-train
+
+泄漏检查:
+  [ ] test 不进 pretrain/meta-train
+  [ ] train/test image_id 零交集
+  [ ] M1 taxonomy train=test
+
+------------------------------------------------------------------------------
+六、Phase0
+------------------------------------------------------------------------------
+
+v3 (baseline, 已有):
+  权重 CarDD80 NEU15 ASDE5, frozen-only 35ep
+  产出 cmpl_yolo26_pretrained.pt
+
+v4 (条件触发, D1 gap>5%):
+  SupCon + CE 联合 0.5/0.5（非 SimCLR，小 batch 更稳）
+  数据 CarDD90% + ASDE10%, NEU0%
+  成功标准: domain_3 LogReg ≥68% (+3pt)
+
+Phase0 禁止:
+  解冻 backbone（历史 57%→49%）
+  把 CarDD test 混入
+
+------------------------------------------------------------------------------
+七、Meta 训练（Protocol-M1，Gate 通过后）
+------------------------------------------------------------------------------
+
+配置（对齐航天 exp08）:
+  train_domains: "0,1,2"
+  test_domain: 3
+  ways: 2, shots: 5
+  meta_algorithm: protonet
+  freeze_backbone: false
+  backbone_meta_lr: 1e-5
+  head_meta_lr: 1e-3
+  w_rl_max: 0
+  iters: 300
+  eval_every: 50, eval_tasks: 100
+  meta_batch_size: 2
+  seeds: 42,43,44
+
+命令（待 cmpl.yaml 条目 cmpl_protonet_m1）:
+  .\scripts\run_experiment.ps1 -Config cmpl.yaml -Exp cmpl_protonet_m1 -Stage train
+  .\scripts\run_experiment.ps1 -Config cmpl.yaml -Exp cmpl_eval_m1
+
+预期（若 D3 protocol_c≈68%）:
+  iter50: 62–66%
+  iter150: 68–72%
+  3-seed: 66–72%, CI 下界 ~62%
+
+------------------------------------------------------------------------------
+八、Phase0 v4 SupCon 概要（D1 失败时）
+------------------------------------------------------------------------------
+
+  联合损失: 0.5*SupCon + 0.5*CE on 4-class ROI
+  backbone: YOLO26 frozen + projection head
+  与 ProtoNet 对齐: 优化类内聚集/类间分离，非仅分类边界
+
+------------------------------------------------------------------------------
+九、论文 Table 1 目标
+------------------------------------------------------------------------------
+
+协议              domain_3    95%CI下界   意义
+Random baseline   50–58%      —          下界
+Track2            62.5%       ~61%       语义错 ablation
+Protocol-C        65–75%      ~62%       全监督上限
+Protocol-M1       66–72%      ~62%       主结果
+Protocol-M2       58–65%      ~56%       跨域难度
+航天 exp08        85.2%       84.2%      方法论参照（不比绝对值）
+
+Narrative:
+  在各自 LogReg 上限下，Meta 利用率 >95% → 框架普适
+  车漆 LogReg 低反映 CarDD 固有难度，非算法 alone
+
+------------------------------------------------------------------------------
+十、执行排期
+------------------------------------------------------------------------------
+
+W0 (本周):
+  [>] Gate D1 接口诊断
+  [ ] Gate D3 Protocol-C
+  [ ] Gate D2 域划分+泄漏审计
+  [ ] Gate D4 cmpl_eval_track2 3-seed
+
+W1:
+  [ ] convert m1_cardd
+  [ ] cmpl_protonet_m1 300iter + eval 3seed
+  [ ] random episodic baseline
+
+W2:
+  [ ] D1 失败则 SupCon v4 + 重跑 B2/D1
+  [ ] episode_aug 消融（P1）
+
+W3:
+  [ ] Protocol-M2（可选）
+  [ ] 论文图表 + bootstrap CI
+
+------------------------------------------------------------------------------
+十一、立刻命令（Gate D1）
+------------------------------------------------------------------------------
+
+  同一 128-d YOLO backbone（与 diagnose_features B2 对齐）
+  LogReg CV vs frozen ProtoNet 5-shot（不训 meta）
+
+cd D:\元强化学习\代码\航空缺陷检测
+
+python scripts/diagnose_phase0_interface.py --track automotive
+
+python scripts/diagnose_phase0_interface.py --track automotive --weights ../车/weights/cmpl_yolo26_pretrained.pt --eval-tasks 100 --shots 5 --seed 42
+
+python scripts/diagnose_phase0_interface.py --track aerospace
+
+输出:
+  航空缺陷检测/reports/diagnose/automotive/interface_diagnosis.json
+
+判据: gap=LogReg-frozen_ProtoNet
+  >5% → need_supcon_v4 | ≤3% → ok_proceed_m1
+
+2026-07-12 首跑: LogReg=67.4%, frozen PN=54.5%, gap=12.9% → need_supcon_v4
+
+------------------------------------------------------------------------------
+十二、不做清单
+------------------------------------------------------------------------------
+
+  不追航天 85% 绝对对标
+  不在 D2/D3 通过前跑 M1 300iter
+  不用 random 三分域作 M1 主划分
+  不用 intact 代理 dent 作主 claim
+  不在 LogReg<65% 时堆 meta 超参
+
+================================================================================
+END · plan_v2.txt · 2026-07-12
+  详细实验记录: training_logs.txt/车/training.log
+  调研摘要: training_logs.txt/车/trail.txt
+==============================================================================

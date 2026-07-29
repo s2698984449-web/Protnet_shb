@@ -1,0 +1,28 @@
+{
+  "timestamp": "2026-07-28T20:55:26",
+  "smoke_type": "load_only",
+  "checkpoint": "D:\\元强化学习\\代码\\航空缺陷检测\\checkpoints\\exp08_protonet_unfreeze\\best.pt",
+  "yolo_weights": "D:\\元强化学习\\代码\\航空缺陷检测\\weights\\aviation_yolo26_pretrained.pt",
+  "build_seconds": 1.58,
+  "load_seconds": 1.7,
+  "strict_load_ok": true,
+  "missing_keys_n": 0,
+  "unexpected_keys_n": 0,
+  "missing_keys_sample": [],
+  "unexpected_keys_sample": [],
+  "model_param_count": 2753251,
+  "layer_shape_check": {
+    "rgb_encoder.proj.weight": {
+      "ckpt_shape": "(128, 256)",
+      "model_shape": "(128, 256)",
+      "match": true
+    },
+    "stop_net.0.weight": {
+      "ckpt_shape": "(64, 390)",
+      "model_shape": "(64, 390)",
+      "match": true
+    }
+  },
+  "verdict": "OK",
+  "note": "exp08 strict load check; if OK, safe to forward+evaluate next"
+}

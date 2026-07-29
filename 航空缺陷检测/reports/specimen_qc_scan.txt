@@ -1,0 +1,143 @@
+========================================================================
+domain_3 Specimen QC Scan
+Generated: 2026-07-05 18:35:14
+Data root: D:\元强化学习\代码\data\aviation\domain_3
+========================================================================
+
+[Summary]
+  Total ROI samples: 49
+  Specimens found: 20, 21, 22, 23, 24, 25, 26
+  Error stats from: D:\元强化学习\代码\航空缺陷检测\reports\diagnose\hard_tasks_exp08.json
+
+[Per-specimen detail]
+
+------------------------------------------------------------------------
+Specimen 20
+  scratch ROIs: 8  |  damage ROIs: 0
+  scratch source stems: 20
+  damage source stems:  (none)
+  pairing: scratch-only specimen (no damage ROI)
+  exp08 query error rate: 7.9% (35/441)
+  samples:
+    20 [scratch] stem=20 split=val defect_ratio=0.8677 src=3264x2488 crop=640x1093
+    20_1 [scratch] stem=20 split=val defect_ratio=1.0 src=944x720 crop=384x571  err=3.0% (2/66)  [small_src_image]
+    20_flip [scratch] stem=20 split=train defect_ratio=0.9332 src=3264x2488 crop=640x1147  err=55.9% (33/59)
+    20_flip0 [scratch] stem=20 split=train defect_ratio=0.9508 src=3264x2488 crop=640x1165
+    20_flip1 [scratch] stem=20 split=train defect_ratio=0.4983 src=3264x2488 crop=640x824  err=0.0% (0/53)  [low_defect_ratio]
+    20_rot1 [scratch] stem=20 split=train defect_ratio=0.9199 src=2488x3264 crop=1193x640  err=0.0% (0/57)
+    20_rot2 [scratch] stem=20 split=train defect_ratio=0.9401 src=3264x2488 crop=640x1129
+    20_rot3 [scratch] stem=20 split=train defect_ratio=0.8886 src=2488x3264 crop=1193x640
+
+------------------------------------------------------------------------
+Specimen 21
+  scratch ROIs: 2  |  damage ROIs: 7
+  scratch source stems: 21
+  damage source stems:  21
+  pairing: CROSS-IMAGE (scratch=21_1/21_2.jpg 944x720, damage=21.jpg 3264x2488) [WARN]
+  exp08 query error rate: 5.7% (27/478)
+  samples:
+    21_1 [scratch] stem=21 split=val defect_ratio=1.0 src=944x720 crop=334x720  err=19.5% (8/41)  [small_src_image]
+    21_2 [scratch] stem=21 split=val defect_ratio=1.0 src=944x720 crop=666x366  err=35.9% (19/53)  [small_src_image]
+    21 [damage] stem=21 split=val defect_ratio=0.753 src=3264x2488 crop=835x640
+    21_flip [damage] stem=21 split=train defect_ratio=0.8619 src=3264x2488 crop=927x640
+    21_flip0 [damage] stem=21 split=train defect_ratio=0.581 src=3264x2488 crop=754x640
+    21_flip1 [damage] stem=21 split=train defect_ratio=0.7366 src=3264x2488 crop=935x640
+    21_rot1 [damage] stem=21 split=train defect_ratio=0.6688 src=2488x3264 crop=640x882
+    21_rot2 [damage] stem=21 split=train defect_ratio=0.8939 src=3264x2488 crop=903x640
+    21_rot3 [damage] stem=21 split=train defect_ratio=0.6712 src=2488x3264 crop=640x815
+
+------------------------------------------------------------------------
+Specimen 22
+  scratch ROIs: 2  |  damage ROIs: 0
+  scratch source stems: 22
+  damage source stems:  (none)
+  pairing: damage archived to _excluded_qc/specimen22_damage/ (7 ROI removed)
+  exp08 query error rate: 77.0% (361/469) [historical, full-set eval before QC]
+  samples:
+    22_1 [scratch] stem=22 split=val defect_ratio=1.0 src=944x720 crop=431x384  [small_src_image]
+    22_2 [scratch] stem=22 split=val defect_ratio=1.0 src=944x720 crop=384x391  [small_src_image]
+  archived_damage (not loaded): 22, 22_flip, 22_flip0, 22_flip1, 22_rot1, 22_rot2, 22_rot3
+
+------------------------------------------------------------------------
+Specimen 23
+  scratch ROIs: 2  |  damage ROIs: 7
+  scratch source stems: 23
+  damage source stems:  23
+  pairing: CROSS-IMAGE (scratch=23_1/23_2.jpg 944x720, damage=23.jpg 3264x2488) [mild]
+  exp08 query error rate: 1.1% (5/457)
+  samples:
+    23_1 [scratch] stem=23 split=val defect_ratio=1.0 src=944x720 crop=384x556  [small_src_image]
+    23_2 [scratch] stem=23 split=val defect_ratio=1.0 src=944x720 crop=369x695  err=9.8% (5/51)  [small_src_image]
+    23 [damage] stem=23 split=val defect_ratio=0.5191 src=3264x2488 crop=1066x640
+    23_flip [damage] stem=23 split=train defect_ratio=0.6183 src=3264x2488 crop=1097x640
+    23_flip0 [damage] stem=23 split=train defect_ratio=0.7269 src=3264x2488 crop=1367x640
+    23_flip1 [damage] stem=23 split=train defect_ratio=0.6517 src=3264x2488 crop=1203x640  err=0.0% (0/46)
+    23_rot1 [damage] stem=23 split=train defect_ratio=0.6746 src=2488x3264 crop=640x1299
+    23_rot2 [damage] stem=23 split=train defect_ratio=0.6073 src=3264x2488 crop=1136x640
+    23_rot3 [damage] stem=23 split=train defect_ratio=0.6852 src=2488x3264 crop=640x1303
+
+------------------------------------------------------------------------
+Specimen 24
+  scratch ROIs: 0  |  damage ROIs: 7
+  scratch source stems: (none)
+  damage source stems:  24
+  pairing: same base image stem
+  exp08 query error rate: 0.0% (0/404)
+  samples:
+    24 [damage] stem=24 split=val defect_ratio=1.0 src=3264x2488 crop=572x1323
+    24_flip [damage] stem=24 split=train defect_ratio=1.0 src=3264x2488 crop=640x1634
+    24_flip0 [damage] stem=24 split=train defect_ratio=1.0 src=3264x2488 crop=481x1325  err=0.0% (0/64)
+    24_flip1 [damage] stem=24 split=train defect_ratio=1.0 src=3264x2488 crop=576x1291
+    24_rot1 [damage] stem=24 split=train defect_ratio=1.0 src=2488x3264 crop=1315x630
+    24_rot2 [damage] stem=24 split=train defect_ratio=1.0 src=3264x2488 crop=640x1485
+    24_rot3 [damage] stem=24 split=train defect_ratio=1.0 src=2488x3264 crop=1368x634
+
+------------------------------------------------------------------------
+Specimen 25
+  scratch ROIs: 7  |  damage ROIs: 0
+  scratch source stems: 25
+  damage source stems:  (none)
+  pairing: scratch-only specimen (no damage ROI)
+  exp08 query error rate: 0.0% (0/389)
+  samples:
+    25 [scratch] stem=25 split=val defect_ratio=1.0 src=3264x2488 crop=1069x640
+    25_flip [scratch] stem=25 split=train defect_ratio=1.0 src=3264x2488 crop=1003x640
+    25_flip0 [scratch] stem=25 split=train defect_ratio=1.0 src=3264x2488 crop=955x640
+    25_flip1 [scratch] stem=25 split=train defect_ratio=1.0 src=3264x2488 crop=1044x640
+    25_rot1 [scratch] stem=25 split=train defect_ratio=1.0 src=2488x3264 crop=640x943  err=0.0% (0/56)
+    25_rot2 [scratch] stem=25 split=train defect_ratio=1.0 src=3264x2488 crop=985x640
+    25_rot3 [scratch] stem=25 split=train defect_ratio=1.0 src=2488x3264 crop=640x986
+
+------------------------------------------------------------------------
+Specimen 26
+  scratch ROIs: 7  |  damage ROIs: 0
+  scratch source stems: 26
+  damage source stems:  (none)
+  pairing: scratch-only specimen (no damage ROI)
+  exp08 query error rate: 1.1% (4/362)
+  samples:
+    26 [scratch] stem=26 split=val defect_ratio=1.0 src=3264x2488 crop=1705x503
+    26_flip [scratch] stem=26 split=train defect_ratio=1.0 src=3264x2488 crop=1697x398  err=2.0% (1/49)
+    26_flip0 [scratch] stem=26 split=train defect_ratio=1.0 src=3264x2488 crop=1836x521  err=5.1% (2/39)
+    26_flip1 [scratch] stem=26 split=train defect_ratio=1.0 src=3264x2488 crop=1768x518
+    26_rot1 [scratch] stem=26 split=train defect_ratio=1.0 src=2488x3264 crop=504x1899  err=1.6% (1/64)
+    26_rot2 [scratch] stem=26 split=train defect_ratio=1.0 src=3264x2488 crop=1736x456
+    26_rot3 [scratch] stem=26 split=train defect_ratio=1.0 src=2488x3264 crop=608x1756
+
+[Flags legend]
+  CROSS-IMAGE: scratch ROI from e.g. 22_1.jpg but damage from 22.jpg
+  low_defect_ratio: defect_ratio < 0.5 (YOLO box may be too large)
+  small_src_image: scratch from 944x720 sub-image vs full-res damage
+  err: from exp08 hard_tasks diagnosis (300 eval tasks)
+
+[Recommendations]
+  20: inspect 20_flip (err 56%); scratch-only; errors likely from confusing with other specimens damage prototype
+  21: review scratch/damage source pairing; inspect 21_2 (err 36%), 21_1 (err 20%)
+  22: QC archived (specimen22_damage); damage ROI unusable; scratch-only; errors likely from confusing with other specimens damage prototype
+  23: OK
+  24: OK
+  25: OK
+  26: OK
+
+========================================================================
+END

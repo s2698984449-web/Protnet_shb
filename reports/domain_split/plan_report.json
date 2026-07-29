@@ -1,0 +1,444 @@
+{
+  "ways": 2,
+  "shots": 5,
+  "train_bases": [
+    "1",
+    "10",
+    "11",
+    "12",
+    "13",
+    "14",
+    "15",
+    "16",
+    "17",
+    "18",
+    "19",
+    "2",
+    "2023",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9"
+  ],
+  "per_base_counts": {
+    "1": {
+      "scratch": 8,
+      "damage": 0
+    },
+    "2": {
+      "scratch": 8,
+      "damage": 0
+    },
+    "3": {
+      "scratch": 12,
+      "damage": 0
+    },
+    "4": {
+      "scratch": 10,
+      "damage": 0
+    },
+    "5": {
+      "scratch": 8,
+      "damage": 4
+    },
+    "6": {
+      "scratch": 10,
+      "damage": 0
+    },
+    "7": {
+      "scratch": 8,
+      "damage": 2
+    },
+    "8": {
+      "scratch": 0,
+      "damage": 8
+    },
+    "9": {
+      "scratch": 0,
+      "damage": 8
+    },
+    "10": {
+      "scratch": 0,
+      "damage": 8
+    },
+    "11": {
+      "scratch": 0,
+      "damage": 10
+    },
+    "12": {
+      "scratch": 2,
+      "damage": 8
+    },
+    "13": {
+      "scratch": 4,
+      "damage": 12
+    },
+    "14": {
+      "scratch": 4,
+      "damage": 8
+    },
+    "15": {
+      "scratch": 12,
+      "damage": 0
+    },
+    "16": {
+      "scratch": 8,
+      "damage": 0
+    },
+    "17": {
+      "scratch": 10,
+      "damage": 0
+    },
+    "18": {
+      "scratch": 8,
+      "damage": 0
+    },
+    "19": {
+      "scratch": 9,
+      "damage": 0
+    },
+    "20": {
+      "scratch": 9,
+      "damage": 0
+    },
+    "21": {
+      "scratch": 2,
+      "damage": 8
+    },
+    "22": {
+      "scratch": 2,
+      "damage": 8
+    },
+    "23": {
+      "scratch": 2,
+      "damage": 8
+    },
+    "24": {
+      "scratch": 0,
+      "damage": 8
+    },
+    "25": {
+      "scratch": 8,
+      "damage": 0
+    },
+    "26": {
+      "scratch": 8,
+      "damage": 0
+    },
+    "2023": {
+      "scratch": 19,
+      "damage": 0
+    }
+  },
+  "legacy_mod3": {
+    "ways": 2,
+    "shots": 5,
+    "need_per_class": 10,
+    "domains": {
+      "0": {
+        "scratch": 47,
+        "damage": 22,
+        "min_pair": 22,
+        "feasible_2w5s": true
+      },
+      "1": {
+        "scratch": 49,
+        "damage": 30,
+        "min_pair": 30,
+        "feasible_2w5s": true
+      },
+      "2": {
+        "scratch": 44,
+        "damage": 16,
+        "min_pair": 16,
+        "feasible_2w5s": true
+      }
+    },
+    "ok": true,
+    "task_upper_bound_hint": 6
+  },
+  "auto_suggestions": [
+    {
+      "k_domains": 3,
+      "feasible": true,
+      "score_min_pair": 22,
+      "groups": [
+        [
+          "2023",
+          "11",
+          "8",
+          "5",
+          "16"
+        ],
+        [
+          "13",
+          "9",
+          "7",
+          "1",
+          "2",
+          "18"
+        ],
+        [
+          "3",
+          "15",
+          "4",
+          "6",
+          "17",
+          "19",
+          "14",
+          "12",
+          "10"
+        ]
+      ],
+      "domain_map": {
+        "2023": 0,
+        "11": 0,
+        "8": 0,
+        "5": 0,
+        "16": 0,
+        "13": 1,
+        "9": 1,
+        "7": 1,
+        "1": 1,
+        "2": 1,
+        "18": 1,
+        "3": 2,
+        "15": 2,
+        "4": 2,
+        "6": 2,
+        "17": 2,
+        "19": 2,
+        "14": 2,
+        "12": 2,
+        "10": 2,
+        "20": 3,
+        "22": 3,
+        "26": 3,
+        "23": 3,
+        "25": 3,
+        "21": 3,
+        "24": 3
+      },
+      "validation": {
+        "ways": 2,
+        "shots": 5,
+        "need_per_class": 10,
+        "domains": {
+          "0": {
+            "scratch": 35,
+            "damage": 22,
+            "min_pair": 22,
+            "feasible_2w5s": true
+          },
+          "1": {
+            "scratch": 36,
+            "damage": 22,
+            "min_pair": 22,
+            "feasible_2w5s": true
+          },
+          "2": {
+            "scratch": 69,
+            "damage": 24,
+            "min_pair": 24,
+            "feasible_2w5s": true
+          }
+        },
+        "ok": true,
+        "task_upper_bound_hint": 6
+      }
+    },
+    {
+      "k_domains": 5,
+      "feasible": true,
+      "score_min_pair": 12,
+      "groups": [
+        [
+          "2023",
+          "17",
+          "12",
+          "10"
+        ],
+        [
+          "13",
+          "1",
+          "16"
+        ],
+        [
+          "3",
+          "4",
+          "19",
+          "8",
+          "5"
+        ],
+        [
+          "15",
+          "6",
+          "14",
+          "9"
+        ],
+        [
+          "11",
+          "7",
+          "2",
+          "18"
+        ]
+      ],
+      "domain_map": {
+        "2023": 0,
+        "17": 0,
+        "12": 0,
+        "10": 0,
+        "13": 1,
+        "1": 1,
+        "16": 1,
+        "3": 2,
+        "4": 2,
+        "19": 2,
+        "8": 2,
+        "5": 2,
+        "15": 3,
+        "6": 3,
+        "14": 3,
+        "9": 3,
+        "11": 4,
+        "7": 4,
+        "2": 4,
+        "18": 4,
+        "20": 3,
+        "22": 3,
+        "26": 3,
+        "23": 3,
+        "25": 3,
+        "21": 3,
+        "24": 3
+      },
+      "validation": {
+        "ways": 2,
+        "shots": 5,
+        "need_per_class": 10,
+        "domains": {
+          "0": {
+            "scratch": 31,
+            "damage": 16,
+            "min_pair": 16,
+            "feasible_2w5s": true
+          },
+          "1": {
+            "scratch": 20,
+            "damage": 12,
+            "min_pair": 12,
+            "feasible_2w5s": true
+          },
+          "2": {
+            "scratch": 39,
+            "damage": 12,
+            "min_pair": 12,
+            "feasible_2w5s": true
+          },
+          "4": {
+            "scratch": 24,
+            "damage": 12,
+            "min_pair": 12,
+            "feasible_2w5s": true
+          }
+        },
+        "ok": true,
+        "task_upper_bound_hint": 4
+      }
+    },
+    {
+      "k_domains": 4,
+      "feasible": true,
+      "score_min_pair": 12,
+      "groups": [
+        [
+          "2023",
+          "6",
+          "19",
+          "12",
+          "9",
+          "2",
+          "18"
+        ],
+        [
+          "13",
+          "5",
+          "7"
+        ],
+        [
+          "3",
+          "11",
+          "10"
+        ],
+        [
+          "15",
+          "4",
+          "17",
+          "14",
+          "8",
+          "1",
+          "16"
+        ]
+      ],
+      "domain_map": {
+        "2023": 0,
+        "6": 0,
+        "19": 0,
+        "12": 0,
+        "9": 0,
+        "2": 0,
+        "18": 0,
+        "13": 1,
+        "5": 1,
+        "7": 1,
+        "3": 2,
+        "11": 2,
+        "10": 2,
+        "15": 3,
+        "4": 3,
+        "17": 3,
+        "14": 3,
+        "8": 3,
+        "1": 3,
+        "16": 3,
+        "20": 3,
+        "22": 3,
+        "26": 3,
+        "23": 3,
+        "25": 3,
+        "21": 3,
+        "24": 3
+      },
+      "validation": {
+        "ways": 2,
+        "shots": 5,
+        "need_per_class": 10,
+        "domains": {
+          "0": {
+            "scratch": 56,
+            "damage": 16,
+            "min_pair": 16,
+            "feasible_2w5s": true
+          },
+          "1": {
+            "scratch": 20,
+            "damage": 18,
+            "min_pair": 18,
+            "feasible_2w5s": true
+          },
+          "2": {
+            "scratch": 12,
+            "damage": 18,
+            "min_pair": 12,
+            "feasible_2w5s": true
+          }
+        },
+        "ok": true,
+        "task_upper_bound_hint": 3
+      }
+    }
+  ]
+}

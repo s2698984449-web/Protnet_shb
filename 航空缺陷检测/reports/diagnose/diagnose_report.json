@@ -1,0 +1,64 @@
+{
+  "device": "cuda",
+  "data_dir": "D:\\元强化学习\\代码\\data",
+  "weights": {
+    "pretrained": "D:\\元强化学习\\代码\\航空缺陷检测\\weights\\aviation_yolo26_pretrained.pt",
+    "yolo26n": "D:\\元强化学习\\代码\\航空缺陷检测\\weights\\yolo26n.pt"
+  },
+  "preprocess": "Resize(256) + normalize; backbone encode interpolates to 640",
+  "binary_task": "scratch(0) vs damage(2); contamination excluded",
+  "task_diversity": {
+    "per_domain": {
+      "0": {
+        "scratch": 39,
+        "contamination": 0,
+        "damage": 17,
+        "independent_tasks_scratch_vs_damage": 1
+      },
+      "1": {
+        "scratch": 43,
+        "contamination": 20,
+        "damage": 24,
+        "independent_tasks_scratch_vs_damage": 2
+      },
+      "2": {
+        "scratch": 34,
+        "contamination": 0,
+        "damage": 14,
+        "independent_tasks_scratch_vs_damage": 1
+      },
+      "3": {
+        "scratch": 28,
+        "contamination": 0,
+        "damage": 28,
+        "independent_tasks_scratch_vs_damage": 2
+      }
+    },
+    "combined_0_2": {
+      "scratch": 116,
+      "damage": 55,
+      "independent_tasks_upper_bound": 5
+    },
+    "domain_3": {
+      "0": 28,
+      "2": 28
+    }
+  },
+  "separability": {
+    "pretrained": {
+      "d3_mean": 0.8742424242424243,
+      "d3_std": 0.04585680591036831,
+      "d012_mean": 0.9178151260504201,
+      "d012_std": 0.03924792592338454,
+      "feature_dim": 128
+    },
+    "yolo26n": {
+      "d3_mean": 0.8560606060606061,
+      "d3_std": 0.09364567963856024,
+      "d012_mean": 0.9294117647058823,
+      "d012_std": 0.04778846120374095,
+      "feature_dim": 128
+    }
+  },
+  "p0_3_feature_diff_note": "no_gain"
+}

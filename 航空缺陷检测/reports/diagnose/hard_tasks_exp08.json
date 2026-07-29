@@ -1,0 +1,251 @@
+{
+  "timestamp": "2026-07-08T20:58:44",
+  "checkpoint": "D:\\元强化学习\\代码\\航空缺陷检测\\checkpoints\\exp08_protonet_unfreeze\\best.pt",
+  "seeds": [
+    42,
+    43,
+    44
+  ],
+  "eval_tasks_per_seed": 100,
+  "hard_threshold": 0.7,
+  "summary": {
+    "n_tasks": 300,
+    "mean_acc": 0.9996666667858759,
+    "std_acc": 0.005763870093942213,
+    "min_acc": 0.9000000357627869,
+    "max_acc": 1.0,
+    "hard_threshold": 0.7,
+    "n_hard_tasks": 0,
+    "hard_task_rate": 0.0,
+    "class_confusion_query": {
+      "damage->scratch": 1
+    },
+    "hardest_samples": [
+      {
+        "sample_id": "20_flip",
+        "specimen_id": "20",
+        "class_name": "0_scratch",
+        "query_count": 68,
+        "wrong_count": 1,
+        "error_rate": 0.0147,
+        "sample_dir": "../data/航天/processed\\aviation\\domain_3\\0_scratch\\20_flip"
+      },
+      {
+        "sample_id": "25_flip",
+        "specimen_id": "25",
+        "class_name": "0_scratch",
+        "query_count": 53,
+        "wrong_count": 0,
+        "error_rate": 0.0,
+        "sample_dir": "../data/航天/processed\\aviation\\domain_3\\0_scratch\\25_flip"
+      },
+      {
+        "sample_id": "26_rot3",
+        "specimen_id": "26",
+        "class_name": "0_scratch",
+        "query_count": 63,
+        "wrong_count": 0,
+        "error_rate": 0.0,
+        "sample_dir": "../data/航天/processed\\aviation\\domain_3\\0_scratch\\26_rot3"
+      },
+      {
+        "sample_id": "20_flip0",
+        "specimen_id": "20",
+        "class_name": "0_scratch",
+        "query_count": 64,
+        "wrong_count": 0,
+        "error_rate": 0.0,
+        "sample_dir": "../data/航天/processed\\aviation\\domain_3\\0_scratch\\20_flip0"
+      },
+      {
+        "sample_id": "20_rot3",
+        "specimen_id": "20",
+        "class_name": "0_scratch",
+        "query_count": 46,
+        "wrong_count": 0,
+        "error_rate": 0.0,
+        "sample_dir": "../data/航天/processed\\aviation\\domain_3\\0_scratch\\20_rot3"
+      },
+      {
+        "sample_id": "24_flip1",
+        "specimen_id": "24",
+        "class_name": "3_damage",
+        "query_count": 79,
+        "wrong_count": 0,
+        "error_rate": 0.0,
+        "sample_dir": "../data/航天/processed\\aviation\\domain_3\\3_damage\\24_flip1"
+      },
+      {
+        "sample_id": "21_flip0",
+        "specimen_id": "21",
+        "class_name": "3_damage",
+        "query_count": 77,
+        "wrong_count": 0,
+        "error_rate": 0.0,
+        "sample_dir": "../data/航天/processed\\aviation\\domain_3\\3_damage\\21_flip0"
+      },
+      {
+        "sample_id": "24_rot1",
+        "specimen_id": "24",
+        "class_name": "3_damage",
+        "query_count": 69,
+        "wrong_count": 0,
+        "error_rate": 0.0,
+        "sample_dir": "../data/航天/processed\\aviation\\domain_3\\3_damage\\24_rot1"
+      },
+      {
+        "sample_id": "21_flip",
+        "specimen_id": "21",
+        "class_name": "3_damage",
+        "query_count": 62,
+        "wrong_count": 0,
+        "error_rate": 0.0,
+        "sample_dir": "../data/航天/processed\\aviation\\domain_3\\3_damage\\21_flip"
+      },
+      {
+        "sample_id": "21_flip1",
+        "specimen_id": "21",
+        "class_name": "3_damage",
+        "query_count": 84,
+        "wrong_count": 0,
+        "error_rate": 0.0,
+        "sample_dir": "../data/航天/processed\\aviation\\domain_3\\3_damage\\21_flip1"
+      },
+      {
+        "sample_id": "26",
+        "specimen_id": "26",
+        "class_name": "0_scratch",
+        "query_count": 58,
+        "wrong_count": 0,
+        "error_rate": 0.0,
+        "sample_dir": "../data/航天/processed\\aviation\\domain_3\\0_scratch\\26"
+      },
+      {
+        "sample_id": "26_flip",
+        "specimen_id": "26",
+        "class_name": "0_scratch",
+        "query_count": 58,
+        "wrong_count": 0,
+        "error_rate": 0.0,
+        "sample_dir": "../data/航天/processed\\aviation\\domain_3\\0_scratch\\26_flip"
+      },
+      {
+        "sample_id": "22_1",
+        "specimen_id": "22",
+        "class_name": "0_scratch",
+        "query_count": 56,
+        "wrong_count": 0,
+        "error_rate": 0.0,
+        "sample_dir": "../data/航天/processed\\aviation\\domain_3\\0_scratch\\22_1"
+      },
+      {
+        "sample_id": "20_1",
+        "specimen_id": "20",
+        "class_name": "0_scratch",
+        "query_count": 54,
+        "wrong_count": 0,
+        "error_rate": 0.0,
+        "sample_dir": "../data/航天/processed\\aviation\\domain_3\\0_scratch\\20_1"
+      },
+      {
+        "sample_id": "23_flip1",
+        "specimen_id": "23",
+        "class_name": "3_damage",
+        "query_count": 65,
+        "wrong_count": 0,
+        "error_rate": 0.0,
+        "sample_dir": "../data/航天/processed\\aviation\\domain_3\\3_damage\\23_flip1"
+      },
+      {
+        "sample_id": "24_rot3",
+        "specimen_id": "24",
+        "class_name": "3_damage",
+        "query_count": 84,
+        "wrong_count": 0,
+        "error_rate": 0.0,
+        "sample_dir": "../data/航天/processed\\aviation\\domain_3\\3_damage\\24_rot3"
+      },
+      {
+        "sample_id": "21",
+        "specimen_id": "21",
+        "class_name": "3_damage",
+        "query_count": 76,
+        "wrong_count": 0,
+        "error_rate": 0.0,
+        "sample_dir": "../data/航天/processed\\aviation\\domain_3\\3_damage\\21"
+      },
+      {
+        "sample_id": "21_rot1",
+        "specimen_id": "21",
+        "class_name": "3_damage",
+        "query_count": 66,
+        "wrong_count": 0,
+        "error_rate": 0.0,
+        "sample_dir": "../data/航天/processed\\aviation\\domain_3\\3_damage\\21_rot1"
+      },
+      {
+        "sample_id": "26_rot1",
+        "specimen_id": "26",
+        "class_name": "0_scratch",
+        "query_count": 59,
+        "wrong_count": 0,
+        "error_rate": 0.0,
+        "sample_dir": "../data/航天/processed\\aviation\\domain_3\\0_scratch\\26_rot1"
+      },
+      {
+        "sample_id": "20_rot1",
+        "specimen_id": "20",
+        "class_name": "0_scratch",
+        "query_count": 46,
+        "wrong_count": 0,
+        "error_rate": 0.0,
+        "sample_dir": "../data/航天/processed\\aviation\\domain_3\\0_scratch\\20_rot1"
+      }
+    ],
+    "hardest_specimens": [
+      {
+        "specimen_id": "20",
+        "query_count": 438,
+        "wrong_count": 1,
+        "error_rate": 0.0023
+      },
+      {
+        "specimen_id": "25",
+        "query_count": 364,
+        "wrong_count": 0,
+        "error_rate": 0.0
+      },
+      {
+        "specimen_id": "26",
+        "query_count": 382,
+        "wrong_count": 0,
+        "error_rate": 0.0
+      },
+      {
+        "specimen_id": "24",
+        "query_count": 545,
+        "wrong_count": 0,
+        "error_rate": 0.0
+      },
+      {
+        "specimen_id": "21",
+        "query_count": 577,
+        "wrong_count": 0,
+        "error_rate": 0.0
+      },
+      {
+        "specimen_id": "22",
+        "query_count": 110,
+        "wrong_count": 0,
+        "error_rate": 0.0
+      },
+      {
+        "specimen_id": "23",
+        "query_count": 584,
+        "wrong_count": 0,
+        "error_rate": 0.0
+      }
+    ],
+    "hard_tasks_preview": []
+  }
+}

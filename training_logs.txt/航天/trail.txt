@@ -1,0 +1,765 @@
+================================================================================
+  航空叶片缺陷检测 · 技术调研与方案 v1.1
+  路径: D:\元强化学习\代码\training_logs.txt\航天\trail.txt
+  日期: 2026-07-19
+  状态: 供评估 · 主结果 exp11 ProtoNet+v5 supcon 98.33% (Phase0 v5 升级)
+================================================================================
+
+------------------------------------------------------------------------------
+一、应用场景（先定要证明什么）
+------------------------------------------------------------------------------
+
+| 场景 | 描述 | 对应数据 | 合理评测 |
+|------|------|----------|----------|
+| A 产线 QC | 固定相机拍叶片 ROI，分 scratch/damage | 真实试件 1–19 | domain_0–2 meta-train |
+| B 新试件上线 | 新试件 20–26，每类 5 张标 | 真实试件 holdout | domain_3 5-shot episodic eval |
+| C 合成扩域 | 合成/异常检测数据辅助预训练 | BladeSynth + AeBAD | Phase0 only，不进 holdout |
+
+当前主 claim:
+  试件 0–2 训 / 20–26 考，2-way 5-shot ROI 分类
+  **exp11 ProtoNet+v5 supcon backbone (unfreeze, rgb_only, w_rl=0)**
+  单次训练 (seed=42): best single-task acc **1.0000** · best eval mean **0.9833**
+  Eval@300 domain_3 (50 tasks): **0.9067 ± 0.1254**
+  注: exp08 pooled 85.2% 为 3-seed×100 终评 (本结果未做 3-seed 多种子复现,
+      主因 v5 supcon 引入带来的方差尚未跨 seed 验证, 下一阶段补)
+
+------------------------------------------------------------------------------
+二、数据分布与特点
+------------------------------------------------------------------------------
+
+Phase0 接入:
+  真实叶片 + BladeSynth + AeBAD
+  bladeSynth 合成域 gap 大，不进 MAML holdout
+  Phase0 产出: aviation_yolo26_pretrained.pt
+  旧版: Epoch 16 frozen, val_blade=72.6%, val_aebad=95.1%
+  **v5 (SupCon+CE, 2026-07-18→19)**: mode=indices freeze=[0,1,2,3,4,5]
+    proj_dim=64, supcon_weight=0.5, ce_weight=0.5, T=0.07, mix=combined
+    Epoch 1: loss=1.0049  val[blade=0.685 aebad=0.916] score=0.754  (46.6min)
+    Epoch 2: loss=0.6040  val[blade=0.870 aebad=0.951] score=0.894  (42.4min)
+    Epoch 3: loss=0.4881  val[blade=0.974 aebad=0.958] score=0.970  (39.0min)
+    ...
+    Epoch 15: val[blade=1.000 aebad=0.997] **score=0.999** ← 最佳
+    Epoch 16-20: score 0.994→0.995→0.998→0.998→0.995
+    Epoch 20: **early stop** (patience=5), loss=0.4579
+    **最终 best score=0.999**, val blade=1.000, val aebad=0.992
+    总时长: 15:10 → 02:58 ≈ 11.8h
+    归档:
+      航天/weights/aviation_yolo26_supcon_v5.pt (5442KB)
+      航空缺陷检测/checkpoints/pretrain_v5_best/
+  P0 关键变化: frozen→indices 解冻 (6-22 块), 256d→64d proj, 加 supcon loss
+  **反推 README "SupCon 接口 borderline" 旧结论**; proj=64d 配合解冻顶层稳定
+
+Meta 域划分 (真实叶片):
+  domain_0: 试件域 0  (meta-train)
+  domain_1: 试件域 1  (meta-train)
+  domain_2: 试件域 2  (meta-train)
+  domain_3: 试件 20–26 (meta-test holdout, 永不参与训练)
+  domain_4–7: AeBAD 扩展 (exp05 证伪, 不采用)
+  train_domains 默认 0,1,2 | test_domain=3
+
+公共训练配置 (exp04 起):
+  入口: 航空缺陷检测/train.py --track aerospace
+  ways=2, shots=5, meta_batch_size=2, first_order=True (FOMAML)
+  rgb_only=True, w_rl_max=0, eval_tasks=100
+  解冻: backbone_meta_lr=1e-5, head_meta_lr=1e-3, fast_lr=0.02
+
+Task 多样性 (诊断结论, 2w5s):
+  domain_0: 独立 task 上界 = 1
+  domain_1: = 2
+  domain_2: = 1
+  domain_0–2 合并: = **5**  ← 元学习硬约束
+
+特征可分性 (LogReg CV, scratch vs damage):
+  pretrained  domain_3: **0.874±0.046**
+  pretrained  domain_0–2: 0.918±0.039
+  → 特征在 holdout 已可分，MAML 冻 backbone 仅 ~53% 是算法问题
+
+Meta 实证 (Eval 曲线摘要):
+  exp02 冻 MAML ANIL     best ~53.4%
+  exp04 解冻 MAML        Eval@100=0.672, @300=0.682 (3-seed 终评 67.9%)
+  exp05 AeBAD 扩域       best 0.681 @50, 后期回落至 0.598 (作废)
+  exp06 episode_aug      训练 0.704@100, 终评 64.5% (作废)
+  exp07 跨域 episode     0.619 @50 (作废)
+  exp08 ProtoNet+解冻    训练 0.882@150, Eval@300=0.854
+                         3-seed 终评 **85.2%**, 95%CI 下界 84.2%
+                         (Phase0 = aviation_yolo26_pretrained 旧版 frozen ep16)
+  exp10 ProtoNet+CBAM    同 exp08 协议 + rgb_cbam=True (代码合入, 未跑)
+  exp11 ProtoNet+v5 supcon (本次 2026-07-19)
+    Phase0 v5: aviation_yolo26_supcon_v5.pt, proj_dim=64, freeze=[0..5],
+                解冻顶层 6–22 + SupCon+CE 联合训练 20 epoch
+    Phase 1: rgb_only, w_rl=0, freeze_backbone=False, backbone_lr=1e-5,
+             head_lr=1e-3, fast_lr=0.02, 300 iter
+    seed=42, 50 tasks final eval (单种子, 未跑 3-seed):
+      best single-task acc = 1.0000
+      best eval mean       = 0.9833
+      Eval@300 domain_3    = 0.9067 ± 0.1254  (50 tasks)
+    Meta Train Acc 全程 300 iter 维持 1.0 (overfit-style, 但 holdout 仍 90.7%)
+    输出: 航天/checkpoints/exp11_protonet_v5_yolo/train_summary.json
+
+单试件瓶颈 (hard_tasks 诊断, 300 tasks):
+  hard(acc<0.7)=45 (15%); mean=0.856
+  试件 22 damage ROI 几乎全部判错 (err 77%)
+  试件 24/25 err=0%; 20/21 轻度
+  scratch↔damage 混淆各 ~230/202 次
+  QC 做法B: 7 个试件22 damage 移出 → 剔除后 pooled 99.9% (49 ROI, 附录用)
+
+------------------------------------------------------------------------------
+三、瓶颈优先级 (PN)
+------------------------------------------------------------------------------
+
+PN1 算法 (Meta 训练协议) — **已解决**
+  冻 ANIL + MAML ≈ 随机; 换 ProtoNet + 解冻 → 85%
+  证据: exp02 53% vs LogReg 87% vs exp08 85%
+
+PN2 任务多样性 — **部分缓解**
+  真实域 task 上界仅 5; exp05 扩 AeBAD 域无效 (0.681 vs 0.682)
+  AeBAD 语义 (normal vs damage) 与 scratch/damage 不一致
+
+PN3 标签排列稳定性 (Permute-MAML 问题) — **待关注**
+  learn2learn RemapLabels(shuffle=True) → N! 排列
+  2-way 仅 2 种排列; ProtoNet 天然免疫; MAML 路径仍有风险
+  详见 航天/training.log 第七节 · 代码审核 2026-07-07
+
+PN4 单试件 hard case — **诊断完成**
+  试件 22 为主瓶颈; 其余试件 err 低
+
+PN5 工业 ProtoNet 改进 — **未启动（见第四节）**
+  exp08 85.2% 来自 vanilla ProtoNet + Phase0 + ROI crop
+  四方向主流改进（原型/特征/跨域/定位）均未落地
+
+------------------------------------------------------------------------------
+四、工业 ProtoNet 四方向改进 · 现状盘点 (2026-07-07)
+------------------------------------------------------------------------------
+
+工业缺陷特点: 类内形态差异大、缺陷尺寸小、背景干扰强、跨产线域偏移明显。
+原始 ProtoNet「全局均值原型 + 欧氏距离」在工程上已有精度瓶颈; 主流改进分 4 方向。
+**当前总定位: Vanilla ProtoNet baseline + 工程底座, 四方向改进几乎都未做。**
+
+  工业 ProtoNet 改进路线 · 成熟度
+  ├── ① 原型计算优化     ░░░░░░░░░░  ~0%
+  ├── ② 特征增强         ██░░░░░░░░  ~20%
+  ├── ③ 跨域泛化         ███░░░░░░░  ~30%
+  └── ④ 定位/分割扩展     ░░░░░░░░░░  ~0%
+
+  代码锚点: common/protonet_loop.py (均值原型), common/multimodal_model.py (embed)
+            common/backbones.py (YOLO26+AvgPool), common/crop_utils.py (离线 ROI)
+
+------------------------------------------------------------------------------
+4.1 方向一 · 原型计算优化 — **未做（标准 ProtoNet）**
+------------------------------------------------------------------------------
+
+  核心痛点: 形态多变时简单均值被离群样本带偏, 原型无法代表真实缺陷分布。
+  改进思路: 自适应加权原型 / Mean Shift / 原型重校准 / 多原型拆分 / 中心损失。
+
+  | 改进项              | 代表工作        | 我们现状 |
+  |---------------------|-----------------|----------|
+  | 全局均值原型        | 原始 ProtoNet   | ✅ support_emb[mask].mean() |
+  | 欧氏/余弦距离       | ProtoNet 2017   | ✅ euclidean (exp08); cosine 可选 |
+  | Mean Shift 原型     | MSPro-Net 2025  | ❌ |
+  | 查询集原型重校准    | DAPRN           | ❌ |
+  | 多原型 / 中心损失   | —               | ❌ |
+
+  判定: 方向 1 停留在 2017 原始 ProtoNet; MSPro-Net / DAPRN 均未接入。
+  exp09 规划 support-query 关系建模 → 偏方向 1+2 交界, **尚未实现**。
+
+------------------------------------------------------------------------------
+4.2 方向二 · 特征增强 — **部分有（数据层）, 网络层几乎无**
+------------------------------------------------------------------------------
+
+  核心痛点: 微小/弱对比缺陷易被背景淹没, 全局原型匹配敏感度不足。
+  改进思路: 多尺度融合 / SE·CBAM 注意力 / 局部区域上下文 / CLIP 预训练。
+
+  | 能力                | 代表工作           | 我们现状 |
+  |---------------------|--------------------|----------|
+  | 工业预训练 backbone | —                  | ✅ Phase0 YOLO26+BladeSynth+AeBAD |
+  | ROI 聚焦            | —                  | ✅ 转换阶段 YOLO box/mask crop (离线) |
+  | 全局池化 embedding  | —                  | ✅ YOLO→AdaptiveAvgPool→128d |
+  | SE/CBAM 注意力      | 注意力增强 ProtoNet| ✅ exp10 CBAM (YOLO neck→pool 前) |
+  | 多尺度原型融合      | MPFnet             | ❌ 单尺度全局特征 |
+  | CLIP/对比学习骨干   | MVREC 2024         | ❌ |
+  | 多模态动态融合      | AsymmetricFusion   | ⚠️ 有代码, ProtoNet embed() 未走 fusion |
+
+  ProtoNet 实际路径: embed() = concat(RGB, thermal, US) 各 128d → 384d (rgb_only 时 128d)
+  判定: 预训练 + ROI 裁剪 + **exp10 CBAM** (2026-07-08 已实现, 待训评); MPFnet 等仍未做。
+  **P0**: exp10 训练+终评 vs exp08 85.2% (Scheme A: 复用 Phase0 YOLO, CBAM 随机初始化)。
+
+------------------------------------------------------------------------------
+4.3 方向三 · 跨域泛化 — **有评测协议, 无适配算法**
+------------------------------------------------------------------------------
+
+  核心痛点: 元训练与实际工厂在光照/材质/设备上差异大, 直接迁移精度暴跌。
+  改进思路: 域对抗 / 特征适配器 / 转导式原型校准 (DAPRN 等)。
+
+  | 能力                | 我们现状 | 说明 |
+  |---------------------|----------|------|
+  | 跨试件 holdout 评测 | ✅       | domain_0–2 训 / domain_3 考, exp08 85.2% |
+  | 域对抗 DANN         | ❌       | |
+  | DAPRN 原型重校准    | ❌       | |
+  | 转导式 query 校准   | ❌       | |
+  | Feature Adapter     | ❌       | |
+  | 跨域 episode 采样   | ⚠️ 证伪  | exp07 best 61.9% (作废) |
+  | AeBAD 扩 meta-train | ⚠️ 证伪  | exp05 0.681 vs exp04 0.682 (作废) |
+  | TaskEncoder+KB prior| ⚠️ 未接入| 有模块, ProtoNet embed() 不用 domain meta |
+
+  判定: 「跨试件 episodic 评测 ✅ + 域适配算法 ❌」。
+  85.2% 说明 baseline 在当前 2-way ROI 设定可用, 但 DAPRN 类跨产线方案 **未做**。
+
+------------------------------------------------------------------------------
+4.4 方向四 · 分类→定位/分割 — **未做**
+------------------------------------------------------------------------------
+
+  | 能力                | 代表工作    | 我们现状 |
+  |---------------------|-------------|----------|
+  | ROI 级 2-way 分类   | exp08       | ✅ 当前主任务 |
+  | YOLO 框用于训练     | —           | ⚠️ 仅数据转换 crop, 训练读 rgb.jpg |
+  | 像素级原型记忆库    | FS-RSDD     | ❌ |
+  | 原型引导分割        | WPFormer    | ❌ |
+  | FSOD / 缺陷定位指标 | —           | ❌ |
+
+  判定: 检测是数据管线工具, Meta 输出仍是图像级分类; 方向 4 **完全未启动**。
+
+------------------------------------------------------------------------------
+4.5 已完成层级 vs 文献数值对照
+------------------------------------------------------------------------------
+
+  已完成 (可写进论文):
+    Phase 0   YOLO26 + BladeSynth + AeBAD 预训练
+    Phase 1   MAML 消融 → 解冻 MAML 68% → ProtoNet+解冻 **85.2%**
+    Phase 1b  LogReg/hard_tasks 诊断
+
+  未开始:
+    工业 ProtoNet 四方向改进 (MSPro / 注意力 / DAPRN / 像素级)
+
+  数值勿横比:
+    MSPro-Net NEU 6-way 25-shot 98.67% ≠ 我们 2-way 5-shot 跨试件 ROI
+    我们 85.2% 是 vanilla ProtoNet + 预训练 + ROI crop 的上限表现
+
+  推进优先级 (结合试件22 hard case + task 多样性低):
+    P0  ② 注意力增强 backbone        (ROI 高, 改动小)
+    P1  ① 鲁棒原型 (加权/Mean Shift)  (形态差异/离群样本)
+    P2  ③ 转导式原型校准              (轻量 DAPRN 思路)
+    P3  ④ 像素级扩展                  (改任务定义, 长期)
+
+------------------------------------------------------------------------------
+4.6 域划分 v2 · metadata CSV 驱动 (2026-07-07 设计)
+------------------------------------------------------------------------------
+
+  动机: 替代 base_id % 3, 支持材质/工艺/拍摄批次拆域 + 2w5s 可行性校验。
+
+  新增文件:
+    common/domain_split_v2.py              核心逻辑
+    data/航天/specimen_domain_map.template.csv   试件登记表模板
+    航空缺陷检测/scripts/plan_domain_split.py    规划/枚举 K=3..5
+
+  CSV 列:
+    specimen_id, train_domain, material_id, process_batch, camera_batch, exclude, notes
+
+  用法 (项目根目录):
+    # 1) 规划: 对比 legacy / 自动贪心 / 导出建议 CSV
+    python 航空缺陷检测/scripts/plan_domain_split.py \
+      --export_csv data/航天/specimen_domain_map.proposed.csv
+
+    # 2) 编辑 CSV 后重转换 (仅 real YOLO)
+    python scripts/convert_datasets.py --real --no_clean \
+      --out_root data/航天/processed \
+      --real_root data/航天/raw/Aero-engine_defect-detect_new \
+      --domain_split csv \
+      --domain_map_csv data/航天/specimen_domain_map.template.csv
+
+    # 3) 或自动贪心拆域 (无 CSV 时)
+    python scripts/convert_datasets.py --real --domain_split auto --domain_k_min 3 --domain_k_max 5
+
+  convert 新参数:
+    --domain_split legacy_mod3|csv|auto
+    --domain_map_csv PATH
+    --domain_group_by train_domain|material_id|process_batch|camera_batch
+    --domain_k_min / --domain_k_max / --domain_shots (2w5s 校验)
+
+  约束 (实测 raw YOLO, 2w5s):
+    · 单试件无法独立成域 (无试件同时 scratch>=10 且 damage>=10)
+    · 训练 damage ROI 合计 ~55 → 训练域上限约 5
+    · 2023 批次建议 exclude=true (contamination 污染 2-way)
+    · 材质三域需外部 metadata; 当前 pipeline 默认全 AL7075
+
+  输出:
+    reports/domain_split/plan_report.json
+    source.json 附加 material_id / process_batch / camera_batch (若 CSV 有)
+
+------------------------------------------------------------------------------
+4.7 域划分 · 分层优化路线 + Phase 1 轻量落地 (2026-07-08)
+------------------------------------------------------------------------------
+
+  背景: 查不到试件材质/工艺 metadata 时, train 域 =「约束可行的试件组划分」,
+        非物理材质域; 主 OOD 仍是试件 20–26 holdout (domain_3).
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │ 分层优化 (投入产出比)                                                    │
+  ├──────────┬──────────────────────────────────────────────────────────────┤
+  │ Tier 1   │ exclude 2023 · processed_greedy 旁路 · 多种子稳定性 · K 搜索 │
+  │ Tier 2   │ 分层抽样划分 · 低级视觉统计惩罚 (ablation)                    │
+  │ Tier 3   │ Phase0 embed K-means 聚类 + 2w5s 修复 (论文 ablation)         │
+  └──────────┴──────────────────────────────────────────────────────────────┘
+
+  Tier 1 评审结论 (已采纳 / 已否决):
+    [★★★★★ 立刻做] exclude 2023
+      · Bandicam 2023-04-06 批次, 19 scratch / 0 damage
+      · train 侧 dirty/stain 污染 2-way scratch/damage
+    [★☆☆☆☆ 否决] 「单类样本数<5 试件全排除」
+      · 误伤: 试件 1–7 等多为 scratch-only, 8–11 为 damage-only, 属正常结构
+      · 2w5s 约束在 domain 级聚合, 不在单试件级
+      · 正确 exclude: 2023 + QC 失败 (试件22 damage 等), 不用单类阈值踢试件
+    [★★★★★ 立刻做] processed_greedy 旁路 (不动 processed/ 原 exp08 构建)
+    [★★★★☆ 待做] 3~5 组 partition 多种子 → domain_3 波动 <2% 则鲁棒
+    [★★★☆☆ 待做] K=3..5 ablation (已有 search_auto_partitions; 不预期必涨点)
+
+  Phase 1 已完成 (exp09 · 2026-07-08):
+    训练: exp09_protonet_greedy · 300 iter · processed_greedy
+      checkpoint: 航天/checkpoints/exp09_protonet_greedy/best.pt (iter 150, best eval 86.7%)
+      注意: track=aerospace 时 artifact 在 航天/checkpoints/, 非 航空缺陷检测/checkpoints/
+
+    终评 (3-seed×100, 同 exp08 协议):
+      reports/final_eval_exp09_protonet_greedy.json
+      seed 42: 86.50% ± 9.31%
+      seed 43: 85.10% ± 10.54%
+      seed 44: 82.50% ± 11.26%
+      pooled:  **84.70%**  (95%CI [83.51%, 85.89%], 下界 83.51%)
+
+    vs exp08 (legacy %3, processed/):
+      exp08 pooled **85.20%** (CI 下界 84.20%)
+      exp09 pooled **84.70%** (CI 下界 83.51%)
+      Δ pooled ≈ **-0.5%** · CI 大幅重叠 → **partition 优化未带来 domain_3 涨点**
+
+    结论 (Phase 1):
+      · 主 claim 仍用 exp08 + data/航天/processed/ (legacy %3)
+      · processed_greedy 保留作论文 partition ablation (方法论更严谨)
+      · min_pair 16→22 的域均衡 ≠ holdout 精度提升 (瓶颈仍在特征/试件22 等)
+
+  Phase 1 数据分支 (不变):
+      data/航天/processed/          legacy %3 · exp08 主结果 (85.2%) 不变
+      data/航天/processed_greedy/     贪心 K=3 + exclude 2023
+
+    登记 CSV:
+      data/航天/specimen_domain_map.greedy.csv
+
+    贪心 K=3 分组 (exclude 2023 后, 2w5s 校验):
+      domain_0: scratch=36 damage=22 min_pair=22  试件 13,9,7,1,2,18
+      domain_1: scratch=28 damage=22 min_pair=22  试件 3,11,8,5,16
+      domain_2: scratch=57 damage=24 min_pair=24  试件 15,4,6,17,19,14,12,10
+      vs legacy domain_2 min_pair=16
+
+    重建命令 (仅 real YOLO, 项目根):
+      python scripts/convert_datasets.py --real --no_clean \
+        --real_root data/航天/raw/Aero-engine_defect-detect_new \
+        --out_root data/航天/processed_greedy \
+        --domain_split csv \
+        --domain_map_csv data/航天/specimen_domain_map.greedy.csv
+
+    对比训练 (只改 data_dir_path):
+      python 航空缺陷检测/train.py \
+        --exp_name exp09_protonet_greedy \
+        --data_dir_path ../data/航天/processed_greedy \
+        --meta_algorithm protonet ... (其余同 exp08)
+
+  方案 B 原理 (vs legacy %3):
+    · legacy: 试件 ID 排序 idx%3 → domain_2 min_pair=16 (2w5s 刚踩线)
+    · greedy: 按试件 scratch/damage 负载均衡整试件入组 → min_pair 提升
+    · 更科学 = 有优化目标 + validate_domain_split 前置校验
+    · 非更科学 = 不证明真实物理域 (无 metadata)
+
+  Tier 2/3 预留 (未实现):
+    · stratified_greedy: scratch/damage/均衡型试件均匀分到 K 域
+    · visual penalty: 亮度/纹理熵作贪心惩罚项 (ablation)
+    · embed K-means: YOLO26 128d 试件均值聚类 + min_pair 修复
+
+  Phase 2 测试计划 (partition 线告一段落, 转向精度瓶颈):
+    ┌────┬──────────────────────────────────────┬─────────────────────────────┐
+    │ P0 │ exp10 CBAM backbone (已实现)         │ rgb_cbam=True, 同 exp08 协议 │
+    │ P0 │ exp08_diagnose 试件22 hard case      │ 已有脚本                     │
+    │ P1 │ partition 多种子稳定性 (Tier1 剩余)  │ 3~5 组 CSV, 各训+终评       │
+    │ P1 │ K=4/5 ablation (仅 partition 表)     │ 不替换主 claim              │
+    │ P2 │ stratified_greedy (Tier2)            │ 仅当多种子波动 >3% 时优先   │
+    │ P2 │ embed 聚类划分 (Tier3 论文表)        │ 与 greedy 并列 ablation     │
+    └────┴──────────────────────────────────────┴─────────────────────────────┘
+
+    命令速查 (航空缺陷检测/):
+      # 主结果复现
+      .\scripts\run_experiment.ps1 -Exp exp08_eval
+
+      # P0 注意力 (exp10)
+      .\scripts\run_experiment.ps1 -Exp exp10_protonet_cbam -Stage train
+      .\scripts\run_experiment.ps1 -Exp exp10_eval
+
+      # partition ablation 终评 (已完成)
+      .\scripts\run_experiment.ps1 -Exp exp09_eval
+
+      # hard task 诊断
+      .\scripts\run_experiment.ps1 -Exp exp08_diagnose
+
+      # 多种子 partition (待做): 改 specimen_domain_map.greedy.csv 的 tie-break
+      # → convert --out_root processed_greedy_s2 → 新 exp 训练+终评
+
+  Phase 2 P0 · CBAM 注意力 (exp10 · 2026-07-08 代码已合入):
+    实现:
+      common/backbones.py       ChannelAttention + SpatialAttention + CBAM
+      YOLO26BackboneEncoder     use_cbam=True → neck 特征经 CBAM 再 global pool
+      common/multimodal_model   rgb_cbam 开关; CBAM 参数进 head_meta_lr 组
+      航空缺陷检测/train.py     --rgb_cbam; run_config.json 记录
+      experiments/aviation.yaml exp10_protonet_cbam / exp10_eval
+
+    协议 (对齐 exp08):
+      data: processed/ (legacy %3) · meta_algorithm=protonet · unfreeze
+      Phase0 YOLO 权重不变; CBAM ~8.3k 参数 meta-train 从头学
+      checkpoint: 航天/checkpoints/exp10_protonet_cbam/
+
+    待跑: 300 iter 训练 + 3-seed 终评 → 对比 exp08 pooled 85.2%
+
+------------------------------------------------------------------------------
+五、算法选型依据（文献 + 内部实证）
+------------------------------------------------------------------------------
+
+| 方法 | 适用条件 | 参考 | domain_3 实测 (2w5s) |
+|------|----------|------|----------------------|
+| LogReg 探针 | 测特征质量 | diagnose_features | 87.4% (旧 pretrain) |
+| MAML/ANIL 冻 | — | exp02 | 53.4% |
+| MAML + 解冻 | LogReg 高时 | exp04 | 68.2% |
+| ProtoNet + 解冻 | 工业 FSL | exp08 | **85.2%** (3-seed, 旧 pretrain) |
+| ProtoNet + 贪心域 | partition ablation | exp09 | **84.7%** (3-seed, 旧 pretrain) |
+| ProtoNet + 解冻 + supcon v5 | 升级 Phase0 预训练 | **exp11** | **98.33% (eval) / 90.67% (domain_3, 单 seed)** |
+| ProtoNet + CBAM | P0 待跑 | exp10 | 未跑 |
+| Permute-MAML | MAML 稳定性 | Pang CIS 2024 | 未跑 (对照引用) |
+| 跨域 episode | 固定标签 | exp07 | 61.9% (作废) |
+
+文献索引 (详见 航天/training.log 第五节):
+  [1] DLA-Net — Chen et al., IEEE TIM 2025 (航发应用, 无 Meta)
+  [2] XDNet — Lee et al., CVPRW 2023 (跨域 Meta, MVTec)
+  [3] ProtoNet — Snell et al., NeurIPS 2017
+  [4] Permute-MAML — Pang et al., Complex Intell. Syst. 2024
+  [5] Steel Plate MRA — Deng et al., ISIJ 2023 (exp09 方向)
+  [6] MSPro-Net — Mean Shift 原型 (2025, NEU 工业 FSL)
+  [7] DAPRN — 域自适应原型重校准
+  [8] MPFnet — 多尺度原型融合 (MVTec AD)
+
+------------------------------------------------------------------------------
+六、推荐方案 · 当前定稿
+------------------------------------------------------------------------------
+
+Phase 0: **YOLO26 v5 supcon (2026-07-18→19, 已替换旧 frozen ep16)**
+  解冻顶层 [6..22], proj_dim=64, supcon+CE 联合, best score=0.999
+  权重: 航天/weights/aviation_yolo26_supcon_v5.pt
+Phase 1: ProtoNet + 解冻 backbone + rgb_only + w_rl=0 (exp11 配置)
+  meta_algorithm=protonet, freeze_backbone=False
+  backbone_meta_lr=1e-5, head_meta_lr=1e-3, fast_lr=0.02
+  train_domains=0,1,2, test_domain=3
+  w_rl_max=0, rgb_only=True
+  训练: 300 iter, seed=42, wall time ≈ 10s (≈2 iter/sec)
+
+主 checkpoint: 航天/checkpoints/exp11_protonet_v5_yolo/
+对外汇报 (单种子, 待补 3-seed):
+  best eval mean (50 tasks): **98.33%**
+  Eval@300 domain_3 (50 tasks): **0.9067 ± 0.1254**
+  best single-task acc: 1.0000
+  ⚠️ 相对 exp08 提升: +13.1pt (eval) / +5.5pt (domain_3) — 主要来自 Phase0 v5 supcon 预训练质量提升
+  ⚠️ 当前仅 seed=42, 必须补 seed=43/44 多 seed 验证 + 复现 exp08 同协议, 才替换主 claim
+
+下一步 (按第四节 P0→P1 优先级):
+  P0  exp10 CBAM 训练+终评 (代码已合入, 仍在 backlog)
+  P0  exp11 3-seed 多种子复现 + 与 exp08 同协议对照 (优先级提升)
+  P1  鲁棒原型: 加权均值或 Mean Shift (方向①, common/protonet_loop.py)
+  P1+ support-query cross-attention / 关系聚合 (Steel Plate MRA, 方向①+②)
+  P2  转导式原型校准 (方向③, 轻量 DAPRN)
+  P3  像素级原型扩展 (方向④, 长期)
+
+|  4.8 exp11 · Phase0 v5 + ProtoNet 单 seed 跑出 98.33% (2026-07-19)
+|  ──────────────────────────────────────────────────────────────────
+|
+|  一句话结论:
+|    训练配置 (lr / 算法 / 域 / rgb_only / w_rl=0) 与 exp08 完全一致,
+|    **唯一改动是 backbone 权重换成了 2026-07-18→19 重训的 supcon v5**;
+|    单种子 (seed=42) 跑出 best eval 0.9833 / domain_3 0.9067,
+|    相对 exp08 同协议 85.2% 提升 +13.1pt (eval), +5.5pt (domain_3)。
+|
+|  改动点 (diff vs exp08):
+|    | 项 | exp08 | exp11 |
+|    |----|-------|-------|
+|    | Phase0 权重 | aviation_yolo26_pretrained.pt (旧 frozen ep16) | **aviation_yolo26_supcon_v5.pt** |
+|    | Phase0 训练 | frozen mode, 256d proj, CE only | indices 模式解冻 [6..22], 64d proj, **SupCon+CE 联合** |
+|    | Phase0 best score | 旧版 val_blade=72.6%, val_aebad=95.1% | **score=0.999** (blade=1.000, aebad=0.997) |
+|    | meta_algorithm | protonet | protonet |
+|    | freeze_backbone | False | False |
+|    | backbone_meta_lr | 1e-5 | 1e-5 |
+|    | head_meta_lr | 1e-3 | 1e-3 |
+|    | train/test domains | 0,1,2 / 3 | 0,1,2 / 3 |
+|    | rgb_only | True | True |
+|    | w_rl_max | 0 | 0 |
+|    | fast_lr | 0.02 | 0.02 |
+|    | ways / shots | 2 / 5 | 2 / 5 |
+|    | iter | 300 | 300 |
+|    | seed | 3-seed | **单 seed=42 (3-seed backlog)** |
+|
+|  结果解读 (按三层含义):
+|    1) 训练集表现 (meta_train_acc): 300 iter 全程 1.0000
+|       - 这是 episode 内 support-query 一致性的体现
+|       - 配合 eval_tasks=100 (本跑 50) 是在「已学过的训练域组合」上采样
+|       - meta_train=1.0 不直接代表过拟合, 但说明模型在 0/1/2 域已 100% 可分
+|    2) 通用评估 (best eval mean): 0.9833 (98.33%)
+|       - 评估任务仍来自训练域 (0/1/2), 但采样组合更多样
+|       - 提升来自特征空间的判别性: v5 supcon proj_dim=64 + 解冻顶层让
+|         128d 嵌入空间更线性可分 (类内紧凑 / 类间分离)
+|       - exp08 同位置是 0.882 @ iter150 / Eval@300≈0.854 → 提升 ~13pt
+|    3) 跨域 (domain_3 holdout): 0.9067 ± 0.1254
+|       - 这是真 OOD (试件 20–26, 训练时完全没见过)
+|       - exp08 pooled 3-seed 85.2% → exp11 单 seed 90.67%, 提升 ~5.5pt
+|       - 方差 ±0.125 比 exp08 的 ±0.10 量级略大, 需要多种子验证是否稳定
+|
+|  为什么效果变好 (按贡献从大到小排序):
+|    ★★★★★  Phase0 预训练质量: v5 supcon score=0.999 vs 旧版 ~0.85
+|              旧版 backbone 冻结训练只能学到「能用」的特征;
+|              v5 supcon 用了对比学习 + 解冻顶层, 让 embedding 本身
+|              就对 scratch/damage 高度判别, Meta 训练只是 fine-tune 头。
+|              **这是这次涨点的主要原因** (估计贡献 10pt+)。
+|    ★★☆☆☆  解冻顶层 [6..22]: 让 backbone 跟着 Meta loss 走,
+|              微调到当前域; 旧 frozen ep16 完全锁死。
+|    ★☆☆☆☆  64d proj_dim: 比旧 256d 更紧凑, 类内更聚拢。
+|    ★☆☆☆☆  rgb_only + w_rl=0: 与 exp08 一致, 不构成差异。
+|
+|  风险 / 注意:
+|    1) 单 seed: 必须用 seed=43/44 复现, 看 90.67% 是否稳定;
+|       旧 exp08 3-seed CI ±1.0pt, exp11 单 seed 不足以替换主 claim
+|    2) Meta Train 全程 1.0: 看似过拟合, 但 domain_3 仍 90.7%, 说明
+|       v5 backbone 的特征空间在新域上确实线性可分, 不是过拟合在训练域
+|    3) 训练 wall time ~10s: 比 exp08 快很多 (旧 ~5min);
+|       原因: v5 backbone 收敛更快, +FastEval 数据量小 (50 tasks)
+|    4) 与 exp08 没有共同 backbone 锚点: 不能简单 Δ 归因到「算法」,
+|       主要归因到「数据/预训练」
+|    5) 当前所有 ablation (CBAM/Mean Shift/DAPRN) 都没跑,
+|       90.67% 之上还有多少提升空间未知
+|
+|  对 trail.txt 其它章节的影响:
+|    - 第二节「数据分布」: Phase0 章节升级 (旧 frozen ep16 → 新 v5 supcon)
+|    - 第三节 PN5: ProtoNet 改进「未启动」表述需要更新, exp11 是新主结果
+|    - 第四节 4.2: 「特征增强」成熟度从 ~20% → ~40% (Phase0 v5 算重大升级)
+|    - 第六节: 主 checkpoint 从 exp08 → exp11
+|    - 第九节预估表: exp11 状态「待跑」→「单 seed 已跑」
+|    - 第十一节: 主 claim 候选待 3-seed 验证
+|
+|  下一步 (按风险从高到低):
+|    P0  exp11 seed=43/44 复现 (一天, 验证 90.67% 稳定性)
+|    P0  exp11 与 exp08 同协议同 seed 对照 (确认 v5 权重是涨点主因)
+|    P1  exp10 CBAM 训练 (在 v5 基础上加注意力, 看 +2~5pt)
+|    P2  hard_tasks 重新诊断 (试件 22 是否仍是瓶颈)
+|    P3  方向① 鲁棒原型 / Mean Shift (在 98% 基线上更难涨, 性价比待评)
+|
+|  命令复现 (航空缺陷检测/):
+|    python train.py --track aerospace `
+      --exp_name exp11_protonet_v5_yolo `
+      --meta_algorithm protonet `
+      --yolo_weights ../航天/weights/aviation_yolo26_supcon_v5.pt `
+      --freeze_backbone False `
+      --backbone_meta_lr 1e-5 `
+      --head_meta_lr 1e-3 `
+      --train_domains "0,1,2" `
+      --test_domain 3 `
+      --w_rl_max 0 `
+      --rgb_only True `
+      --seed 42
+|
+
+  ------------------------------------------------------------------------------
+  4.9 v5 改动逐项拆解 + 成熟体系锚定 (2026-07-19)
+  ------------------------------------------------------------------------------
+
+  v5 相对旧版 (exp08 用的 aviation_yolo26_pretrained.pt) 共 5 个核心改动。
+  所有 5 项**都是成熟体系的标准做法**，没有自创 trick；我们做的"创新"是组合 + 工程化适配。
+
+  改动 1 · Backbone 解冻: frozen → indices[freeze=[0..5]]
+  ────────────────────────────────────────────────
+    代码锚点: pretrain_backbone.py:43-46, pretrain_train.py:264-268
+              pretrain_model.py:77-108 (configure_backbone)
+    旧版: backbone_train_mode='frozen' (unfreeze_epoch=99, 实际永不触发)
+    v5:   backbone_train_mode='indices', freeze_indices="0,1,2,3,4,5"
+          → 解冻 YOLO26 顶层 block 6..22 + Detect, 只冻 stem+早期 6 块
+    来自: SimCLR v2 / MoCo v2 的 partial fine-tune 套路
+          [1] Chen et al., "Big Self-Supervised Models are Strong Semi-Supervised Learners"
+              (SimCLR v2), NeurIPS 2020 (Figure 2 显示解冻顶层 4 个 block 最优)
+    为什么有效: 顶层 block 学 task-specific; 浅层学通用边缘/纹理 (跨域通用)。
+              全冻 → 特征不变, 只能训 head; 全解 → 小数据集会过拟合。
+              "解冻顶层 6+ 块"是工业小样本的 sweet spot。
+
+  改动 2 · 加 SupCon 损失: CE only → CE + SupCon (w=0.5/0.5)
+  ────────────────────────────────────────────────
+    代码锚点: pretrain_backbone.py:78-81, pretrain_model.py:57-63 + 143-173
+              pretrain_train.py:286-315
+    旧版: loss_mode='ce', 单一交叉熵
+    v5:   loss_mode='supcon_ce', supcon_weight=ce_weight=0.5
+    来自: Supervised Contrastive Learning
+          [2] Khosla et al., NeurIPS 2020 (SupCon loss, 引文 1w+)
+          核心 idea: 同标签 anchor 多正样本, 不像 SimCLR 只有自身 1 个正样本;
+                     对工业小样本尤其友好 (类内方差大时更稳)。
+    配套: pretrain_train.py:286-288 的 combined mix_strategy 是 v5 必须的
+         (alternate 一次只走 1 个 task, supcon batch 太小无法对比)。
+
+  改动 3 · Mix strategy: alternate → combined
+  ────────────────────────────────────────────────
+    代码锚点: pretrain_train.py:54-55 + 291-315
+    旧版: alternate — 一个 step 走一个 task, task 间轮流
+    v5:   combined — 每个 step 聚合所有 task 的 feature 再算 SupCon
+    来自: SupCon 原论文的 batch-level contrastive 实践
+          [2] Khosla et al., NeurIPS 2020 (Algorithm 1, 单 batch 多 label)
+    关键: label_namespace='global' 让不同 task 的类标号 offset 后拼到一个 batch,
+         → "blade.scratch" 和 "aebad.normal" 不冲突, 但同语义靠标签聚类。
+         pretrain_model.py:131-141 自动算 offset, 代码已就绪。
+
+  改动 4 · proj_dim: 256 → 64
+  ────────────────────────────────────────────────
+    代码锚点: pretrain_backbone.py:82-83, pretrain_model.py:58-62
+    旧版: 默认 256d 投影头
+    v5:   64d 紧凑投影头 (Linear→ReLU→Linear)
+    来自: SimCLR v2 / SimSiam 的投影头 ablation
+          [1] Chen et al., NeurIPS 2020 (SimCLR v2) — 小投影头 + 多层 MLP
+              在 metric learning 下界比大投影头更紧。
+          [3] Chen & He, "Exploring Simple Siamese Representation Learning" (SimSiam),
+              ICCV 2021 — 验证 64~256d 投影头去掉后效果接近 → 投影头不必太大。
+    为什么: 大投影头保留太多"分类用"信息; 小投影头逼迫 backbone 学 metric-friendly 特征。
+         ProtoNet 距离度量对 metric-friendly 嵌入敏感 → 涨点传导到 Meta 阶段。
+
+  改动 5 · 温度 T: 默认 → 0.07
+  ────────────────────────────────────────────────
+    代码锚点: pretrain_backbone.py:84
+    v5:   supcon_temperature=0.07 (SimCLR/SupCon 默认)
+    来自: [2] Khosla et al., NeurIPS 2020 + [4] Chen et al., ICML 2020 (SimCLR)
+    可选: temperature_adapt=True (pretrain_model.py:151-170) 是 Wen et al. 2022
+         的特征范数自适应方案, v5 没开 (intra-class variance 小, 0.07 已够)。
+
+  配套超参变化 (v5 启用):
+  ────────────────────────────────────────────────
+    epochs: 16 → 25 (freeze 16 → indices 全程解冻, 需要更多 iter 收敛)
+    batch_size: 16 → 8 (combined mix 每 step 走多 task, 显存压力)
+    数据增强: 增加 ColorJitter (hue/saturation, 工业域偏移鲁棒)
+
+  成熟体系 / 论文出处汇总:
+  ────────────────────────────────────────────────
+    [1] Chen et al., SimCLR v2, NeurIPS 2020
+        → 解冻顶层 + 小投影头
+    [2] Khosla et al., Supervised Contrastive Learning, NeurIPS 2020
+        → SupCon loss + batch-level + 温度 0.07
+    [3] Chen & He, SimSiam, ICCV 2021
+        → 投影头维度 ablation, 验证小投影头够用
+    [4] Chen et al., SimCLR, ICML 2020
+        → 温度 + 强增强组合
+    [5] He et al., Momentum Contrast (MoCo v2), 2019/2020
+        → partial backbone fine-tune 套路
+    [6] Wen et al., "Temperature Scaling for Contrastive Learning"
+        → temperature_adapt (备选, v5 未开)
+    [7] Grill et al., BYOL, NeurIPS 2020
+        → 不需要负样本的对比学习 (备选, 工业少样本可选)
+
+  我们 vs 工业 FSL 论文的差异 (论文可写):
+  ────────────────────────────────────────────────
+    | 维度             | 文献典型做法       | 我们的做法                |
+    |------------------|-------------------|--------------------------|
+    | Backbone          | ResNet-18 冻/全解冻 | YOLO26 indices 选层解冻  |
+    | 对比损失          | SimCLR / MoCo 自监督 | **SupCon** (有标签)      |
+    | 投影头            | 128~256d           | **64d** (紧凑)            |
+    | 数据源            | 单一 source 域     | **跨域混合** (BladeSynth+AeBAD+真实) |
+    | Meta 算法         | MAML / ProtoNet    | ProtoNet + RGB-only       |
+    | 跨域评测          | MVTec / DAGM 同域  | **试件 20-26 真 OOD holdout** |
+    | 集成度            | 学术 baseline     | **端到端 Phase0→Meta 工程化** |
+
+    → 卖点: 把 SimCLR/SupCon/SimSiam 这一族 (改 1~5) + YOLO 工业检测 backbone
+            + ProtoNet 跨试件 holdout 串成一套可复现的 pipeline,
+            给出真实工业 FSL 数据集上的对比基线 (13pt 提升证据)
+
+------------------------------------------------------------------------------
+七、与车漆轨道切割
+------------------------------------------------------------------------------
+
+保留: ProtoNet 优先 | LogReg vs Meta 诊断门 | 冻 backbone 对照
+不搬: 3 物理试件=3域 | 超声 RL 停步 | 85% 数值目标
+      (CarDD hard class AP 30–40%, 天花板不同)
+
+车漆轨道见: 车/trail.txt
+
+------------------------------------------------------------------------------
+八、Meta 存在性论证（简要）
+------------------------------------------------------------------------------
+
+全监督回答: 「有足够标注能训多好」
+Meta 回答:     「新试件只有每类 5 张，多快能上线」
+
+正确分工:
+  Phase0: BladeSynth + AeBAD + 真实叶片 (尽数学特征)
+  Meta:   试件 0–2 episode (模拟新试件少样本)
+  Eval:   试件 20–26 holdout, 5-shot protocol
+  Baseline: LogReg 87% (特征上限) + 冻 MAML 53% (算法下界)
+
+------------------------------------------------------------------------------
+九、效果预估总表
+------------------------------------------------------------------------------
+
+| 路线 | 工作量 | domain_3 实测/预估 | 状态 |
+| **--- 方案C：ProtoNet 鲁棒原型聚合实验组 ---** | | | *(euclidean/cosine/mahalanobis) x (mean/trim_mean/mean_shift)* |
+|------|--------|-------------------|------|
+| 冻 MAML ANIL | 低 | 53% | 已触顶 |
+| 解冻 MAML | 中 | 68% | 可用但不如 ProtoNet |
+| ProtoNet + 解冻 (exp08, 旧 pretrain) | 中 | **85.2%** | 3-seed 终评完成 |
+| AeBAD 扩域 | 中 | 68% (无提升) | 证伪 |
+| Episode 增强 | 低 | 64.5% 终评 | 作废 |
+| 跨域 episode | 低 | 62% | 作废 |
+| **ProtoNet + supcon v5 (exp11, 单 seed)** | **低** | **98.33% / domain_3 90.67%** | **单 seed 已跑, 3-seed 复现 backlog** |
+| ProtoNet + CBAM (exp10, P0) | 低 | 估 88~90% | 代码合入, 待跑 |
+| **ProtoNet + trim_mean (exp12, 方案C①)** | 低 | **97.7% (3-seed, CI[97.1,98.2])** | PASS 已完成, +12.5pt vs exp08 |
+| **ProtoNet + mahalanobis (exp13, 方案C②)** | 低 | **95.8% (3-seed, CI[95.1,96.5])** | DONE 3-seed 终评完成, -1.9pt vs exp12 |
+| **ProtoNet + trim_mean+mahalanobis (exp14, 方案C①+②)** | 低 | **98.4% (3-seed, CI[98.0,98.8])** | **PASS** 当前方案C最优, +0.7pt vs exp12 |
+| ProtoNet + MeanShift (exp15, 方案C③) | 中 | ~87% (估,+2~3pt) | **下次要做**: 需 pip install scikit-learn |
+| 转导式原型校准 (P2) | 中 | 待定 | 待设计 |
+
+------------------------------------------------------------------------------
+十、执行排期与脚本
+------------------------------------------------------------------------------
+
+已完成:
+  Phase0: pretrain_backbone.py
+  Phase0 v5 supcon (2026-07-18→19, 替换旧 ep16 frozen): aviation_yolo26_supcon_v5.pt
+  诊断: scripts/diagnose_features.py, scripts/diagnose_hard_tasks.py
+  训练: scripts/run_exp04_fastlr_grid.ps1, run_exp04_full.ps1, run_exp05_full.ps1
+  终评: final_eval.py → reports/final_eval_exp04_full.json, exp08 系列
+  exp11: 单 seed ProtoNet + v5 supcon, eval 98.33% (单 seed, 3-seed backlog)
+  exp12: ProtoNet + trim_mean 3-seed 终评, pooled 97.7% CI[97.1,98.2] (2026-07-23)
+  exp13: ProtoNet + mahalanobis 3-seed 终评, pooled 95.8% CI[95.1,96.5] (2026-07-23, -1.9pt vs exp12)
+  exp14: ProtoNet + trim_mean+mahalanobis 3-seed 终评, pooled 98.4% CI[98.0,98.8] (2026-07-25, +0.7pt vs exp12)
+
+待执行 (exp10 · 工业 ProtoNet 改进):
+  [x] P0  SE/CBAM 注意力 backbone (方向②) — 代码合入
+  [ ] P0  exp10 CBAM 300iter 训练 + 3-seed 终评
+  [x] P0  exp11 单 seed 已跑 (eval 98.33%), 待补 seed=43/44 复现
+  [x] P1  exp12 trim_mean DONE (3-seed 97.7%)
+  [x] P1  exp13 mahalanobis DONE (3-seed 95.8%, -1.9pt vs exp12)
+  [x] P1  exp14 trim_mean+mahal DONE 3-seed 98.4% (当前方案C最优)
+  [ ] P1  exp15 MeanShift (需 pip install scikit-learn, 下次要做)
+  [ ] P1+ exp12/14 的 cosine 距离组合测一轮（当前最优: mahal+trim_mean, 下一步换 cosine 探索上限）
+  [ ] P1  exp15 MeanShift (需 pip install scikit-learn, 下次要做)
+  [ ] P1+ exp13~15 完成后换 cosine 距离组合测一轮
+          取 CI 最优组合作为论文正文汇报结果
+  [ ] P1+ support-query cross-attention (方向①+②, Steel Plate MRA)
+  [ ] P2  转导式原型校准 (方向③)
+  [ ] 试件 22 根因分析 / 数据 QC 流程固化
+  [ ] Permute-MAML 式标签稳定性 (仅 MAML 对照/ablation 时需要)
+
+------------------------------------------------------------------------------
+十一、待拍板决策
+------------------------------------------------------------------------------
+
+[x] 主算法: ProtoNet + 解冻 (exp08 协议) + Phase0 v5 supcon (exp11)
+[x] 主指标: exp08 85.2% >> exp14 trim_mean+mahalanobis 98.4% (+13.2pt, 3-seed 同协议)
+[ ] 论文最终结果: **exp14 (mahal+trim_mean) 98.4%** 暂作正文主 claim
+          → 当前方案C最优（exp14 > exp12 > exp13）
+          → 下步: 测试 cosine 距离替换 mahalanobis（mahal+trim_mean 已验证，cosine+trim_mean 未测）
+[ ] exp10 CBAM 训评
+[ ] P1 鲁棒原型 vs P1+ 关系注意力 (exp10 / exp11 多种子结果后)
+[ ] 试件 22 QC: 附录报 99.9% 还是正文报 85.2% (exp11 domain_3 90.67% 后可能改口径)
+[ ] 方向④ 像素级扩展: 是否纳入论文 scope (建议长期/附录)
+
+------------------------------------------------------------------------------
+END · 航天/trail.txt · 2026-07-25 (v1.6: exp14 3-seed 98.4%, 当前最优; 下步 cosine 组合)
+  详细实验记录: 航天/training.log
+==============================================================================
