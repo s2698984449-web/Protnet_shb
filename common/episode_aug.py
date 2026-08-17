@@ -115,6 +115,7 @@ _POLICIES = (
     _policy_hflip_rotate,
     _policy_color_jitter,
     _policy_random_erasing,
+    _policy_illumination_aug,
 )
 
 
@@ -134,8 +135,11 @@ def augment_support_query(support, query, policy_id=None):
     """
     s_rgb, s_th, s_us, s_y = support
     q_rgb, q_th, q_us, q_y = query
-    aug_rgb = torch.cat([s_rgb, q_rgb], dim=0)
-    aug_rgb, policy_id = augment_rgb(aug_rgb, policy_id=policy_id)
-    s_rgb = aug_rgb[: s_rgb.size(0)]
-    q_rgb = aug_rgb[s_rgb.size(0):]
-    return (s_rgb, s_th, s_us, s_y), (q_rgb, q_th, q_us, q_y), policy_id
+
+    # Apply the same policy to support and query independently (safer than
+    # concatenating -> augment -> split, which risks shape mismatches when
+    # the split boundary falls on an unexpected tensor boundary).
+    aug_s_rgb, policy_id = augment_rgb(s_rgb, policy_id=policy_id)
+    aug_q_rgb, _ = augment_rgb(q_rgb, policy_id=policy_id)
+
+    return (aug_s_rgb, s_th, s_us, s_y), (aug_q_rgb, q_th, q_us, q_y), policy_id

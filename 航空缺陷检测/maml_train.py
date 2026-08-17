@@ -118,11 +118,13 @@ def train(args, experiment_title):
 
     def _apply_input_scale(s_rgb, q_rgb, target_size):
         """Resize support/query RGB tensors to target_size before encoding."""
+        print(f"[DEBUG _apply_input_scale] IN s={s_rgb.shape}, q={q_rgb.shape}, target={target_size}")
         if s_rgb.shape[-1] != target_size or s_rgb.shape[-2] != target_size:
             s_rgb = F.interpolate(s_rgb, size=(target_size, target_size),
                                   mode='bilinear', align_corners=False)
             q_rgb = F.interpolate(q_rgb, size=(target_size, target_size),
                                   mode='bilinear', align_corners=False)
+        print(f"[DEBUG _apply_input_scale] OUT s={s_rgb.shape}, q={q_rgb.shape}")
         return s_rgb, q_rgb
 
     cd_pools, cd_datasets = None, None
@@ -184,8 +186,12 @@ def train(args, experiment_title):
                     cd_pools, cd_datasets, args.ways, args.shots)
             else:
                 batch = train_tasks[train_index].sample()
+            print(f"[DEBUG] batch type={type(batch)}, is_seq={isinstance(batch, (list,tuple))}")
+            if isinstance(batch, (list, tuple)):
+                print(f"[DEBUG] batch[0] shapes: rgb={batch[0][0].shape if hasattr(batch[0][0],'shape') else 'N/A'}")
             support, query = split_support_query(
                 batch, args.shots, args.ways, device)
+            print(f"[DEBUG split] s={support[0].shape}, q={query[0].shape}")
 
             # --- multi-scale resize (before aug to avoid size artifacts) ---
             if len(train_scales) > 1:

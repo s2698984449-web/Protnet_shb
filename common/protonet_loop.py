@@ -7,6 +7,7 @@
   ④ Class-conditioned EMA 原型更新（可选，用于 query 特征精化）
 """
 
+import numpy as np
 import torch
 import torch.nn.functional as F
 try:
@@ -203,6 +204,24 @@ def protonet_episode_loss(model, support, query, domain_meta,
                            mahal_head=None):
     s_rgb, s_th, s_us, s_y = support
     q_rgb, q_th, q_us, q_y = query
+    if s_rgb.dim() != 4 or q_rgb.dim() != 4:
+        print(f"[DEBUG protonet_episode_loss] s_rgb={s_rgb.shape}, q_rgb={q_rgb.shape}")
+    # Normalize shapes: reshape 5D [B1,B2,C,H,W]→[B1*B2,C,H,W]; 3D [C,H,W]→[1,C,H,W]
+    if s_rgb.dim() == 5:
+        s_rgb = s_rgb.reshape(s_rgb.shape[0] * s_rgb.shape[1], *s_rgb.shape[2:])
+    elif s_rgb.dim() == 3:
+        s_rgb = s_rgb.unsqueeze(0)
+    if q_rgb.dim() == 5:
+        q_rgb = q_rgb.reshape(q_rgb.shape[0] * q_rgb.shape[1], *q_rgb.shape[2:])
+    elif q_rgb.dim() == 3:
+        q_rgb = q_rgb.unsqueeze(0)
+    if s_rgb.dim() == 3:
+        s_rgb = s_rgb.unsqueeze(0)
+    if q_rgb.dim() == 3:
+        q_rgb = q_rgb.unsqueeze(0)
+    support = (s_rgb, s_th, s_us, s_y)
+    query = (q_rgb, q_th, q_us, q_y)
+    print(f"[DEBUG] s_rgb after normalize: {s_rgb.shape}")
     s_emb = model.embed(s_rgb, s_th, s_us, domain_meta)
     q_emb = model.embed(q_rgb, q_th, q_us, domain_meta)
     ways = int(max(s_y.max().item(), q_y.max().item())) + 1
@@ -268,3 +287,54 @@ class MahalStatistics:
         head = MahalanobisHead(self.feat_dim, self.ways)
         head.log_vars.data = log_vars
         return head
+
+
+# ---------------------------------------------------------------------------
+# 多任务评估入口（供 eval_loop.py 调用）
+# ---------------------------------------------------------------------------
+def evaluate_tasks_protonet(
+        model, test_tasks, domain_meta, shots, ways, n_tasks, device,
+        distance='euclidean', prototype_type='mean', mahal_head=None,
+        _split_support_query=None):
+    """
+    Evaluate a ProtoNet on n_tasks test episodes.
+
+    Args:
+        model:          the trained ProtoNet model (forward() returns embeddings)
+        test_tasks:     TaskDataset yielding episodes
+        domain_meta:     per-class domain metadata (labels → domain_id)
+        shots:          number of support shots per class
+        ways:           number of classes per episode
+        n_tasks:        number of episodes to evaluate
+        device:         torch device
+        distance:       'euclidean' | 'mahalanobis'
+        prototype_type: 'mean' | 'trim_mean'
+        mahal_head:     optional MahalanobisHead (required if distance='mahalanobis')
+        _split_support_query: internal; if None, imported lazily to avoid circular import
+
+    Returns:
+        mean_acc (float), std_acc (float), list of per-episode accuracies
+    """
+    global split_support_query
+    try:
+        from .maml_loop import split_support_query as _ssq
+        split_support_query = _ssq
+    except ImportError:
+        pass
+    if _split_support_query is not None:
+        _ssq_fn = _split_support_query
+    else:
+        _ssq_fn = split_support_query
+
+    accs = []
+    for _ in range(n_tasks):
+        batch = test_tasks.sample()
+        support, query = _ssq_fn(batch, shots, ways, device)
+        with torch.no_grad():
+            _, acc = evaluate_protonet_query(
+                model, support, query, domain_meta,
+                distance=distance, prototype_type=prototype_type,
+                mahal_head=mahal_head)
+        accs.append(acc)
+    arr = np.array(accs, dtype=np.float64)
+    return float(arr.mean()), float(arr.std()), accs

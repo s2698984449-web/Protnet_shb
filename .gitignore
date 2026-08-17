@@ -20,7 +20,6 @@ logs/
 env/
 lib/
 data/
-checkpoints/
 images/
 models/
 results/
@@ -31,3 +30,46 @@ test.ipynb
 
 train_prefine.py
 train_pronet.py
+
+# ===== Trained model weights (do not commit) =====
+*.pt
+*.pth
+*.pkl
+*.npz
+*.onnx
+checkpoints/
+**/checkpoints/
+pretrained/
+**/pretrained/
+weights/
+**/weights/
+
+# ===== Training artifacts =====
+runs/
+**/runs/
+wandb/
+**/wandb/
+*.ckpt
+
+# ===== Data & caches =====
+.cache/
+**/.cache/
+*.tar
+*.zip
+*.7z
+*.tgz
+
+# ===== Large docs (tracking only, not in repo) =====
+*.pdf
+!doc/**/*.md
+
+# ===== Editor / OS =====
+Thumbs.db
+*~
+
+# ===== Specific experiment folders that contain huge logs =====
+航空缺陷检测/logs/
+**/logs/
+
+# ===== Other third-party (track only our files) =====
+learn2learn-0.2.1/

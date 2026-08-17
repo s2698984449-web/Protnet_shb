@@ -408,7 +408,7 @@ experiments:
     exp_name: exp17_protonet_multiscale
     protonet_distance: mahalanobis
     protonet_prototype_type: trim_mean
-    input_scales: "320,480,640"
+    input_scales: "320,512,640"
     episode_aug: false
     # checkpoint 落盘到 航天/checkpoints/exp17_protonet_multiscale/
 
@@ -435,7 +435,7 @@ experiments:
     protonet_distance: mahalanobis
     protonet_prototype_type: trim_mean
     aug_illumination: true
-    input_scales: "320,480,640"
+    input_scales: "320,512,640"
     episode_aug: false
     # checkpoint 落盘到 航天/checkpoints/exp18_protonet_illum_ms/
 
@@ -463,7 +463,7 @@ experiments:
     protonet_distance: mahalanobis
     protonet_prototype_type: trim_mean
     script: eval.py
-    tta_scales: "320,480,640"
+    tta_scales: "320,512,640"
 
 grids:
   exp04_fastlr:

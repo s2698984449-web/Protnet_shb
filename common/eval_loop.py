@@ -9,6 +9,7 @@ from .protonet_loop import (
     evaluate_protonet_query,
     prototypical_logits,
     build_prototypes,
+    evaluate_tasks_protonet,
 )
 
 

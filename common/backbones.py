@@ -136,6 +136,13 @@ class YOLO26BackboneEncoder(nn.Module):
         return x
 
     def encode(self, x):
+        # Defensive: ensure 4D (B,C,H,W) even if caller passes 3D (C,H,W)
+        was_3d = False
+        if x.dim() == 3:
+            x = x.unsqueeze(0)
+            was_3d = True
+        elif x.dim() < 3:
+            raise ValueError(f"Expected at least 3D tensor, got {x.dim()}D: {x.shape}")
         if x.shape[-2] != self.imgsz or x.shape[-1] != self.imgsz:
             x = F.interpolate(
                 x, size=(self.imgsz, self.imgsz),
@@ -146,7 +153,10 @@ class YOLO26BackboneEncoder(nn.Module):
         if self.cbam is not None:
             feat = self.cbam(feat)
         feat = self.pool(feat).flatten(1)
-        return self.proj(feat)
+        out = self.proj(feat)
+        if was_3d:
+            out = out.squeeze(0)
+        return out
 
     def forward(self, x):
         return self.encode(x)
