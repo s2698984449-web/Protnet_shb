@@ -1,0 +1,112 @@
+# CRML 实验结果记录
+
+## 待填写
+
+实验结果将记录在此文件。
+
+---
+
+## 实验配置模板
+
+```
+日期: YYYY-MM-DD
+实验名: exp_XXX
+配置:
+  - n_way: 4
+  - k_shot: 5
+  - q_query: 5
+  - cross_domain_prob: 0.5
+  - relation_weight: 0.5
+  - relation_mode: intra_variance
+  - rc_weight_cross: 1.5
+  - rc_weight_same: 0.5
+
+结果:
+  - meta_test_acc: XX.X% ± X.X%
+  - best_iter: XXXX
+  - 耗时: XXXXs
+
+备注:
+  -
+```
+
+---
+
+## 历史实验
+
+### phase1_4w5s_aug_unfreeze (Baseline)
+
+```
+日期: 2026-08-24
+实验名: phase1_4w5s_aug_unfreeze
+配置:
+  - n_way: 4
+  - k_shot: 5
+  - q_query: 5
+  - unfreeze_backbone: True
+  - augment: True
+  - cross_domain_prob: 0 (无跨域)
+
+结果:
+  - meta_test_acc: 61.9% ± 2.2%
+  - best_iter: 2000
+  - 耗时: 12332s (~3.4h)
+  - iters: 2000
+
+观察:
+  - 训练损失波动大 (0.0001 ~ 1.5859)
+  - 部分 episode acc=0.25 (随机猜测)
+  - 产品间性能差异大
+
+问题诊断:
+  - 产品 pid=9, pid=3: acc ~0.55-0.70
+  - 产品 pid=5, pid=6, pid=0: acc ~1.0
+  - 跨工况变化导致部分 defect 难以区分
+
+下一步:
+  - 添加 trim_mean / mahalanobis 距离
+  - 实现跨域采样
+  - 实现 Relation Consistency Loss
+```
+
+---
+
+## 实验对比表
+
+| 实验 | cross_prob | rel_weight | rc_cross | rc_same | Acc | Δ |
+|------|------------|------------|----------|---------|-----|---|
+| phase1_baseline | 0 | 0 | - | - | 61.9% | - |
+| 待做: +跨域采样 | 0.5 | 0 | - | - | ? | ? |
+| 待做: +RC Loss | 0.5 | 0.5 | 1.5 | 0.5 | ? | ? |
+
+---
+
+## 分析模板
+
+### 1. 训练曲线分析
+
+```
+训练曲线观察:
+  - loss 下降趋势: [上升/下降/震荡]
+  - acc 提升趋势: [上升/下降/震荡]
+  - 跨域 vs 同域: [有/无] 明显差异
+```
+
+### 2. Episode 级别分析
+
+```
+困难 Episode:
+  - pid=X: acc=XX% (原因: [划痕类相似/光照变化/标注噪声])
+  
+简单 Episode:
+  - pid=Y: acc=XX% (原因: [类别差异大/样本质量好])
+```
+
+### 3. 消融分析
+
+```
+RC Loss 的作用:
+  - 对跨域 episode: [有明显/无明显] 提升
+  - 对同域 episode: [有明显/无明显] 影响
+  - 损失权重调整: [有效/无效]
+```

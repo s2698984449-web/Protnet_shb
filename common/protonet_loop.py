@@ -4,11 +4,12 @@
   ① Trim mean pooling   — 去除 support 中异常样本（最高/最低 10%）后再平均
   ② Mahalanobis 距离   — 考虑特征协方差，比欧氏/余弦更判别性
   ③ Mean-Shift 原型聚类 — 每类多个聚类中心表示，不用单一均值
-  ④ Class-conditioned EMA 原型更新（可选，用于 query 特征精化）
+  ④ Adaptive Prototype — prototype 与 query 实时交互（cross-attention）
 """
 
 import numpy as np
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 try:
     from sklearn.cluster import MeanShift, estimate_bandwidth
@@ -125,6 +126,118 @@ class MahalanobisHead(torch.nn.Module):
 
 
 # ---------------------------------------------------------------------------
+# ④ Adaptive Prototype：prototype 与 query 实时交互（cross-attention）
+# ---------------------------------------------------------------------------
+class AdaptivePrototype(nn.Module):
+    """Cross-attention based prototype refinement.
+
+    Idea (from EFINet): static mean prototypes miss query-specific patterns.
+    This module lets query features attend to class prototypes and produce
+    query-aware adjusted prototypes before computing distances.
+
+    Flow:
+        prototypes (ways, D)  ──key/value──▶  MultiheadAttention
+        query_emb   (N, D)    ──query  ───▶  adjusted_prototypes (N, ways, D)
+        Then: distance(query_emb, adjusted_prototype) per query sample.
+    """
+
+    def __init__(self, embed_dim, num_heads=4, dropout=0.1):
+        super().__init__()
+        self.embed_dim = embed_dim
+        self.num_heads = num_heads
+        assert embed_dim % num_heads == 0, f"embed_dim {embed_dim} % num_heads {num_heads} != 0"
+        self.head_dim = embed_dim // num_heads
+
+        # Project prototypes to key/value, query comes from query_emb directly
+        self.proj_kv = nn.Linear(embed_dim, embed_dim)
+        self.proj_q = nn.Linear(embed_dim, embed_dim)  # optional: transform query
+        self.attn_dropout = nn.Dropout(dropout)
+        # Output projection to restore prototype dimension
+        self.out_proj = nn.Linear(embed_dim, embed_dim)
+
+        # gating: residual-like blend between original prototype and attended output
+        self.gate = nn.Parameter(torch.tensor(0.5))
+
+    def forward(self, prototypes, query_emb):
+        """Adjust prototypes conditioned on query embeddings.
+
+        Args:
+            prototypes:   (ways, D)   class prototypes from support
+            query_emb:    (N, D)      query embeddings
+        Returns:
+            adjusted:    (N, ways, D) adjusted prototypes per query sample
+        """
+        # prototypes:  (ways, D) → (ways, 1, D) → (ways, N, D) via broadcasting below
+        # query_emb:   (N, D) → (N, D) → (N, 1, D) for residual
+
+        # Self-attention: query=query_emb, key/value=prototypes
+        #   shape: (N, heads, ways, head_dim) after rearrange
+        # Standard: q_proj = query_emb (N, D), kv_proj = prototypes (ways, D)
+        q = self.proj_q(query_emb)                        # (N, D)
+        kv = self.proj_kv(prototypes)                     # (ways, D)
+
+        # Multihead attention: q unsqueeze(1) → (N, 1, D), kv unsqueeze(0) → (1, ways, D)
+        # PyTorch MHADoes not support cross-attn directly, so we use scaled_dot_product_attention
+        q = q.unsqueeze(1)                               # (N, 1, D)
+        kv = kv.unsqueeze(0)                             # (1, ways, D)
+
+        # scaled_dot_product_attention returns just the attention output (no weights) when
+# need_weights=False (default in recent PyTorch).
+        attn_out = F.scaled_dot_product_attention(
+            q, kv, kv,
+            dropout_p=self.attn_dropout.p if self.training else 0.0,
+        )                                                 # (N, 1, D)
+        attn_out = attn_out.squeeze(1)                   # (N, D)
+        attn_out = self.out_proj(attn_out)               # (N, D)
+
+        # Gate: blend original prototype with attended output
+        g = torch.sigmoid(self.gate)                     # scalar in (0,1)
+        # For each query, blend its attended proto with original
+        # attn_out is per-query; expand to (N, ways, D)
+        adjusted = g * attn_out.unsqueeze(1) + (1 - g) * prototypes.unsqueeze(0)
+        return adjusted  # (N, ways, D)
+
+
+def adaptive_prototypical_logits(query_emb, support_emb, support_labels, ways,
+                                  prototype_type='mean', trim_ratio=0.1,
+                                  adaptive_proto_module=None):
+    """Adaptive Prototype logits: first build mean/trim_mean prototypes,
+    then refine them with cross-attention on query_emb before distance.
+
+    Args:
+        query_emb:      (N, D)
+        support_emb:    (N_s, D)
+        support_labels: (N_s,)
+        ways:           int
+        prototype_type: 'mean' | 'trim_mean'
+        trim_ratio:     float
+        adaptive_proto_module: AdaptivePrototype or None (skip adaptation)
+    Returns:
+        logits: (N, ways)
+    """
+    # 1. Build static prototypes from support
+    static_protos = build_prototypes(
+        support_emb, support_labels, ways,
+        prototype_type=prototype_type, trim_ratio=trim_ratio)  # (ways, D)
+
+    if adaptive_proto_module is None:
+        # Fallback to plain euclidean
+        n, m = query_emb.size(0), static_protos.size(0)
+        q = query_emb.unsqueeze(1).expand(n, m, -1)
+        p = static_protos.unsqueeze(0).expand(n, m, -1)
+        return -((q - p) ** 2).sum(dim=2)
+
+    # 2. Adjust prototypes via cross-attention
+    adjusted_protos = adaptive_proto_module(static_protos, query_emb)  # (N, ways, D)
+
+    # 3. Distance: euclidean between each query and its adjusted prototype
+    n = query_emb.size(0)
+    q_expanded = query_emb.unsqueeze(1)                              # (N, 1, D)
+    logits = -((q_expanded - adjusted_protos) ** 2).sum(dim=2)     # (N, ways)
+    return logits
+
+
+# ---------------------------------------------------------------------------
 # 核心 logit 函数（支持多种距离 + 原型策略组合）
 # ---------------------------------------------------------------------------
 def prototypical_logits(query_emb, support_emb, support_labels, ways,
@@ -201,12 +314,28 @@ def prototypical_logits(query_emb, support_emb, support_labels, ways,
 def protonet_episode_loss(model, support, query, domain_meta,
                            distance='euclidean',
                            prototype_type='mean',
-                           mahal_head=None):
+                           mahal_head=None,
+                           adaptive_proto=None):
+    """ProtoNet episode loss with optional Adaptive Prototype (cross-attn).
+
+    Args:
+        model:           the model (must have model.embed and model.adaptive_proto)
+        support:         (s_rgb, s_th, s_us, s_y) 5-D or 3-D tensors
+        query:           (q_rgb, q_th, q_us, q_y)
+        domain_meta:     domain metadata
+        distance:        'euclidean' | 'cosine' | 'mahalanobis'
+        prototype_type:  'mean' | 'trim_mean'
+        mahal_head:      MahalanobisHead or None
+        adaptive_proto:  AdaptivePrototype or None (skip if None)
+    Returns:
+        loss, acc
+    """
+    from .protonet_loop import (
+        prototypical_logits, adaptive_prototypical_logits,
+        build_prototypes as _build_protos, _normalize
+    )
     s_rgb, s_th, s_us, s_y = support
     q_rgb, q_th, q_us, q_y = query
-    if s_rgb.dim() != 4 or q_rgb.dim() != 4:
-        print(f"[DEBUG protonet_episode_loss] s_rgb={s_rgb.shape}, q_rgb={q_rgb.shape}")
-    # Normalize shapes: reshape 5D [B1,B2,C,H,W]→[B1*B2,C,H,W]; 3D [C,H,W]→[1,C,H,W]
     if s_rgb.dim() == 5:
         s_rgb = s_rgb.reshape(s_rgb.shape[0] * s_rgb.shape[1], *s_rgb.shape[2:])
     elif s_rgb.dim() == 3:
@@ -221,14 +350,20 @@ def protonet_episode_loss(model, support, query, domain_meta,
         q_rgb = q_rgb.unsqueeze(0)
     support = (s_rgb, s_th, s_us, s_y)
     query = (q_rgb, q_th, q_us, q_y)
-    print(f"[DEBUG] s_rgb after normalize: {s_rgb.shape}")
     s_emb = model.embed(s_rgb, s_th, s_us, domain_meta)
     q_emb = model.embed(q_rgb, q_th, q_us, domain_meta)
     ways = int(max(s_y.max().item(), q_y.max().item())) + 1
-    logits = prototypical_logits(
-        q_emb, s_emb, s_y, ways,
-        distance=distance, prototype_type=prototype_type,
-        mahal_head=mahal_head)
+
+    if adaptive_proto is not None:
+        logits = adaptive_prototypical_logits(
+            q_emb, s_emb, s_y, ways,
+            prototype_type=prototype_type,
+            adaptive_proto_module=adaptive_proto)
+    else:
+        logits = prototypical_logits(
+            q_emb, s_emb, s_y, ways,
+            distance=distance, prototype_type=prototype_type,
+            mahal_head=mahal_head)
     loss = F.cross_entropy(logits, q_y)
     acc = (logits.argmax(dim=-1) == q_y).float().mean().item()
     return loss, acc
@@ -237,17 +372,28 @@ def protonet_episode_loss(model, support, query, domain_meta,
 def evaluate_protonet_query(model, support, query, domain_meta,
                              distance='euclidean',
                              prototype_type='mean',
-                             mahal_head=None):
+                             mahal_head=None,
+                             adaptive_proto=None):
     s_rgb, s_th, s_us, s_y = support
     q_rgb, q_th, q_us, q_y = query
     with torch.no_grad():
         s_emb = model.embed(s_rgb, s_th, s_us, domain_meta)
         q_emb = model.embed(q_rgb, q_th, q_us, domain_meta)
         ways = int(max(s_y.max().item(), q_y.max().item())) + 1
-        logits = prototypical_logits(
-            q_emb, s_emb, s_y, ways,
-            distance=distance, prototype_type=prototype_type,
-            mahal_head=mahal_head)
+        if adaptive_proto is not None:
+            from .protonet_loop import (
+                adaptive_prototypical_logits,
+                prototypical_logits as _proto_logits,
+            )
+            logits = adaptive_prototypical_logits(
+                q_emb, s_emb, s_y, ways,
+                prototype_type=prototype_type,
+                adaptive_proto_module=adaptive_proto)
+        else:
+            logits = prototypical_logits(
+                q_emb, s_emb, s_y, ways,
+                distance=distance, prototype_type=prototype_type,
+                mahal_head=mahal_head)
         acc = (logits.argmax(dim=-1) == q_y).float().mean().item()
         loss = F.cross_entropy(logits, q_y).item()
     return loss, acc
@@ -295,6 +441,7 @@ class MahalStatistics:
 def evaluate_tasks_protonet(
         model, test_tasks, domain_meta, shots, ways, n_tasks, device,
         distance='euclidean', prototype_type='mean', mahal_head=None,
+        adaptive_proto=None,
         _split_support_query=None):
     """
     Evaluate a ProtoNet on n_tasks test episodes.
@@ -334,7 +481,8 @@ def evaluate_tasks_protonet(
             _, acc = evaluate_protonet_query(
                 model, support, query, domain_meta,
                 distance=distance, prototype_type=prototype_type,
-                mahal_head=mahal_head)
+                mahal_head=mahal_head,
+                adaptive_proto=adaptive_proto)
         accs.append(acc)
     arr = np.array(accs, dtype=np.float64)
     return float(arr.mean()), float(arr.std()), accs

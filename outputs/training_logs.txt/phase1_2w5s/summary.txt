@@ -1,0 +1,65 @@
+# Phase 1 — 跨域 Few-shot 实验汇总 (Phase1_2w5s)
+
+> **配置**: `phase1_2w5s` 2-way 5-shot 元训练 smoke
+> **脚本**: `D:\元强化学习\代码\scripts\train_meta.py`
+> **数据**: MVTEC (15 products) + GC10-DET (1 product) + NEU-CLS (1 product) = 17 products
+> **模型**: MultiDomainPretrainModel (n_products=17, n_conditions=7, feat_dim=128, FiLM ρ=0.5, gate_clamp=True)
+> **算法**: ProtoNet (euclidean, mean prototype) — 纯度量学习,  未启用 ANIL/MAML
+> **评估**: 50 个 meta-test episodes / eval point
+
+## 1. 运行命令
+
+```powershell
+python "d:\元强化学习\代码\scripts\train_meta.py" `
+  --n-way 2 --k-shot 5 --q-query 5 `
+  --iters 600 --eval-every 100 --eval-episodes 50 `
+  --lr 1e-4 `
+  --out-dir "d:\元强化学习\代码\航空缺陷检测\checkpoints\phase1_2w5s"
+```
+
+## 2. 关键路径
+
+| 路径 | 作用 |
+|---|---|
+| `outputs/multi_domain_smoke.pt` | 旧的 Phase 0 pretrain ckpt (cond_enc 维度 = 6, 与新模型 7 不兼容) |
+| `航空缺陷检测/checkpoints/phase1_2w5s/best.pt` | 最佳 ckpt (iter 300, val=0.748) |
+| `航空缺陷检测/checkpoints/phase1_2w5s/train.log` | 完整训练日志 |
+
+## 3. Pretrain ckpt 兼容性 ⚠️
+
+旧 pretrain 是 Phase 0 时代产物，**工况维度 6** vs **新模型工况维度 7**：
+- 触发自动 fallback：丢掉 `cond_enc.net.0.weight (128,6)→(128,7)` 不匹配 key
+- **其他层仍加载**（backbone 来自 pretrain, FiLM 重新初始化）
+
+> 这是已知 bug, 不是训练问题。Phase 2 重新 pretrain 时统一改成 7 维可消除此 warning。
+
+## 4. 训练曲线（6 个 eval 节点）
+
+| Iter | meta_test_acc | std | best? |
+|---:|---:|---:|:---:|
+| 100 | 0.712 | ±0.203 | - |
+| 200 | 0.716 | ±0.213 | - |
+| 300 | **0.748** | ±0.168 | ✅ best |
+| 400 | 0.660 | ±0.203 | - |
+| 500 | 0.712 | ±0.198 | - |
+| 600 | 0.728 | ±0.224 | - |
+
+## 5. 汇总统计
+
+- **最佳单点**: `0.748 ± 0.168` @ iter 300
+- **最终 (iter 600)**: `0.728 ± 0.224`
+- **稳定段平均 (iter 200~600, 5 点)**: `(0.716 + 0.748 + 0.660 + 0.712 + 0.728) / 5 = 0.713`
+- **最后 3 次平均 (iter 400/500/600)**: `(0.660 + 0.712 + 0.728) / 3 = 0.700`
+- **训练耗时**: 1421.5s (~23.7 min)
+
+## 6. 结论与下一步
+
+1. ✅ **完整链路打通**: sampler → encode_with_product (含 FiLM) → ProtoNet loss → Adam + clip → 评估
+2. ✅ **2-way 5-shot 显著高于随机基线 50%** (实际 0.728, 提升 45.6%)
+3. ⚠️ **eval std 偏大** (±0.224) 说明 2-way 任务粒度太粗, 对极简单任务也容易 ±20%
+4. 📌 **下一步**: 跑 5-way 5-shot 看标准粒度的稳定性
+5. 📌 **关键隐患**: cond_enc 维度不匹配 pretrain,  下次 pretrain 应统一 7 维
+
+## 7. 详细单次日志
+
+- `train.log` 已包含全部 6 个 eval 节点 + 训练 loss 轨迹

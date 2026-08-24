@@ -1,0 +1,181 @@
+{
+  "checkpoint": "D:\\元强化学习\\代码\\outputs\\航天\\checkpoints\\neu_resnet18_protonet_5w5s_r2net_align\\best.pt",
+  "test_dataset": "kolektor",
+  "data_root": "D:\\元强化学习\\代码\\data\\kolektor",
+  "target_classes": [
+    "defect",
+    "ok"
+  ],
+  "protocol": {
+    "ways": 2,
+    "shots": 5,
+    "query_per_class": 10,
+    "n_episodes": 30,
+    "protonet_distance": "euclidean",
+    "protonet_prototype_type": "mean",
+    "seed": 42,
+    "random_baseline": 0.5
+  },
+  "result": {
+    "mean": 0.576666671037674,
+    "std": 0.08976341420606306,
+    "ci95_low": 0.5445452457954383,
+    "ci95_high": 0.6087880962799097,
+    "min": 0.30000001192092896,
+    "max": 0.800000011920929
+  },
+  "per_episode_acc": [
+    0.6000000238418579,
+    0.550000011920929,
+    0.6000000238418579,
+    0.550000011920929,
+    0.550000011920929,
+    0.550000011920929,
+    0.550000011920929,
+    0.6499999761581421,
+    0.550000011920929,
+    0.5,
+    0.6000000238418579,
+    0.800000011920929,
+    0.550000011920929,
+    0.6000000238418579,
+    0.550000011920929,
+    0.6000000238418579,
+    0.550000011920929,
+    0.699999988079071,
+    0.550000011920929,
+    0.6499999761581421,
+    0.30000001192092896,
+    0.6499999761581421,
+    0.44999998807907104,
+    0.5,
+    0.6000000238418579,
+    0.6499999761581421,
+    0.6499999761581421,
+    0.699999988079071,
+    0.5,
+    0.5
+  ],
+  "per_episode_classes": [
+    [
+      "defect",
+      "ok"
+    ],
+    [
+      "defect",
+      "ok"
+    ],
+    [
+      "defect",
+      "ok"
+    ],
+    [
+      "defect",
+      "ok"
+    ],
+    [
+      "defect",
+      "ok"
+    ],
+    [
+      "defect",
+      "ok"
+    ],
+    [
+      "defect",
+      "ok"
+    ],
+    [
+      "defect",
+      "ok"
+    ],
+    [
+      "defect",
+      "ok"
+    ],
+    [
+      "defect",
+      "ok"
+    ],
+    [
+      "defect",
+      "ok"
+    ],
+    [
+      "defect",
+      "ok"
+    ],
+    [
+      "defect",
+      "ok"
+    ],
+    [
+      "defect",
+      "ok"
+    ],
+    [
+      "defect",
+      "ok"
+    ],
+    [
+      "defect",
+      "ok"
+    ],
+    [
+      "defect",
+      "ok"
+    ],
+    [
+      "defect",
+      "ok"
+    ],
+    [
+      "defect",
+      "ok"
+    ],
+    [
+      "defect",
+      "ok"
+    ],
+    [
+      "defect",
+      "ok"
+    ],
+    [
+      "defect",
+      "ok"
+    ],
+    [
+      "defect",
+      "ok"
+    ],
+    [
+      "defect",
+      "ok"
+    ],
+    [
+      "defect",
+      "ok"
+    ],
+    [
+      "defect",
+      "ok"
+    ],
+    [
+      "defect",
+      "ok"
+    ],
+    [
+      "defect",
+      "ok"
+    ],
+    [
+      "defect",
+      "ok"
+    ],
+    [
+      "defect",
+      "ok"
+    ]
+  ]
+}

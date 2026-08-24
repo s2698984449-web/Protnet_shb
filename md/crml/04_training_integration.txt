@@ -1,0 +1,230 @@
+# train_meta.py 集成
+
+## 1. 命令行参数
+
+```python
+# train_meta.py main() 中新增
+
+# ── 跨域采样参数 ──────────────────────────────
+parser.add_argument('--cross-domain-prob', type=float, default=0.5,
+                   help='跨域 episode 采样概率 (0.5 = 50%%)')
+parser.add_argument('--domain-weights', type=str, default=None,
+                   help='JSON 格式的域权重, 如 \'{"0":0.35,"1":0.25}\'')
+parser.add_argument('--cross-pair-weights', type=str, default=None,
+                   help='JSON 格式的跨域对权重')
+
+# ── Relation Consistency Loss 参数 ─────────────
+parser.add_argument('--relation-weight', type=float, default=0.5,
+                   help='Relation Consistency Loss 权重')
+parser.add_argument('--relation-mode', choices=['intra_variance', 'cross_label'],
+                   default='intra_variance',
+                   help='RC Loss 计算模式')
+parser.add_argument('--rc-weight-cross', type=float, default=1.5,
+                   help='跨域 episode 的 RC Loss 权重倍数')
+parser.add_argument('--rc-weight-same', type=float, default=0.5,
+                   help='同域 episode 的 RC Loss 权重倍数')
+```
+
+---
+
+## 2. 采样器初始化
+
+```python
+def main():
+    # ... 现有代码省略 ...
+    
+    # ── 采样器: 根据参数选择 ────────────────────
+    if args.cross_domain_prob > 0:
+        # 使用跨域采样器
+        from common.multi_domain_episode import CrossDomainEpisodeSampler
+        
+        base_sampler, mvtec_ds, gc10_ds, neu_ds, carpaint_ds, aero_ds, dropout_ds = \
+            build_episode_samplers(...)
+        
+        sampler = CrossDomainEpisodeSampler(
+            base_sampler=base_sampler,
+            cross_domain_prob=args.cross_domain_prob,
+        )
+        print(f'[CrossDomainEpisodeSampler] cross_domain_prob={args.cross_domain_prob}')
+    else:
+        # 使用原有采样器
+        sampler, _, _, _, _, _, _ = build_episode_samplers(...)
+```
+
+---
+
+## 3. 训练循环
+
+```python
+def main():
+    # ... 采样器初始化省略 ...
+    
+    # ── 训练循环 ────────────────────────────────
+    for it in range(1, args.iters + 1):
+        # 采样 episode
+        try:
+            ep = sampler.sample()
+        except ValueError as e:
+            logger.warning(f'iter {it} skip: {e}')
+            continue
+        
+        # ── ProtoNet Loss ─────────────────────────
+        loss_ce, acc, n_way = proto_loss(
+            model, ep, args.device,
+            args.distance, args.prototype,
+            augment=args.augment
+        )
+        
+        # ── Relation Consistency Loss ─────────────
+        if args.relation_weight > 0:
+            loss_rc = relation_consistency_loss(
+                model, ep, args.device,
+                distance=args.distance,
+                mode=args.relation_mode,
+                prototype_type=args.prototype
+            )
+            
+            # 根据跨域/同域调整权重
+            is_cross = ep.get('is_cross_domain', False)
+            λ = args.relation_weight * (
+                args.rc_weight_cross if is_cross else args.rc_weight_same
+            )
+            
+            total_loss = loss_ce + λ * loss_rc
+            rc_loss_val = loss_rc.item()
+        else:
+            total_loss = loss_ce
+            rc_loss_val = 0.0
+        
+        # ── 反向传播 ──────────────────────────────
+        optimizer.zero_grad()
+        total_loss.backward()
+        torch.nn.utils.clip_grad_norm_(params, 1.0)
+        optimizer.step()
+        
+        # ── 日志 ─────────────────────────────────
+        if it % 20 == 0 or it == 1:
+            cross_flag = '(cross)' if ep.get('is_cross_domain', False) else '(same)'
+            logger.info(
+                f'iter {it:4d} | loss={total_loss.item():.4f} '
+                f'(ce={loss_ce.item():.4f}, rc={rc_loss_val:.4f}) '
+                f'acc={acc:.3f} n_way={n_way} {cross_flag}'
+            )
+        
+        # ── 评估 ─────────────────────────────────
+        if it % args.eval_every == 0:
+            logger.info(f'[eval] iter {it} ...')
+            # ... 评估代码省略 ...
+```
+
+---
+
+## 4. 完整导入
+
+```python
+# train_meta.py 顶部新增
+
+# 导入新增的 relation_consistency_loss
+from torch.nn import functional as F
+
+# 如果使用跨域采样器，在 main() 中动态导入
+# from common.multi_domain_episode import CrossDomainEpisodeSampler
+```
+
+---
+
+## 5. 实验配置命令
+
+### Baseline (无跨域)
+
+```bash
+python scripts/train_meta.py \
+    --n-way 4 --k-shot 5 --q-query 5 \
+    --iters 2000 --eval-every 200 \
+    --out-dir checkpoints/crml_baseline
+```
+
+### + 跨域采样 (50%)
+
+```bash
+python scripts/train_meta.py \
+    --n-way 4 --k-shot 5 --q-query 5 \
+    --iters 2000 --eval-every 200 \
+    --cross-domain-prob 0.5 \
+    --out-dir checkpoints/crml_cross_domain
+```
+
+### + RC Loss (完整 CRML)
+
+```bash
+python scripts/train_meta.py \
+    --n-way 4 --k-shot 5 --q-query 5 \
+    --iters 2000 --eval-every 200 \
+    --cross-domain-prob 0.5 \
+    --relation-weight 0.5 \
+    --relation-mode intra_variance \
+    --rc-weight-cross 1.5 \
+    --rc-weight-same 0.5 \
+    --out-dir checkpoints/crml_full
+```
+
+---
+
+## 6. 与现有功能的兼容性
+
+### Episode Augmentation
+
+```python
+# 在 proto_loss() 和 relation_consistency_loss() 中都支持
+
+if augment and _HAS_AUG and model.training:
+    s_rgb, _ = augment_rgb(s_rgb)
+    q_rgb, _ = augment_rgb(q_rgb)
+```
+
+### Trim Mean Prototype
+
+```python
+# relation_consistency_loss 也支持 trim_mean
+
+if prototype_type == 'trim_mean':
+    from common.protonet_loop import _trim_mean
+    protos = []
+    for c in range(n_way):
+        mask = s_y == c
+        if mask.any():
+            protos.append(_trim_mean(s_emb[mask], trim_ratio=0.1))
+        else:
+            protos.append(s_emb.mean(0))
+    protos = torch.stack(protos, 0)
+```
+
+### 距离度量
+
+```python
+# 支持 euclidean 和 cosine
+
+if distance == 'cosine':
+    relations = torch.mm(F.normalize(q_emb, dim=1), 
+                        F.normalize(protos, dim=1).t())
+else:
+    relations = -((q_exp - p_exp) ** 2).sum(-1)
+```
+
+---
+
+## 7. 注意事项
+
+```
+1. 梯度裁剪: 
+   - 添加 torch.nn.utils.clip_grad_norm_(params, 1.0)
+   - 防止 RC Loss 产生过大梯度
+
+2. 动态权重:
+   - is_cross_domain 需要 episode 中有该字段
+   - 原有 sampler 返回的 episode 没有该字段，默认 False
+
+3. 评估模式:
+   - model.eval() 时不需要计算 L_rc
+   - 只在训练时使用
+```

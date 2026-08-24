@@ -17,6 +17,9 @@ from torchvision import transforms
 
 from .cmpl_taxonomy import CARDD_PRETRAIN_CLASSES, CARPARTS_PRETRAIN_CLASSES
 
+# NEU-CLS 6-class taxonomy for pretrain
+NEU_CLS_PRETRAIN_CLASSES = ('Cr', 'In', 'Pa', 'PS', 'RS', 'Sc')
+
 
 # ------------------------------------------------------------------
 # CMPL v6: 4 task 数据集 + scratch 二分类标签映射
@@ -278,6 +281,48 @@ class SyndcarPretrainDataset(Dataset):
         self.imgsz = imgsz
         self.transform = _base_transforms(imgsz, augment=augment)
         self._task_name = 'syndcar'
+
+    def __len__(self):
+        return len(self.samples)
+
+    def __getitem__(self, index):
+        path, label, raw_class, is_scratch = self.samples[index]
+        img = self.transform(_open_rgb_for_pretrain(path, self.imgsz))
+        return {'img': img, 'label': label, 'is_scratch': is_scratch,
+                'task_name': self._task_name, 'raw_class': raw_class}
+
+
+class NEUPretrainDataset(Dataset):
+    """data/{track}/processed/pretrain/neu_cls/{class}/{sample_id}.jpg
+
+    6-class NEU-CLS metal surface defects:
+    Cr=crack, In=inclusion, Pa=patch, PS=pitted_surface,
+    RS=rolled-in_scale, Sc=scratch.
+    """
+
+    CLASSES = NEU_CLS_PRETRAIN_CLASSES
+
+    def __init__(self, pretrain_root, split='train', imgsz=640, augment=False,
+                 val_ratio=0.20, seed=42,
+                 val_split_strategy='random', val_split_k=5, val_split_fold=0):
+        root = os.path.join(pretrain_root, 'neu_cls')
+        k = val_split_k if val_split_strategy == 'stratified_kfold' else 0
+        train_pool, val_pool = _split_pooled_subdirs(
+            root, val_ratio=val_ratio, seed=seed, k=k, fold=val_split_fold)
+        paths = train_pool if split == 'train' else val_pool
+        self.samples = []
+        self.class_to_idx = {name: idx for idx, name in enumerate(self.CLASSES)}
+        for path in paths:
+            cls = os.path.basename(os.path.dirname(path))
+            if cls not in self.class_to_idx:
+                continue
+            is_sc = 1 if cls == 'Sc' else 0
+            self.samples.append((path, self.class_to_idx[cls], cls, is_sc))
+        if not self.samples:
+            raise FileNotFoundError('No NEU pretrain data under {}'.format(root))
+        self.imgsz = imgsz
+        self.transform = _base_transforms(imgsz, augment=augment)
+        self._task_name = 'neu_cls'
 
     def __len__(self):
         return len(self.samples)

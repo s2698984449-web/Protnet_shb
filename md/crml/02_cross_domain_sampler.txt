@@ -1,0 +1,210 @@
+# CrossDomainEpisodeSampler 设计
+
+## 类设计
+
+```python
+class CrossDomainEpisodeSampler(MultiDomainEpisodeSampler):
+    """
+    跨域 Episode 采样器
+    
+    与父类区别:
+    - 父类: support 和 query 从同一产品采样
+    - 本类: support 从 Domain A, query 从 Domain B (可能不同域)
+    
+    返回新增字段:
+    - is_cross_domain: bool  # 是否跨域
+    - support_domain_id: tensor  # support 的域 ID
+    - query_domain_id: tensor   # query 的域 ID
+    """
+```
+
+---
+
+## 域 ID 映射
+
+```python
+DOMAIN_ID_MAP = {
+    'mvtec': 0,
+    'gc10': 1,
+    'neu': 2,
+    'cardd': 3,
+    'carparts': 4,
+    'syndcar': 5,
+    'aero_real': 6,
+    'mvtec_dropout': 7,
+}
+```
+
+---
+
+## 权重配置
+
+### 1. 域采样权重
+
+```python
+DOMAIN_WEIGHTS = {
+    0: 0.35,  # mvtec (产品多，样本多)
+    1: 0.25,  # gc10
+    2: 0.20,  # neu
+    3: 0.05,  # cardd
+    4: 0.05,  # carparts
+    5: 0.05,  # syndcar
+    6: 0.03,  # aero_real
+    7: 0.02,  # mvtec_dropout
+}
+```
+
+### 2. 跨域对权重
+
+```python
+# 越难的对偶权重越高
+CROSS_DOMAIN_PAIR_WEIGHTS = {
+    # (source_domain, target_domain): weight
+    (0, 1): 0.15,  # mvtec ↔ gc10
+    (0, 2): 0.15,  # mvtec ↔ neu
+    (1, 2): 0.10,  # gc10 ↔ neu
+    (0, 3): 0.08,  # mvtec ↔ car paint
+    (0, 6): 0.05,  # mvtec ↔ aero
+    (1, 6): 0.05,  # gc10 ↔ aero
+    (2, 6): 0.05,  # neu ↔ aero
+    # ... 可继续扩展
+}
+```
+
+---
+
+## 采样流程
+
+```
+sample_cross_domain():
+    │
+    ├─ 1. 按 cross_domain_prob 决定是否跨域
+    │      random() < 0.5 → 跨域
+    │
+    ├─ 2. 采样 support 域 (按 domain_weights)
+    │      support_domain = _sample_domain()
+    │
+    ├─ 3. 采样 query 域
+    │      if is_cross:
+    │          query_domain = _sample_domain_excluding(support_domain)
+    │      else:
+    │          query_domain = support_domain
+    │
+    ├─ 4. 在各域内选产品
+    │      support_product = random.choice(products_in_domain(support_domain))
+    │      query_product = random.choice(products_in_domain(query_domain))
+    │
+    ├─ 5. 选相同的 n_way
+    │      (但实际 defect 类型可能不同)
+    │
+    └─ 6. 返回 episode + is_cross_domain 标志
+```
+
+---
+
+## 关键方法
+
+### 1. 按权重采样域
+
+```python
+def _sample_domain(self) -> int:
+    """按权重采样一个域"""
+    domains = list(self.domain_weights.keys())
+    weights = list(self.domain_weights.values())
+    return random.choices(domains, weights=weights, k=1)[0]
+```
+
+### 2. 采样不同的域
+
+```python
+def _sample_domain_excluding(self, exclude: int, 
+                              pair_weights: dict = None) -> int:
+    """采样一个与 exclude 不同的域"""
+    # 收集所有可用的目标域
+    candidates = []
+    for (src, tgt), w in (pair_weights or self.pair_weights).items():
+        if src == exclude:
+            candidates.append((tgt, w))
+        elif tgt == exclude:
+            candidates.append((src, w))
+    
+    if not candidates:
+        # fallback: 随机选一个不同的域
+        all_domains = set(self.domain_weights.keys()) - {exclude}
+        return random.choice(list(all_domains))
+    
+    targets, weights = zip(*candidates)
+    return random.choices(targets, weights=weights, k=1)[0]
+```
+
+### 3. 获取域内产品
+
+```python
+def _get_products_in_domain(self, domain_id: int) -> List[int]:
+    """获取某域内的所有产品 ID"""
+    domain_name = {v: k for k, v in self.DOMAIN_ID_MAP.items()}[domain_id]
+    products = []
+    for pid, src in self.product_to_source.items():
+        if src[0] == domain_name:
+            products.append(pid)
+    return products if products else [random.choice(self.usable_products)]
+```
+
+---
+
+## 返回值
+
+```python
+result = {
+    # 原有字段
+    'support_rgb': torch.stack(s_imgs),
+    'support_y': torch.tensor(s_y, dtype=torch.long),
+    'support_pid': torch.tensor(s_pid, dtype=torch.long),
+    'support_cond': torch.stack(s_cond),
+    'query_rgb': torch.stack(q_imgs),
+    'query_y': torch.tensor(q_y, dtype=torch.long),
+    'query_pid': torch.tensor(q_pid, dtype=torch.long),
+    'query_cond': torch.stack(q_cond),
+    'source_name': f'{support_domain}→{query_domain}',
+    'product_id': support_product,  # 主要产品
+    'n_way': eff_n_way,
+    
+    # 新增字段
+    'is_cross_domain': is_cross,
+    'support_domain_id': torch.tensor(
+        [support_domain] * len(s_imgs), dtype=torch.long),
+    'query_domain_id': torch.tensor(
+        [query_domain] * len(q_imgs), dtype=torch.long),
+}
+```
+
+---
+
+## 与 Episode Augmentation 的兼容性
+
+```python
+# 跨域 Episode 也支持数据增强
+
+if augment and _HAS_AUG and model.training:
+    s_rgb, _ = augment_rgb(s_rgb)
+    q_rgb, _ = augment_rgb(q_rgb)
+
+# 注意: 
+# - 增强在 proto_loss() 或 relation_consistency_loss() 中应用
+# - 不需要在采样器中处理
+```
+
+---
+
+## 配置建议
+
+```python
+# 推荐配置
+cross_domain_prob = 0.5   # 50% 跨域，50% 同域
+
+# 如果训练不稳定，可以降低
+cross_domain_prob = 0.3   # 30% 跨域
+
+# 如果想加速跨域泛化，可以提高
+cross_domain_prob = 0.7   # 70% 跨域
+```

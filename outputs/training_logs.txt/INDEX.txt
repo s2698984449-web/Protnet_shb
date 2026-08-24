@@ -1,0 +1,32 @@
+# 训练日志索引
+
+> 所有元训练实验的集中入口。每次新增 phase 都加一行。
+
+## 已完成实验
+
+| 实验名 | n-way | k-shot | iters | best_acc | final_acc | last3_mean | last5_mean | 路径 |
+|---|---:|---:|---:|---:|---:|---:|---:|---|
+| phase1_2w5s | 2 | 5 | 600 | **0.748** | 0.728 | 0.700 | 0.713 | [summary](phase1_2w5s/summary.txt) |
+
+## 进行中实验
+
+| 实验名 | 状态 | 路径 |
+|---|---|---|
+| phase1_4w5s | 排队中 (4w5s 600 iter) | `航空缺陷检测/checkpoints/phase1_4w5s` |
+
+## 文件结构约定
+
+```
+outputs/training_logs.txt/
+├── INDEX.txt               ← 本文件
+├── <phase_name>/
+│   ├── summary.txt         ← 文字总结 (配置/命令/曲线表/统计)
+│   └── (可选详细日志)
+└── ...
+```
+
+每次跑新实验, 在 `train_meta.py` 末尾会自动:
+- 写 `run_config.json` 含 `val_curve` / `stable_last3_mean_acc` / `stable_last5_mean_acc`
+- 汇总到终端 log 末行 (`DONE. ... | last3_mean=X | last5_mean=Y`)
+
+只需把这段总结**复制/手填**到 `<phase>/summary.txt` 即可。

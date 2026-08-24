@@ -1,0 +1,245 @@
+# Relation Consistency Loss 设计
+
+## 核心公式
+
+```
+Relation:  r_i = -||q_i - p_c||²  (query 到 prototype 的距离)
+
+Relation Consistency Loss (Intra-Variance Mode):
+
+  L_rc = mean_c [ Var(r_i[label==c]) ]
+
+  含义: 同类 query 的 relation 分布应该集中 (低方差)
+```
+
+---
+
+## 实现代码
+
+```python
+def relation_consistency_loss(model, episode, device,
+                              distance: str = 'euclidean',
+                              mode: str = 'intra_variance',
+                              prototype_type: str = 'mean') -> torch.Tensor:
+    """
+    Args:
+        model: MultiDomainPretrainModel
+        episode: cross-domain episode dict
+        device: torch device
+        distance: 'euclidean' | 'cosine'
+        mode: 
+            - 'intra_variance': 同类 query 的关系方差
+            - 'cross_label': 不同 label 关系的分离度
+        prototype_type: 'mean' | 'trim_mean'
+    
+    Returns:
+        loss_rc: scalar tensor
+    """
+    # 1. 获取数据
+    s_rgb = episode['support_rgb'].to(device)
+    q_rgb = episode['query_rgb'].to(device)
+    s_y = episode['support_y'].to(device)
+    q_y = episode['query_y'].to(device)
+    s_pid = episode['support_pid'].to(device)
+    q_pid = episode['query_pid'].to(device)
+    s_cond = episode['support_cond'].to(device)
+    q_cond = episode['query_cond'].to(device)
+    n_way = episode['n_way']
+    
+    # 2. Encode
+    with torch.set_grad_enabled(model.training):
+        s_emb = model.encode_with_product(s_rgb, s_cond, s_pid)
+        q_emb = model.encode_with_product(q_rgb, q_cond, q_pid)
+    
+    # 3. Compute prototypes (from support only)
+    protos = torch.stack([s_emb[s_y == c].mean(0) 
+                          for c in range(n_way)], 0)
+    
+    # 4. Compute relations: (N_q, N_way)
+    if distance == 'cosine':
+        q_emb_n = F.normalize(q_emb, dim=1)
+        protos_n = F.normalize(protos, dim=1)
+        relations = torch.mm(q_emb_n, protos_n.t())
+    else:
+        q_exp = q_emb.unsqueeze(1)
+        p_exp = protos.unsqueeze(0)
+        relations = -((q_exp - p_exp) ** 2).sum(-1)
+    
+    # 5. Intra-Variance Mode
+    if mode == 'intra_variance':
+        """
+        同类 query 的关系分布方差应该小
+        
+        例: 所有 label=0 的 query，到 proto[0] 的距离应该集中
+        """
+        loss = 0.0
+        n_labels = 0
+        
+        for c in range(n_way):
+            mask = (q_y == c)
+            if mask.sum() < 2:
+                continue
+            
+            # label=c 的 query 对各 proto 的关系
+            rel_c = relations[mask]  # (N_c, N_way)
+            
+            # 每列 (每个 proto) 的方差
+            variance_per_proto = rel_c.var(dim=0)  # (N_way,)
+            
+            # 加权平均方差
+            loss += variance_per_proto.mean()
+            n_labels += 1
+        
+        if n_labels == 0:
+            return torch.tensor(0.0, device=device)
+        
+        return loss / n_labels
+    
+    # 6. Cross-Label Separation Mode
+    elif mode == 'cross_label':
+        """
+        不同 label 的关系应该分离
+        
+        例: label=0 的 query，对 proto[0] 的关系应该 >> 对 proto[1] 的关系
+        """
+        loss = 0.0
+        n_pairs = 0
+        
+        for c_i in range(n_way):
+            for c_j in range(n_way):
+                if c_i == c_j:
+                    continue
+                
+                mask_i = (q_y == c_i)
+                if mask_i.sum() < 1:
+                    continue
+                
+                # label=i 的 query，对 proto[i] 的平均关系
+                r_ii = relations[mask_i][:, c_i].mean()
+                # label=i 的 query，对 proto[j] 的平均关系
+                r_ij = relations[mask_i][:, c_j].mean()
+                
+                # 应该有 margin: r_ii - r_ij > margin
+                margin = 1.0
+                loss += F.relu(margin - (r_ii - r_ij))
+                n_pairs += 1
+        
+        if n_pairs == 0:
+            return torch.tensor(0.0, device=device)
+        
+        return loss / n_pairs
+    
+    else:
+        raise ValueError(f"Unknown mode: {mode}")
+```
+
+---
+
+## 梯度流向
+
+```
+L_rc = Var(r) 
+    ↓
+∂L_rc/∂r = 2×(r-μ) 
+    ↓
+∂r/∂emb = -2×(q-p)  ← 关键
+    ↓
+∂emb/∂θ → encoder 被迫调整，使得同类 relation 集中
+```
+
+### 梯度解释
+
+```
+∂L_rc/∂emb = ∂L_rc/∂r × ∂r/∂emb
+           = 2×(r-μ) × (-2×(q-p))
+           = -4×(r-μ)×(q-p)
+
+含义:
+  - 如果某个 query 的 r 与均值 μ 差距大
+  - 并且 (q-p) 的值大
+  - 则梯度大
+  - → encoder 被迫调整，使得同类 r 更集中
+```
+
+---
+
+## 权重调整策略
+
+```python
+# 在训练循环中
+
+is_cross = ep.get('is_cross_domain', False)
+
+if is_cross:
+    λ = args.relation_weight * args.rc_weight_cross   # ×1.5
+else:
+    λ = args.relation_weight * args.rc_weight_same     # ×0.5
+
+total_loss = loss_ce + λ * loss_rc
+```
+
+### 为什么这样调整？
+
+```
+同域 episode:  关系本来就一致 → λ 小 (0.5)
+跨域 episode:  关系不一致 → λ 大 (1.5)
+
+原因:
+  - 如果所有 episode 都用同样的 λ，模型会:
+    1. 主要优化容易的同域 episode
+    2. 忽略难优化的跨域 episode
+    
+  - 放大跨域权重，强迫模型关注跨域一致性
+```
+
+---
+
+## 命令行参数
+
+```python
+# train_meta.py 中新增
+
+# Relation Consistency Loss 参数
+parser.add_argument('--relation-weight', type=float, default=0.5,
+                   help='Relation Consistency Loss 权重')
+parser.add_argument('--relation-mode', choices=['intra_variance', 'cross_label'],
+                   default='intra_variance',
+                   help='RC Loss 计算模式')
+parser.add_argument('--rc-weight-cross', type=float, default=1.5,
+                   help='跨域 episode 的 RC Loss 权重倍数')
+parser.add_argument('--rc-weight-same', type=float, default=0.5,
+                   help='同域 episode 的 RC Loss 权重倍数')
+```
+
+---
+
+## 推荐配置
+
+```python
+# 实验配置
+--relation-weight 0.5       # RC Loss 基础权重
+--relation-mode intra_variance  # 同类关系方差
+--rc-weight-cross 1.5       # 跨域时放大
+--rc-weight-same 0.5        # 同域时缩小
+
+# 如果训练不稳定，可以降低
+--relation-weight 0.3
+--rc-weight-cross 1.2
+--rc-weight-same 0.8
+```
+
+---
+
+## 与 ProtoNet Loss 的关系
+
+```
+Total Loss = L_ce + λ × L_rc
+
+L_ce: 确保分类正确 (主要目标)
+L_rc: 确保同类关系一致 (辅助目标)
+
+两者互补:
+  - L_ce 优化分类边界
+  - L_rc 优化同类样本的关系集中度
+  - 共同作用 → 跨域泛化能力
+```

@@ -169,6 +169,9 @@ cmpl_protonet_classsplit3 61.2% @250         ← NEU+MVTec pretrain 无帮助（
 cmpl_protonet_track2      62.3%              ← CardDD-only pretrain 早期版本
 cmpl_protonet_v7_meta     83.4% @100         ← cardd+carparts car-only SupCon v7（2026-07-25）
 cmpl_protonet_v9_meta     84.8% @100         ← v9 SupCon + LDAM（2026-07-27 当前最优, best eval 0.8480 @ iter 100, 早停 iter 200）
+cmpl_protonet_v10_meta    87.0% @50          ← v9 backbone, freeze, train_domains=0,2, mean prototype
+cmpl_protonet_cff         87.3% @90          ← CFF (multi-scale CFF+CBAM) + trim_mean, train_domains=0 (待严格对照)
+cmpl_protonet_v13_adaptive  待训练          ← CFF + Adaptive Prototype (cross-attn)
 ```
 
 **为什么车漆 ≤ 航空**：

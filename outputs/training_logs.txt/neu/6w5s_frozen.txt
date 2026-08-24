@@ -1,0 +1,121 @@
+# NEU-CLS 6w5s frozen — 训练详情
+
+## 基本信息
+
+| 项目 | 值 |
+|---|---|
+| 实验名 | `neu_resnet18_protonet_frozen` |
+| 数据集 | NEU-CLS（钢材表面缺陷 6 类：rolled-in_scale, patches, crazing, pitted_surface, inclusion, scratches）|
+| backbone | resnet18（**frozen**） |
+| 算法 | ProtoNet (euclidean, mean prototype) |
+| ways / shots | **6-way 5-shot** |
+| 训练域 / 测试域 | train: 0,1,2,3 → test: 4 |
+| RGB only | true（热像/超声未启用） |
+| 总 iter | 300 |
+| meta_batch_size | 2 |
+| backbone_meta_lr | 1e-5（frozen 时实际无效） |
+| head_meta_lr | 1e-3 |
+| adapt_steps | 5（ProtoNet 无内环，此值仅占位） |
+| first_order | true（ProtoNet 无内环） |
+| w_rl_max | 0.5（Stop 头 RL 权重，但 ProtoNet 未启用） |
+| 评估任务数 | 50 tasks（每次 eval 跑一次 domain_4 的 6w5s） |
+| embed_dim | 128 |
+| seed | 42 |
+
+## 最终结果（Eval@300）
+
+```
+[2026-08-23 15:54:06] Eval@300: domain_4 mean acc 0.9907 +/- 0.0164 (50 tasks).
+[2026-08-23 15:54:06] New best eval acc 0.9907, saved to D:\元强化学习\代码\outputs\航天\checkpoints\neu_resnet18_protonet_frozen\best.pt
+[2026-08-23 15:54:07] Training done. Best single-task acc: 1.0000, best eval mean: 0.9907.
+[2026-08-23 15:54:07] Summary saved to D:\元强化学习\代码\outputs\航天\checkpoints\neu_resnet18_protonet_frozen\train_summary.json.
+```
+
+## Eval 轨迹
+
+| iter | mean acc | std | 是否新 best |
+|---|---|---|---|
+| 50 | 0.9860 | 0.0165 | ✅（首次 best）|
+| 100 | 0.9820 | 0.0191 | — |
+| 150 | 0.9827 | 0.0243 | — |
+| 200 | 0.9873 | 0.0199 | ✅ |
+| 250 | 0.9873 | 0.0162 | — |
+| **300** | **0.9907** | 0.0164 | ✅（最终 best）|
+
+## 训练命令
+
+```powershell
+cd D:\元强化学习\代码\航空缺陷检测
+
+python scripts/train.py `
+    --track 航天 `
+    --backbone_type resnet18 `
+    --freeze_backbone true `
+    --rgb_only true `
+    --meta_algorithm protonet `
+    --protonet_distance euclidean `
+    --data_dir_path "D:\元强化学习\代码\data\航天\processed" `
+    --dataset_name neu `
+    --ways 6 `
+    --shots 5 `
+    --iters 300 `
+    --meta_batch_size 2 `
+    --train_domains 0,1,2,3 `
+    --test_domain 4 `
+    --train_task_num 40 `
+    --test_task_num 600 `
+    --eval_every 50 `
+    --embed_dim 128 `
+    --exp_name neu_resnet18_protonet_frozen
+```
+
+## 产物文件
+
+```
+D:\元强化学习\代码\outputs\航天\checkpoints\neu_resnet18_protonet_frozen\
+    ├── AviationMAML_6w_5s_rgb_frozen_protonet_yolo26_best.pt
+    ├── best.pt
+    ├── iter_0050.pt
+    ├── iter_0100.pt
+    ├── iter_0150.pt
+    ├── iter_0200.pt
+    ├── iter_0250.pt
+    ├── iter_0300.pt
+    ├── run_config.json
+    └── train_summary.json
+
+D:\元强化学习\代码\outputs\航天\logs\neu_resnet18_protonet_frozen\
+    └── AviationMAML_6w_5s_rgb_frozen_protonet_yolo26.log
+
+D:\元强化学习\代码\outputs\航天\images\neu_resnet18_protonet_frozen\
+    └── AviationMAML_6w_5s_rgb_frozen_protonet_yolo26_<iter>.png
+```
+
+## 分析
+
+- **训练趋势**：50→100→150 略有回落（0.9860 → 0.9820），从 150 开始回升至 300 达 0.9907。
+- **收敛判据**：300 iter 仍是 best，且 250→300 单调上升，**未明显收敛**。若加 iters=500 可能继续提升。
+- **6 类饱和迹象不显著**：与 5w5s（200 iter 已 best）相比，6w5s 需要更长训练。
+- **方差稳定**：±0.0164（50 tasks 评估），与 5w5s（±0.0160）相当。
+
+## ⚠️ 准确率"含金量"分析
+
+| 因素 | 实际情况 | 影响 |
+|---|---|---|
+| 数据集 | NEU-CLS（6 类钢材缺陷，200×200 灰度） | 小且简单，全监督 baseline 可达 99%+ |
+| 切分 | 1800 张图人为切 5 份（每份 360），互不重叠 | **这是同域内 hold-out，不是真跨域** |
+| backbone | **ImageNet 预训练 ResNet-18**（frozen） | 这就是 0.99 的主要来源 |
+| ProtoNet 距离 | Euclidean on 128-d | 直接套 L2 距离，无需训练 |
+| 6-shot query | 每类 5 张 query × 6 类 × 50 tasks = 1500 个独立预测 | 50 tasks 评估稳定（±0.016） |
+
+**所以"0.99"的真实含义是**：ImageNet 预训练 ResNet-18 在 NEU 6 类上能几乎完美分类（即使是 frozen+5-shot），这是**预期上限附近**，不是异常。
+
+**这个数值对 R²-Net 的"领先"意义有限**：
+- R²-Net 报告的是 normalized accuracy（除以类数），我们报告普通 accuracy
+- R²-Net 不依赖 ImageNet 预训练，我们强依赖
+- 真正跨域（NEU→MVTec/AeBAD）我们还没做
+
+**真正需要跑的对照实验**（详见 summary.txt 第 0.4 节）：
+1. 复现 R²-Net 官方设置（同 backbone、同 random init、同 normalized accuracy）
+2. MVTec / AeBAD 真正跨域测试
+3. 随机初始化 ResNet-18 基线

@@ -1,0 +1,84 @@
+# phase1_2w5s 训练曲线 (raw eval data)
+
+> 来源: 终端 1.txt 输出
+> 时间: 2026-08-23 20:34:37 ~ 20:58:19 (1421.5s ≈ 23.7 min)
+
+## 0. 配置
+
+```yaml
+model: MultiDomainPretrainModel(n_products=17, n_conditions=7, feat_dim=128, film_rho=0.5, film_gate_clamp=True)
+pretrain: outputs/multi_domain_smoke.pt (cond_enc dim=6 MISMATCH → 自动 fallback)
+backbone: ResNet18 (frozen)
+algorithm: ProtoNet (euclidean, mean)
+lr: 1e-4
+opt: Adam, grad_clip=1.0
+anil: off
+```
+
+## 1. 训练 loss / acc 轨迹 (每 20 iter 采样)
+
+```
+iter    1 | loss=1.5452 acc=0.300 n_way=2 src=mvtec pid=9
+iter   20 | loss=1.0992 acc=0.500 n_way=2 src=mvtec pid=9
+iter   40 | loss=0.7543 acc=0.700 n_way=2 src=mvtec pid=7
+iter   60 | loss=0.2973 acc=0.800 n_way=2 src=mvtec pid=12
+iter   80 | loss=0.7085 acc=0.700 n_way=2 src=mvtec pid=10
+iter  100 | loss=1.4804 acc=0.600 n_way=2 src=mvtec pid=8         ← eval@100
+iter  120 | loss=0.0119 acc=1.000 n_way=2 src=gc10 pid=15
+iter  140 | loss=0.3651 acc=0.700 n_way=2 src=mvtec pid=5
+iter  160 | loss=1.1887 acc=0.500 n_way=2 src=mvtec pid=14
+iter  180 | loss=1.5732 acc=0.500 n_way=2 src=mvtec pid=14
+iter  200 | loss=0.0000 acc=1.000 n_way=2 src=neu  pid=16        ← eval@200
+iter  220 | loss=0.0068 acc=1.000 n_way=2 src=mvtec pid=7
+iter  240 | loss=1.0532 acc=0.500 n_way=2 src=mvtec pid=2
+iter  260 | loss=0.2766 acc=0.800 n_way=2 src=gc10 pid=15
+iter  280 | loss=0.5782 acc=0.800 n_way=2 src=mvtec pid=7
+iter  300 | loss=0.8489 acc=0.600 n_way=2 src=mvtec pid=4         ← eval@300 (BEST)
+iter  320 | loss=1.5731 acc=0.500 n_way=2 src=mvtec pid=4
+iter  340 | loss=0.4465 acc=0.900 n_way=2 src=mvtec pid=13
+iter  360 | loss=0.8190 acc=0.800 n_way=2 src=mvtec pid=1
+iter  380 | loss=0.0061 acc=1.000 n_way=2 src=mvtec pid=10
+iter  400 | loss=1.3902 acc=0.500 n_way=2 src=mvtec pid=4         ← eval@400
+iter  420 | loss=0.0270 acc=1.000 n_way=2 src=neu  pid=16
+iter  440 | loss=0.3651 acc=0.900 n_way=2 src=mvtec pid=7
+iter  460 | loss=0.4302 acc=0.800 n_way=2 src=mvtec pid=12
+iter  480 | loss=0.9190 acc=0.600 n_way=2 src=mvtec pid=14
+iter  500 | loss=0.9755 acc=0.600 n_way=2 src=mvtec pid=7         ← eval@500
+iter  520 | loss=0.0008 acc=1.000 n_way=2 src=mvtec pid=0
+iter  540 | loss=0.0007 acc=1.000 n_way=2 src=mvtec pid=12
+iter  560 | loss=0.1173 acc=0.900 n_way=2 src=mvtec pid=0
+iter  580 | loss=0.6764 acc=0.900 n_way=2 src=gc10 pid=15
+iter  600 | loss=0.8263 acc=0.700 n_way=2 src=mvtec pid=14        ← eval@600 (final)
+```
+
+## 2. eval 曲线
+
+```
+iter  100:  meta_test_acc=0.712 ± 0.203  (50 eps)
+iter  200:  meta_test_acc=0.716 ± 0.213  (50 eps)
+iter  300:  meta_test_acc=0.748 ± 0.168  (50 eps)  ← BEST
+iter  400:  meta_test_acc=0.660 ± 0.203  (50 eps)
+iter  500:  meta_test_acc=0.712 ± 0.198  (50 eps)
+iter  600:  meta_test_acc=0.728 ± 0.224  (50 eps)  ← FINAL
+```
+
+## 3. 统计
+
+- best_val_acc = 0.748 (iter 300)
+- final_acc    = 0.728 (iter 600)
+- last3_mean   = 0.700 (iter 400/500/600)
+- last5_mean   = 0.713 (iter 200~600)
+- elapsed_sec  = 1421.5
+
+## 4. 训练耗时分解
+
+| 阶段 | iter | 累计秒 | 速度 |
+|---|---:|---:|---:|
+| warmup | 1-100 | 261s | 2.6s/iter |
+| train | 100-200 | 513s | 2.5s/iter |
+| train | 200-300 | 738s | 2.3s/iter |
+| train | 300-400 | 979s | 2.4s/iter |
+| train | 400-500 | 1211s | 2.3s/iter |
+| train | 500-600 | 1421s | 2.1s/iter |
+
+> 速度稳定 2.1~2.6 s/iter (CPU 慢, GPU 应该 0.2~0.4s/iter)

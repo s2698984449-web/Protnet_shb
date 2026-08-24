@@ -1,0 +1,56 @@
+{
+  "checkpoint": "D:\\元强化学习\\代码\\outputs\\航天\\checkpoints\\neu_resnet18_protonet_5w5s_r2net_align\\best.pt",
+  "test_dataset": "kolektor",
+  "data_root": "D:\\元强化学习\\代码\\data\\kolektor",
+  "target_classes": [
+    "defect",
+    "ok"
+  ],
+  "protocol": {
+    "ways": 2,
+    "shots": 5,
+    "query_per_class": 10,
+    "n_episodes": 5,
+    "protonet_distance": "euclidean",
+    "protonet_prototype_type": "mean",
+    "seed": 42,
+    "random_baseline": 0.5
+  },
+  "result": {
+    "mean": 0.5700000166893006,
+    "std": 0.02738613440462,
+    "ci95_low": 0.5459950114867875,
+    "ci95_high": 0.5940050218918136,
+    "min": 0.550000011920929,
+    "max": 0.6000000238418579
+  },
+  "per_episode_acc": [
+    0.6000000238418579,
+    0.550000011920929,
+    0.6000000238418579,
+    0.550000011920929,
+    0.550000011920929
+  ],
+  "per_episode_classes": [
+    [
+      "defect",
+      "ok"
+    ],
+    [
+      "defect",
+      "ok"
+    ],
+    [
+      "defect",
+      "ok"
+    ],
+    [
+      "defect",
+      "ok"
+    ],
+    [
+      "defect",
+      "ok"
+    ]
+  ]
+}

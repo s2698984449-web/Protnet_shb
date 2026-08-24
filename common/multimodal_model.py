@@ -5,11 +5,13 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.distributions import Categorical
 
-from .backbones import YOLO26BackboneEncoder, ThermalEncoder, UltrasonicEncoder
+from .backbones import (
+    YOLO26BackboneEncoder, ThermalEncoder, UltrasonicEncoder, ResNet18Encoder
+)
 from .fusion import AsymmetricFusion
 from .knowledge_base import DEFAULT_FUSION_PRIOR, fusion_prior_tensor
-from .protonet_loop import MahalanobisHead
-from .task_encoder import TaskEncoder, meta_vectors_to_tensors
+from .protonet_loop import MahalanobisHead, AdaptivePrototype
+from .task_builder import TaskEncoder, meta_vectors_to_tensors
 
 COLLECT = 0
 CLASSIFY = 1
@@ -30,25 +32,39 @@ class ValueBaseline(nn.Module):
 
 class AviationDefectModel(nn.Module):
     def __init__(self, num_classes=7, embed_dim=128, yolo_weights='', yolo_imgsz=640,
-                 rgb_cbam=False):
+                 rgb_cbam=False, use_multiscale_cff=False, backbone_type='yolo26',
+                 resnet_weights=None):
         super().__init__()
         self.num_classes = num_classes
         self.rgb_cbam = bool(rgb_cbam)
-        self.rgb_encoder = YOLO26BackboneEncoder(
-            out_dim=embed_dim, imgsz=yolo_imgsz, weights_path=yolo_weights,
-            use_cbam=self.rgb_cbam)
+        self._use_multiscale_cff = bool(use_multiscale_cff)
+        self._embed_dim = embed_dim
+        self.backbone_type = backbone_type
+
+        if backbone_type == 'resnet18':
+            self.rgb_encoder = ResNet18Encoder(out_dim=embed_dim, pretrained=True,
+                                                weights_path=resnet_weights)
+        else:
+            self.rgb_encoder = YOLO26BackboneEncoder(
+                out_dim=embed_dim, imgsz=yolo_imgsz, weights_path=yolo_weights,
+                use_cbam=self.rgb_cbam,
+                use_multiscale_cff=self._use_multiscale_cff,
+                fusion_embed_dim=embed_dim)
         self.thermal_encoder = ThermalEncoder(out_dim=embed_dim)
         self.us_encoder = UltrasonicEncoder(out_dim=embed_dim)
         self.task_encoder = TaskEncoder()
         self.fusion = AsymmetricFusion(embed_dim=embed_dim, num_classes=num_classes)
-        self._embed_dim = embed_dim
         self.stop_net = nn.Sequential(
             nn.Linear(self.state_dim(), 64),
             nn.ReLU(),
             nn.Linear(64, 2),
         )
+        # MahalanobisHead: 单模态 RGB 方案，维度 = rgb_encoder 输出
         self.mahal_head = MahalanobisHead(
-            feat_dim=self.embed_dim() * 3, ways=num_classes)
+            feat_dim=self.rgb_encoder.out_dim, ways=num_classes)
+        # AdaptivePrototype: cross-attention based query-aware prototype refinement
+        self.adaptive_proto = AdaptivePrototype(
+            embed_dim=self.rgb_encoder.out_dim, num_heads=4)
 
     def embed_dim(self):
         return self._embed_dim
@@ -68,9 +84,8 @@ class AviationDefectModel(nn.Module):
         return self.encode_modalities(rgb, thermal, ultrasonic)
 
     def embed(self, rgb, thermal, ultrasonic, domain_meta=None):
-        """Fixed-size embedding for ProtoNet (concatenated modality features)."""
-        f_rgb, f_thermal, f_us = self.encode_modalities(rgb, thermal, ultrasonic)
-        return torch.cat([f_rgb, f_thermal, f_us], dim=-1)
+        """RGB-only embedding for ProtoNet (Q4-A: 只用 RGB CFF+CBAM 特征)."""
+        return self.rgb_encoder.encode(rgb)
 
     def task_embedding(self, domain_meta, device):
         material, process, history = meta_vectors_to_tensors(domain_meta, device)
@@ -149,29 +164,47 @@ class AviationDefectModel(nn.Module):
             flat.extend(group['params'])
         return flat
 
+    def _backbone_params(self):
+        """Return list of backbone parameters for the current encoder type."""
+        if self.backbone_type == 'resnet18':
+            return (
+                list(self.rgb_encoder.conv1.parameters()) +
+                list(self.rgb_encoder.bn1.parameters()) +
+                list(self.rgb_encoder.layer1.parameters()) +
+                list(self.rgb_encoder.layer2.parameters()) +
+                list(self.rgb_encoder.layer3.parameters()) +
+                list(self.rgb_encoder.layer4.parameters())
+            )
+        else:
+            return list(self.rgb_encoder.det_model.parameters())
+
+    def _head_params(self):
+        """Return list of head/adaptable parameters (excluding backbone)."""
+        params = []
+        if self.backbone_type == 'resnet18':
+            params.extend(list(self.rgb_encoder.avgpool.parameters()))
+        if getattr(self.rgb_encoder, 'cbam', None) is not None:
+            params.extend(list(self.rgb_encoder.cbam.parameters()))
+        params.extend(list(self.rgb_encoder.proj.parameters()))
+        params += list(self.thermal_encoder.parameters())
+        params += list(self.us_encoder.parameters())
+        params += list(self.task_encoder.parameters())
+        params += list(self.fusion.parameters())
+        params += list(self.stop_net.parameters())
+        params += list(self.mahal_head.parameters())
+        params += list(self.adaptive_proto.parameters())
+        return params
+
     def meta_optimizer_param_groups(
             self, fusion_only=False, backbone_meta_lr=1e-5,
             head_meta_lr=1e-3, meta_lr=1e-3):
         """Adam param groups for outer loop (Phase 1 ANIL vs unfreeze)."""
         if fusion_only:
-            params = list(self.rgb_encoder.proj.parameters())
-            if self.rgb_encoder.cbam is not None:
-                params = list(self.rgb_encoder.cbam.parameters()) + params
-            params += list(self.fusion.parameters())
+            params = self._head_params()
             return [{'params': params, 'lr': meta_lr}]
 
-        backbone = list(self.rgb_encoder.det_model.parameters())
-        head = (
-            list(self.rgb_encoder.proj.parameters()) +
-            list(self.thermal_encoder.parameters()) +
-            list(self.us_encoder.parameters()) +
-            list(self.task_encoder.parameters()) +
-            list(self.fusion.parameters()) +
-            list(self.stop_net.parameters()) +
-            list(self.mahal_head.parameters())
-        )
-        if self.rgb_encoder.cbam is not None:
-            head = list(self.rgb_encoder.cbam.parameters()) + head
+        backbone = self._backbone_params()
+        head = self._head_params()
         return [
             {'params': backbone, 'lr': backbone_meta_lr},
             {'params': head, 'lr': head_meta_lr},
@@ -182,7 +215,8 @@ class AviationDefectModel(nn.Module):
             self.rgb_encoder.freeze_backbone()
         else:
             self.rgb_encoder.backbone_frozen = False
-            for p in self.rgb_encoder.det_model.parameters():
+            for p in self._backbone_params():
+                p.requires_grad = True
                 p.requires_grad = True
             self.rgb_encoder.det_model.train()
 

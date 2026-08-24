@@ -1,0 +1,131 @@
+# NEU-CLS 5w5s frozen — 训练详情
+
+## 基本信息
+
+| 项目 | 值 |
+|---|---|
+| 实验名 | `neu_resnet18_protonet_5w5s_r2net_align` |
+| 数据集 | NEU-CLS（钢材表面缺陷）|
+| backbone | resnet18（**frozen**） |
+| 算法 | ProtoNet (euclidean, mean prototype) |
+| ways / shots | **5-way 5-shot**（比 6w5s 少 1 类）|
+| 训练域 / 测试域 | train: 0,1,2,3 → test: 4 |
+| RGB only | true（热像/超声未启用） |
+| 总 iter | 300 |
+| meta_batch_size | 2 |
+| backbone_meta_lr | 1e-5（frozen 时实际无效） |
+| head_meta_lr | 1e-3 |
+| adapt_steps | 5（ProtoNet 无内环） |
+| first_order | true（ProtoNet 无内环） |
+| w_rl_max | 0.5（Stop 头 RL 权重，但 ProtoNet 未启用） |
+| 评估任务数 | 50 tasks |
+| embed_dim | 128 |
+| seed | 42 |
+
+## 终端命令（当前运行）
+
+```powershell
+D:\miniconda3\envs\MAML\python.exe scripts\train.py `
+  --track 航天 `
+  --backbone_type resnet18 `
+  --freeze_backbone true `
+  --rgb_only true `
+  --meta_algorithm protonet `
+  --protonet_distance euclidean `
+  --data_dir_path "D:\元强化学习\代码\data\航天\processed" `
+  --dataset_name neu `
+  --ways 5 `
+  --shots 5 `
+  --iters 300 `
+  --meta_batch_size 2 `
+  --train_domains 0,1,2,3 `
+  --test_domain 4 `
+  --train_task_num 40 `
+  --test_task_num 600 `
+  --eval_every 50 `
+  --embed_dim 128 `
+  --exp_name neu_resnet18_protonet_5w5s_r2net_align
+```
+
+## 最终结果（Eval@200 为 best）
+
+```
+[2026-08-23 16:02:56] Eval@300: domain_4 mean acc 0.9840 +/- 0.0277 (50 tasks).
+[2026-08-23 16:02:56] Training done. Best single-task acc: 1.0000, best eval mean: 0.9920.
+[2026-08-23 16:02:56] Summary saved to D:\元强化学习\代码\outputs\航天\checkpoints\neu_resnet18_protonet_5w5s_r2net_align\train_summary.json.
+```
+
+## Eval 轨迹
+
+| iter | mean acc | std | 是否新 best |
+|---|---|---|---|
+| 50 | 0.9840 | 0.0253 | ✅（首次 best）|
+| 100 | 0.9896 | 0.0209 | ✅ |
+| 150 | 0.9856 | 0.0223 | — |
+| **200** | **0.9920** | 0.0160 | ✅（最终 best）|
+| 250 | 0.9880 | 0.0183 | — |
+| 300 | 0.9840 | 0.0277 | — |
+
+## 训练时间线（终端观察）
+
+- `2026-08-23 15:57:14` Eval@50 完成（首次 best 0.9840）
+- `2026-08-23 15:58:22` Eval@100 完成（best 0.9896）
+- `2026-08-23 15:59:26` Eval@150 完成（回落至 0.9856）
+- `2026-08-23 16:00:37` Eval@200 完成（**best 0.9920**）✅
+- `2026-08-23 16:01:47` Eval@250 完成（0.9880）
+- `2026-08-23 16:02:56` Eval@300 完成（0.9840）→ training done
+
+总训练时长：约 5 分 42 秒（从 15:57:14 到 16:02:56）
+
+## 产物文件
+
+```
+D:\元强化学习\代码\outputs\航天\checkpoints\neu_resnet18_protonet_5w5s_r2net_align\
+    ├── AviationMAML_5w_5s_rgb_frozen_protonet_yolo26_best.pt
+    ├── best.pt
+    ├── iter_0050.pt
+    ├── iter_0100.pt
+    ├── iter_0150.pt
+    ├── iter_0200.pt
+    ├── iter_0250.pt
+    ├── iter_0300.pt
+    ├── run_config.json
+    └── train_summary.json
+
+D:\元强化学习\代码\outputs\航天\logs\neu_resnet18_protonet_5w5s_r2net_align\
+    └── AviationMAML_5w_5s_rgb_frozen_protonet_yolo26.log
+
+D:\元强化学习\代码\outputs\航天\images\neu_resnet18_protonet_5w5s_r2net_align\
+    └── AviationMAML_5w_5s_rgb_frozen_protonet_yolo26_<iter>.png
+```
+
+## 分析
+
+- **训练趋势**：200 iter 达 0.9920 后开始过拟合（250 降到 0.9880，300 降到 0.9840）。**200 iter 是真正的最佳停止点**。
+- **早停建议**：若加 `--eval_patience 3`，训练会在 iter 200 后停止（3 次 eval 不破 best）。
+- **方差变化**：best 时 ±0.0160，后续 ±0.0183 / ±0.0277，验证集稳定性下降，进一步佐证过拟合。
+- **与 6w5s 对比**：5w5s（5 类）达到 0.9920，6w5s（6 类）达到 0.9907，**5 类比 6 类高 0.0013**，符合"任务粒度更细时 few-shot 性能上限更高"的常理。
+
+## ⚠️ 准确率"含金量"分析
+
+| 因素 | 实际情况 | 影响 |
+|---|---|---|
+| 数据集 | NEU-CLS（6 类钢材缺陷，200×200 灰度） | 小且简单，全监督 baseline 可达 99%+ |
+| 切分 | 1800 张图人为切 5 份（每份 360），互不重叠 | **这是同域内 hold-out，不是真跨域** |
+| backbone | **ImageNet 预训练 ResNet-18**（frozen） | 这就是 0.99 的主要来源 |
+| ProtoNet 距离 | Euclidean on 128-d | 直接套 L2 距离，无需训练 |
+| 5-shot query | 每类 5 张 query / 50 tasks = 250 个独立预测 | 50 tasks 评估稳定（±0.016）|
+
+**所以"0.99"的真实含义是**：ImageNet 预训练 ResNet-18 在 NEU 6 类上能几乎完美分类（即使是 frozen+5-shot），这是**预期上限附近**，不是异常。
+
+**如果外部分析说"领先 R²-Net 16 个点"**——这是**协议不一致造成的表面差距**：
+- 我们用普通 accuracy，R²-Net 报告 normalized accuracy（天然偏低）
+- 我们用 ImageNet 预训练，R²-Net 不用
+- 我们用 NEU 全 6 类，R²-Net 可能只用 4 类
+
+**真正需要跑的对照实验**：
+1. 复现 R²-Net 官方设置（同 backbone、同 random init、同 normalized accuracy），看真实差距
+2. 在 MVTec / AeBAD 上做真正跨域测试
+3. 跑一遍随机初始化 ResNet-18 基线，确认 0.99 主要来自预训练
+
+## 下一步

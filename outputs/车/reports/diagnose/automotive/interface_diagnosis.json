@@ -1,0 +1,29 @@
+{
+  "gate": "D1_phase0_interface",
+  "track": "automotive",
+  "device": "cuda",
+  "weights": "..\\车\\weights\\cmpl_yolo26_supcon.pt",
+  "feature_space": "128-d YOLO backbone (aligned with diagnose_features B2)",
+  "test_domain": 3,
+  "ways": 2,
+  "shots": 5,
+  "eval_tasks": 100,
+  "seed": 42,
+  "n_samples": 543,
+  "embed_dim": 128,
+  "logreg_mean": 0.6739721372748896,
+  "logreg_std": 0.01618981169876266,
+  "frozen_protonet_mean": 0.5340000043064356,
+  "frozen_protonet_std": 0.17100876975071555,
+  "gap_logreg_minus_protonet": 0.139972132968454,
+  "verdict": "need_supcon_v4",
+  "note": "接口断层明显 (gap>5%)：Phase0 改 SupCon+CE 后再跑 M1",
+  "thresholds": {
+    "need_supcon_v4_if_gap_gt": 0.05,
+    "ok_proceed_m1_if_gap_le": 0.03
+  },
+  "reference_meta_trained": {
+    "automotive_track2_400iter": 0.625,
+    "comment": "Meta-trained ProtoNet uses full model; this gate tests Phase0 backbone geometry only"
+  }
+}

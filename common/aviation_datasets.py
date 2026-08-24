@@ -15,6 +15,23 @@ from .knowledge_base import DEFAULT_FUSION_PRIOR, DEFAULT_MATERIAL_PARAMS, load_
 
 _VALID_CLASS_NAMES = set(CLASS_FOLDERS.values()) | set(CMPL_CLASS_FOLDERS.values())
 
+# NEU-CLS 6-class metal surface defect taxonomy
+NEU_CLS_CLASSES = ('Cr', 'In', 'Pa', 'PS', 'RS', 'Sc')
+_VALID_CLASS_NAMES |= set(NEU_CLS_CLASSES)
+
+# Carparts 8-class white-list (按 ALL 8 类切分到 domain_0..4), 但默认只暴露前 6 大类。
+# Cracked (76 张) / Corrosion (277 张) 5-shot 撑不住, 落盘但不进白名单;
+# 未来想跑 8-way, 只需把这两个名字补到元组末尾, 不用重新切分数据。
+CARPARTS_CLS_CLASSES = (
+    'Scratch',
+    'Dent',
+    'Paint chip',
+    'Broken part',
+    'Missing part',
+    'Flaking',
+)
+_VALID_CLASS_NAMES |= set(CARPARTS_CLS_CLASSES)
+
 
 def _default_process_params():
     return [0.0] * 8

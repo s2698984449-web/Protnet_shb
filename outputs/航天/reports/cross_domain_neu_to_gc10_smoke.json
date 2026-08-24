@@ -1,0 +1,93 @@
+{
+  "checkpoint": "D:\\元强化学习\\代码\\outputs\\航天\\checkpoints\\neu_resnet18_protonet_5w5s_r2net_align\\best.pt",
+  "test_dataset": "GC10-DET",
+  "gc10_root": "D:\\元强化学习\\代码\\data\\GC10-DET\\cls_8class",
+  "gc10_classes_used": [
+    {
+      "index": 1,
+      "folder": "2_hanfeng",
+      "n_images": 283
+    },
+    {
+      "index": 2,
+      "folder": "3_yueyawan",
+      "n_images": 195
+    },
+    {
+      "index": 3,
+      "folder": "4_shuiban",
+      "n_images": 290
+    },
+    {
+      "index": 4,
+      "folder": "5_youban",
+      "n_images": 224
+    },
+    {
+      "index": 5,
+      "folder": "6_siban",
+      "n_images": 590
+    }
+  ],
+  "protocol": {
+    "ways": 5,
+    "shots": 5,
+    "query_per_class": 5,
+    "n_episodes": 5,
+    "protonet_distance": "euclidean",
+    "protonet_prototype_type": "mean",
+    "seed": 42
+  },
+  "result": {
+    "mean": 0.7039999961853027,
+    "std": 0.13446189703689704,
+    "ci95_low": 0.5861389468593357,
+    "ci95_high": 0.8218610455112698,
+    "min": 0.5199999809265137,
+    "max": 0.8799999952316284
+  },
+  "per_episode_acc": [
+    0.8799999952316284,
+    0.5199999809265137,
+    0.7200000286102295,
+    0.6399999856948853,
+    0.7599999904632568
+  ],
+  "per_episode_classes": [
+    [
+      "2_hanfeng",
+      "3_yueyawan",
+      "4_shuiban",
+      "5_youban",
+      "6_siban"
+    ],
+    [
+      "2_hanfeng",
+      "3_yueyawan",
+      "4_shuiban",
+      "5_youban",
+      "6_siban"
+    ],
+    [
+      "2_hanfeng",
+      "3_yueyawan",
+      "4_shuiban",
+      "5_youban",
+      "6_siban"
+    ],
+    [
+      "2_hanfeng",
+      "3_yueyawan",
+      "4_shuiban",
+      "5_youban",
+      "6_siban"
+    ],
+    [
+      "2_hanfeng",
+      "3_yueyawan",
+      "4_shuiban",
+      "5_youban",
+      "6_siban"
+    ]
+  ]
+}

@@ -14,9 +14,9 @@ AEROSPACE_PROCESSED = os.path.join(AEROSPACE, 'processed')
 AUTOMOTIVE_RAW = os.path.join(AUTOMOTIVE, 'raw')
 AUTOMOTIVE_PROCESSED = os.path.join(AUTOMOTIVE, 'processed')
 
-# Artifact roots (weights / checkpoints / logs / plots) — separate from data/
-AEROSPACE_ARTIFACTS = os.path.join(ROOT, '航天')
-AUTOMOTIVE_ARTIFACTS = os.path.join(ROOT, '车')
+# Artifact roots (weights / checkpoints / logs / plots) — under outputs/
+AEROSPACE_ARTIFACTS = os.path.join(ROOT, 'outputs', '航天')
+AUTOMOTIVE_ARTIFACTS = os.path.join(ROOT, 'outputs', '车')
 
 # Meta-learning layout: {processed}/{dataset_name}/domain_{id}/...
 AEROSPACE_DATASET_NAME = 'aviation'
@@ -28,9 +28,9 @@ AUTOMOTIVE_META_ROOT = os.path.join(AUTOMOTIVE_PROCESSED, AUTOMOTIVE_DATASET_NAM
 AEROSPACE_PRETRAIN_ROOT = os.path.join(AEROSPACE_PROCESSED, 'pretrain')
 AUTOMOTIVE_PRETRAIN_ROOT = os.path.join(AUTOMOTIVE_PROCESSED, 'pretrain')
 
-# Legacy code dir (single entry point for train / pretrain scripts)
+# Code entry point directory (train / pretrain / eval scripts live here)
 CODE_DIR = os.path.join(ROOT, '航空缺陷检测')
-LEGACY_WEIGHTS = os.path.join(CODE_DIR, 'weights')
+LEGACY_WEIGHTS = os.path.join(CODE_DIR, 'weights')  # deprecated, kept for compat only
 
 
 # Phase0 v6 (CMPL, 2026-07): car-only. 删除 neu/asde/kolektor/mvtec_*
@@ -45,10 +45,14 @@ LEGACY_WEIGHTS = os.path.join(CODE_DIR, 'weights')
 # 任务类总样本: 9084 + 6882 + 3158 + 1295 = 20419 ROI
 # 与 test_pool (CarDD test ~543 ROI) 比例 ~37:1, 远超 few-shot 收敛所需
 PRETRAIN_TASKS_AUTOMOTIVE_V6 = (
-    ('cardd',      4, 0.40),   # 真实施工场景主力
-    ('carparts',   8, 0.30),   # 车间细粒度标注 (8 类原生)
-    ('minor_dent', 1, 0.20),   # dent 类大样本强化
-    ('syndcar',    4, 0.10),   # 合成 3D 渲染 (小权重, 防止污染真实光照)
+    ('cardd',      4, 0.40),
+    ('carparts',   8, 0.30),
+    ('minor_dent', 1, 0.20),
+    ('syndcar',    4, 0.10),
+)
+
+PRETRAIN_TASKS_AUTOMOTIVE_NEU = (
+    ('neu_cls',    6, 1.0),
 )
 
 PRETRAIN_TASKS = {
@@ -204,6 +208,11 @@ def apply_pretrain_variant(args):
     elif variant in ('v9', 'p0_v9', 'cmpl_v9', 'car_v9'):
         tasks = PRETRAIN_TASKS_AUTOMOTIVE_V6
         _apply_automotive_supcon_defaults(args)
+
+    # NEU-only Phase 0: 单任务 NEU-CLS 6 类预训练, 输出 neu_yolo26_supcon.pt
+    elif variant in ('neu', 'neu_cls', 'neu_p0', 'p0_neu'):
+        tasks = PRETRAIN_TASKS_AUTOMOTIVE_NEU
+        _apply_automotive_supcon_defaults(args)
     elif variant in _DEPRECATED_VARIANTS:
         raise ValueError(
             "pretrain_variant='{var}' 已弃用 (依赖 neu/asde/kolektor/mvtec_* 工业数据集, "
@@ -244,9 +253,10 @@ def apply_meta_train_defaults(args):
     info = resolve_track(getattr(args, 'track', 'aerospace'))
     args.track = info['track']
 
-    if getattr(args, 'data_dir_path', None) in (None, '', '../data', '../data/航天/processed', '../data/车/processed'):
+    if getattr(args, 'data_dir_path', None) in (None, '', 'data', '../data', '../data/航天/processed', '../data/车/processed'):
         args.data_dir_path = info['processed']
-    args.dataset_name = info['dataset_name']
+    if getattr(args, 'dataset_name', None) is None:
+        args.dataset_name = info['dataset_name']
 
     if not getattr(args, 'checkpoint_path', None) or args.checkpoint_path in ('./checkpoints',):
         args.checkpoint_path = info['checkpoints_dir']

@@ -1,0 +1,1303 @@
+# CMPL / automotive paint experiment registry
+# Usage:
+#   python scripts/run_experiment.py --config experiments/cmpl.yaml --list
+#   python scripts/run_experiment.py --config experiments/cmpl.yaml --exp cmpl_p0_v3 --stage pretrain
+#   python scripts/run_experiment.py --config experiments/cmpl.yaml --exp cmpl_protonet_track2 --stage train
+#
+# Data convert (project root, before Phase0):
+#   python scripts/convert_cmpl_datasets.py --pretrain --meta --meta_policy track2 --check
+
+defaults:
+  python: auto
+  track: automotive
+  data_dir_path: data/车/processed
+  dataset_name: cmpl
+  yolo_weights: outputs/车/weights/cmpl_yolo26_pretrained.pt
+  ways: 2
+  shots: 5
+  rgb_only: true
+  train_domains: "0"
+  test_domain: 3
+  meta_batch_size: 2
+  first_order: true
+  w_rl_max: 0
+  stage1_end: 1000
+  stage2_end: 1000
+  eval_tasks: 100
+  eval_every: 50
+  seed: 42
+  meta_algorithm: protonet
+  protonet_distance: euclidean
+  freeze_backbone: false
+  backbone_meta_lr: 1e-5
+  head_meta_lr: 1e-3
+  fast_lr: 0.02
+  adapt_steps: 5
+  iters: 500
+
+bases:
+  cmpl_protonet_unfreeze:
+    meta_algorithm: protonet
+    freeze_backbone: false
+    train_domains: "0"
+    test_domain: 3
+    w_rl_max: 0
+
+  cmpl_protonet_freeze:
+    meta_algorithm: protonet
+    freeze_backbone: true
+    train_domains: "0"
+    test_domain: 3
+    w_rl_max: 0
+
+  cmpl_final_eval:
+    script: eval.py
+    stage: eval
+    track: automotive
+    seeds: "42,43,44"
+    eval_tasks: 100
+    meta_algorithm: protonet
+    freeze_backbone: false
+    train_domains: "0"
+    test_domain: 3
+
+experiments:
+  # --- Phase 0 v3: CarDD 80% + NEU 15% + ASDE 5% (no Kolektor) ---
+  cmpl_p0_v3:
+    description: "Phase0 v3: CarDD+NEU+ASDE; frozen-only (unfreeze_epoch=99); Track2 data split"
+    stage: pretrain
+    script: pretrain_backbone.py
+    track: automotive
+    data_dir: data/车/processed
+    yolo_weights: outputs/车/weights/yolo26n.pt
+    epochs: 35
+    batch_size: 16
+    unfreeze_epoch: 99
+    patience: 10
+    mix_strategy: alternate
+    out_weights: outputs/车/weights/cmpl_yolo26_pretrained.pt
+    out_checkpoint: outputs/车/checkpoints/pretrain_v3_best.pt
+    log_path: outputs/车/logs
+
+  cmpl_p0_v3_smoke:
+    description: "Phase0 v3 smoke (3 epochs, debug)"
+    extends: cmpl_p0_v3
+    epochs: 3
+    patience: 99
+    max_steps_per_epoch: 20
+
+  # --- Phase 0 v4: SupCon+CE; CarDD 90% + ASDE 10%; frozen-only ---
+  cmpl_p0_v4:
+    description: "Phase0 v4 SupCon+CE; CarDD90%+ASDE10%; frozen; metric-friendly embedding"
+    stage: pretrain
+    script: pretrain_backbone.py
+    track: automotive
+    data_dir: data/车/processed
+    yolo_weights: outputs/车/weights/yolo26n.pt
+    pretrain_variant: v4
+    loss_mode: supcon_ce
+    supcon_weight: 0.5
+    ce_weight: 0.5
+    mix_strategy: combined
+    epochs: 35
+    batch_size: 8
+    num_workers: 0
+    unfreeze_epoch: 99
+    patience: 10
+    out_weights: outputs/车/weights/cmpl_yolo26_supcon.pt
+    out_checkpoint: outputs/车/checkpoints/pretrain_v4_best.pt
+    log_path: outputs/车/logs
+
+  cmpl_p0_v4_smoke:
+    description: "Phase0 v4 smoke (3 epochs)"
+    extends: cmpl_p0_v4
+    epochs: 3
+    patience: 99
+    max_steps_per_epoch: 20
+
+  # --- Phase 0 Class-split: NEU-only, 128-d, freeze YOLO[0:6], no auto data ---
+  cmpl_p0_classsplit_neu:
+    description: "Class-split Phase0a: NEU-DET only; feat_dim=128; freeze indices 0-5; no CarDD/ASDE"
+    stage: pretrain
+    script: pretrain_backbone.py
+    track: automotive
+    data_dir: data/车/processed
+    yolo_weights: outputs/车/weights/yolo26n.pt
+    pretrain_variant: classsplit_neu
+    loss_mode: ce
+    label_smoothing: 0.1
+    feat_dim: 128
+    backbone_train_mode: indices
+    freeze_indices: "0,1,2,3,4,5"
+    mix_strategy: alternate
+    epochs: 15
+    batch_size: 8
+    num_workers: 0
+    lr_head: 1.0e-3
+    lr_backbone: 1.0e-3
+    unfreeze_epoch: 99
+    patience: 3
+    out_weights: outputs/车/weights/defect_pretrain_yolov26n_128d.pt
+    out_checkpoint: outputs/车/checkpoints/pretrain_classsplit_neu_best.pt
+    log_path: outputs/车/logs
+
+  cmpl_p0_classsplit_neu_smoke:
+    description: "Class-split Phase0a smoke (3 epochs)"
+    extends: cmpl_p0_classsplit_neu
+    epochs: 3
+    patience: 99
+    max_steps_per_epoch: 20
+
+  # --- Phase 0 Class-split3: NEU + MVTec texture + MVTec object (no car data) ---
+  cmpl_p0_classsplit3:
+    description: "Class-split Phase0b: NEU0.5+MVTec_tex0.3+MVTec_obj0.2; 128d; freeze indices 0-5"
+    stage: pretrain
+    script: pretrain_backbone.py
+    track: automotive
+    data_dir: data/车/processed
+    yolo_weights: outputs/车/weights/yolo26n.pt
+    pretrain_variant: classsplit3
+    loss_mode: ce
+    label_smoothing: 0.1
+    feat_dim: 128
+    backbone_train_mode: indices
+    freeze_indices: "0,1,2,3,4,5"
+    mix_strategy: alternate
+    epochs: 15
+    batch_size: 8
+    num_workers: 0
+    lr_head: 1.0e-3
+    lr_backbone: 1.0e-3
+    unfreeze_epoch: 99
+    patience: 3
+    out_weights: outputs/车/weights/defect_pretrain_yolov26n_128d.pt
+    out_checkpoint: outputs/车/checkpoints/pretrain_classsplit3_best.pt
+    log_path: outputs/车/logs
+
+  cmpl_p0_classsplit3_smoke:
+    description: "Class-split Phase0b smoke (3 epochs)"
+    extends: cmpl_p0_classsplit3
+    epochs: 3
+    patience: 99
+    max_steps_per_epoch: 20
+
+  # --- Phase0b v2: stabilize NEU (lower lr, combined mix, higher NEU weight) ---
+  cmpl_p0_classsplit3_v2:
+    description: "Phase0b v2: neu0.6/tex0.25/obj0.15; combined; lr5e-4; patience5"
+    stage: pretrain
+    script: pretrain_backbone.py
+    track: automotive
+    data_dir: data/车/processed
+    yolo_weights: outputs/车/weights/yolo26n.pt
+    pretrain_variant: classsplit3_v2
+    loss_mode: ce
+    label_smoothing: 0.1
+    feat_dim: 128
+    backbone_train_mode: indices
+    freeze_indices: "0,1,2,3,4,5"
+    mix_strategy: combined
+    epochs: 20
+    batch_size: 8
+    num_workers: 0
+    lr_head: 5.0e-4
+    lr_backbone: 5.0e-4
+    unfreeze_epoch: 99
+    patience: 5
+    out_weights: outputs/车/weights/defect_pretrain_yolov26n_128d.pt
+    out_checkpoint: outputs/车/checkpoints/pretrain_classsplit3_v2_best.pt
+    log_path: outputs/车/logs
+
+  cmpl_p0_classsplit3_v2_smoke:
+    description: "Phase0b v2 smoke"
+    extends: cmpl_p0_classsplit3_v2
+    epochs: 2
+    patience: 99
+    max_steps_per_epoch: 15
+
+  # --- Meta Track2: ASDE domain_0 train -> CarDD test domain_3 ---
+  cmpl_protonet_track2:
+    description: "P0 Track2 baseline: ProtoNet unfreeze 2w5s; ASDE domain_0 -> CarDD test domain_3; 400 iters"
+    stage: train
+    extends: cmpl_protonet_unfreeze
+    exp_name: cmpl_protonet_track2
+    data_dir_path: data/车/processed
+    checkpoint_path: outputs/车/checkpoints
+    yolo_weights: outputs/车/weights/cmpl_yolo26_pretrained.pt
+    iters: 400
+
+  # --- Phase1: Class-split Phase0b v2 backbone -> Track2 meta protocol ---
+  cmpl_protonet_classsplit3:
+    description: "Phase1 Class-split: defect_pretrain 128d -> ProtoNet ASDE domain_0 -> CarDD domain_3"
+    stage: train
+    extends: cmpl_protonet_unfreeze
+    exp_name: cmpl_protonet_classsplit3
+    data_dir_path: data/车/processed
+    checkpoint_path: outputs/车/checkpoints
+    yolo_weights: outputs/车/weights/defect_pretrain_yolov26n_128d.pt
+    embed_dim: 128
+    iters: 400
+    eval_every: 10
+    eval_tasks: 100
+
+  cmpl_protonet_classsplit3_smoke:
+    description: "Phase1 Class-split smoke (40 iters)"
+    extends: cmpl_protonet_classsplit3
+    iters: 40
+    eval_every: 20
+    eval_tasks: 20
+    eval_patience: 99
+
+  cmpl_eval_classsplit3:
+    description: "3-seed final eval for Class-split ProtoNet"
+    extends: cmpl_final_eval
+    checkpoint: outputs/车/checkpoints/cmpl_protonet_classsplit3/best.pt
+    out_json: outputs/车/reports/final_eval_cmpl_classsplit3.json
+
+  cmpl_eval_track2:
+    description: "3-seed final eval for Track2 ProtoNet"
+    extends: cmpl_final_eval
+    checkpoint: outputs/车/checkpoints/cmpl_protonet_track2/best.pt
+    out_json: outputs/车/reports/final_eval_cmpl_track2.json
+
+  # ========================================================================
+  # Phase 0 v5 (CMPL): 参考航天 v5 supcon 方案
+  #   - 5 task: cardd(0.45) + neu(0.20) + asde(0.15) + kolektor(0.10) + mvtec_tex/obj(0.05)
+  #   - indices freeze [0..5] + combined mix + label_namespace=global
+  #   - proj_dim=64 + supcon_ce 0.5/0.5 + auxiliary scratch binary head
+  #   - GPU: 3050ti 4GB → batch_size=8 OK (combined, 5 task × 8 = 40 sample/step)
+  # ========================================================================
+  cmpl_p0_v5_smoke:
+    description: "Phase0 v5 smoke (2 epochs, 15 steps/epoch) — 验证改动正确性"
+    stage: pretrain
+    script: pretrain_backbone.py
+    track: automotive
+    pretrain_variant: v5
+    data_dir: data/车/processed
+    yolo_weights: outputs/车/weights/yolo26n.pt
+    epochs: 2
+    batch_size: 8
+    num_workers: 2
+    patience: 99
+    max_steps_per_epoch: 15
+    eval_every: 99
+    supcon_weight: 0.5
+    ce_weight: 0.5
+    mix_strategy: combined
+    label_namespace: global
+    supcon_temperature: 0.07
+    proj_dim: 64
+    feat_dim: 256
+    backbone_train_mode: indices
+    freeze_indices: "0,1,2,3,4,5"
+    unfreeze_epoch: 99
+    aux_scratch_head: true
+    lr_head: 1.0e-3
+    lr_backbone: 5.0e-4
+    out_weights: outputs/车/weights/cmpl_yolo26_supcon_v5_smoke.pt
+    out_checkpoint: outputs/车/checkpoints/pretrain_v5_smoke.pt
+    log_path: outputs/车/logs
+
+  cmpl_p0_v5:
+    description: "Phase0 v5 full (25 epochs, 300 steps/epoch, eval every 5 epochs) — CMPL 主结果"
+    stage: pretrain
+    script: pretrain_backbone.py
+    track: automotive
+    pretrain_variant: v5
+    data_dir: data/车/processed
+    yolo_weights: outputs/车/weights/yolo26n.pt
+    epochs: 25
+    batch_size: 8
+    num_workers: 2
+    patience: 8
+    max_steps_per_epoch: 300
+    eval_every: 1
+    supcon_weight: 0.5
+    ce_weight: 0.5
+    mix_strategy: combined
+    label_namespace: global
+    supcon_temperature: 0.07
+    proj_dim: 64
+    feat_dim: 256
+    backbone_train_mode: indices
+    freeze_indices: "0,1,2,3,4,5"
+    unfreeze_epoch: 99
+    aux_scratch_head: true
+    lr_head: 1.0e-3
+    lr_backbone: 5.0e-4
+    out_weights: outputs/车/weights/cmpl_yolo26_supcon_v5.pt
+    out_checkpoint: outputs/车/checkpoints/pretrain_v5_best.pt
+    log_path: outputs/车/logs
+
+  # ========================================================================
+  # Meta v5 (方案 A): ASDE d0 + CarDD val(train split) d2 → CarDD test d3
+  #   - ProtoNet + unfreeze backbone (backbone_meta_lr=1e-5, head_lr=1e-3)
+  #   - 2-way 5-shot; 方案 A: CarDD val 当 train 进 meta-train
+  #   - Meta train domains: 0,2 (ASDE=6350 + CarDD_train=1229); test_domain: 3
+  #   - 注意: domain_2 实际是 cardd_official_val(1229张)，但按 train 角色使用
+  #           domain_3(543张) 是官方 test，保持 holdout
+  # ========================================================================
+  cmpl_protonet_v5_meta_smoke:
+    description: "Meta v5 smoke (40 iters, 20 tasks eval) — 方案 A smoke"
+    stage: train
+    extends: cmpl_protonet_unfreeze
+    exp_name: cmpl_protonet_v5_meta
+    yolo_weights: outputs/车/weights/cmpl_yolo26_supcon_v5.pt
+    embed_dim: 256
+    train_domains: "0,2"
+    test_domain: 3
+    iters: 40
+    eval_every: 20
+    eval_tasks: 20
+    eval_patience: 99
+
+  cmpl_protonet_v5_meta:
+    description: "Meta v5 方案 A (500 iters, 100 tasks eval) — ASDE+CarDD_train → CarDD_test"
+    stage: train
+    extends: cmpl_protonet_unfreeze
+    exp_name: cmpl_protonet_v5_meta
+    data_dir_path: data/车/processed
+    checkpoint_path: outputs/车/checkpoints
+    yolo_weights: outputs/车/weights/cmpl_yolo26_supcon_v5.pt
+    embed_dim: 256
+    train_domains: "0,2"
+    test_domain: 3
+    iters: 500
+    eval_every: 10
+    eval_tasks: 100
+    eval_patience: 10
+
+  cmpl_eval_v5_meta:
+    description: "3-seed final eval for v5 meta (方案 A)"
+    extends: cmpl_final_eval
+    checkpoint: outputs/车/checkpoints/cmpl_protonet_v5_meta/best.pt
+    out_json: outputs/车/reports/final_eval_cmpl_v5_meta.json
+    yolo_weights: outputs/车/weights/cmpl_yolo26_supcon_v5.pt
+    embed_dim: 256
+    train_domains: "0,2"
+    test_domain: 3
+    meta_algorithm: protonet
+    freeze_backbone: false
+
+  # ========================================================================
+  # Meta v5-b (方案 B): ASDE d0 → CarDD test d3 (真跨域)
+  #   - 不用 CarDD train 进 meta-train，纯跨域
+  #   - 与 plan_v2 Protocol-M2 对应，预期 58-65%
+  # ========================================================================
+  cmpl_protonet_v5b_meta:
+    description: "Meta v5 方案 B (500 iters) — ASDE d0 → CarDD_test (真跨域)"
+    stage: train
+    extends: cmpl_protonet_unfreeze
+    exp_name: cmpl_protonet_v5b_meta
+    data_dir_path: data/车/processed
+    checkpoint_path: outputs/车/checkpoints
+    yolo_weights: outputs/车/weights/cmpl_yolo26_supcon_v5.pt
+    embed_dim: 256
+    train_domains: "0"
+    test_domain: 3
+    iters: 500
+    eval_every: 10
+    eval_tasks: 100
+    eval_patience: 10
+
+  cmpl_eval_v5b_meta:
+    description: "3-seed final eval for v5b meta (方案 B 真跨域)"
+    extends: cmpl_final_eval
+    checkpoint: outputs/车/checkpoints/cmpl_protonet_v5b_meta/best.pt
+    out_json: outputs/车/reports/final_eval_cmpl_v5b_meta.json
+    yolo_weights: outputs/车/weights/cmpl_yolo26_supcon_v5.pt
+    embed_dim: 256
+    train_domains: "0"
+    test_domain: 3
+    meta_algorithm: protonet
+    freeze_backbone: false
+
+  # ========================================================================
+  # Phase 0 v6 (CMPL): car-only 4 task combined+global SupCon+aux scratch head
+  #   - Task 池: cardd(0.40) + carparts(0.30) + minor_dent(0.20) + syndcar(0.10)
+  #   - 与 v5 不同: 完全删除 neu/asde/kolektor/mvtec_* (工业域污染车漆特征)
+  #   - 训练参数沿用 v5 设计: freeze [0..5] + supcon_ce 0.5/0.5 + 64d proj + aux
+  #   - 输出权重: outputs/车/weights/cmpl_yolo26_supcon_v6.pt
+  # ========================================================================
+  cmpl_p0_v6_smoke:
+    description: "Phase0 v6 smoke (2 epochs, 10 steps/epoch) — car-only 4 task, 验证打通"
+    stage: pretrain
+    script: pretrain_backbone.py
+    track: automotive
+    pretrain_variant: v6
+    data_dir: data/车/processed
+    yolo_weights: outputs/车/weights/yolo26n.pt
+    epochs: 2
+    batch_size: 8
+    num_workers: 0
+    patience: 99
+    max_steps_per_epoch: 10
+    eval_every: 99
+    supcon_weight: 0.5
+    ce_weight: 0.5
+    mix_strategy: combined
+    label_namespace: global
+    supcon_temperature: 0.07
+    proj_dim: 64
+    feat_dim: 256
+    backbone_train_mode: indices
+    freeze_indices: "0,1,2,3,4,5"
+    unfreeze_epoch: 99
+    aux_scratch_head: true
+    lr_head: 1.0e-3
+    lr_backbone: 5.0e-4
+    out_weights: outputs/车/weights/cmpl_yolo26_supcon_v6_smoke.pt
+    out_checkpoint: outputs/车/checkpoints/pretrain_v6_smoke.pt
+    log_path: outputs/车/logs
+
+  cmpl_p0_v6:
+    description: "Phase0 v6 full (25 epochs, 300 steps/epoch) — CMPL car-only 4 task 主结果"
+    stage: pretrain
+    script: pretrain_backbone.py
+    track: automotive
+    pretrain_variant: v6
+    data_dir: data/车/processed
+    yolo_weights: outputs/车/weights/yolo26n.pt
+    epochs: 25
+    batch_size: 8
+    num_workers: 2
+    patience: 8
+    max_steps_per_epoch: 300
+    eval_every: 1
+    supcon_weight: 0.5
+    ce_weight: 0.5
+    mix_strategy: combined
+    label_namespace: global
+    supcon_temperature: 0.07
+    proj_dim: 64
+    feat_dim: 256
+    backbone_train_mode: indices
+    freeze_indices: "0,1,2,3,4,5"
+    unfreeze_epoch: 99
+    aux_scratch_head: true
+    lr_head: 1.0e-3
+    lr_backbone: 5.0e-4
+    out_weights: outputs/车/weights/cmpl_yolo26_supcon_v6.pt
+    out_checkpoint: outputs/车/checkpoints/pretrain_v6_best.pt
+    log_path: outputs/车/logs
+
+  # ========================================================================
+  # Meta v6 (car-only backbone): ProtoNet + v6 backbone -> CarDD test
+  #   - 用 cmpl_yolo26_supcon_v6.pt 作为预训练权重
+  #   - train_domains=0 (ASDE 已删除, 仅用 CarDD official train pool 不入域)
+  #   - 走 cmpl_protonet_v5_meta 同协议, 只是换 backbone
+  # ========================================================================
+  cmpl_protonet_v6_meta_smoke:
+    description: "Meta v6 smoke (40 iters, 20 tasks eval) — car-only backbone"
+    stage: train
+    extends: cmpl_protonet_unfreeze
+    exp_name: cmpl_protonet_v6_meta
+    yolo_weights: outputs/车/weights/cmpl_yolo26_supcon_v6.pt
+    embed_dim: 256
+    train_domains: "0"
+    test_domain: 3
+    iters: 40
+    eval_every: 20
+    eval_tasks: 20
+    eval_patience: 99
+
+  cmpl_protonet_v6_meta:
+    description: "Meta v6 (500 iters) — v6 backbone (car-only) -> CarDD test"
+    stage: train
+    extends: cmpl_protonet_unfreeze
+    exp_name: cmpl_protonet_v6_meta
+    data_dir_path: data/车/processed
+    checkpoint_path: outputs/车/checkpoints
+    yolo_weights: outputs/车/weights/cmpl_yolo26_supcon_v6.pt
+    embed_dim: 256
+    train_domains: "0"
+    test_domain: 3
+    iters: 500
+    eval_every: 10
+    eval_tasks: 100
+    eval_patience: 10
+
+  cmpl_eval_v6_meta:
+    description: "3-seed final eval for v6 meta (car-only backbone)"
+    extends: cmpl_final_eval
+    checkpoint: outputs/车/checkpoints/cmpl_protonet_v6_meta/best.pt
+    out_json: outputs/车/reports/final_eval_cmpl_v6_meta.json
+    yolo_weights: outputs/车/weights/cmpl_yolo26_supcon_v6.pt
+    embed_dim: 256
+    train_domains: "0"
+    test_domain: 3
+    meta_algorithm: protonet
+    freeze_backbone: false
+
+  # ========================================================================
+  # Phase 0 v7: 修复 carparts 类不均衡（42:1）+ SupCon 小类退化
+  #   - 沿用 v6 数据组成（cardd + carparts + minor_dent + syndcar）
+  #   - 改动 4 项，全部通过 argparse 透传，航空链路默认值不变 → 零影响
+  #     1) temperature_adapt: true + tau=0.05
+  #     2) pretrain_sampler.class_balanced（仅作用于 carparts / syndcar）
+  #     3) per_task_class_weight（carparts / syndcar 启用 inverse_sqrt）
+  #     4) SupConLoss 小类兜底（代码层，默认行为不变）
+  #   - 任务权重 0.25 / 0.25 / 0.25 / 0.25 维持不动
+  #   - 输出权重: outputs/车/weights/cmpl_yolo26_supcon_v7.pt
+  # ========================================================================
+  cmpl_p0_v7_smoke:
+    description: "Phase0 v7 smoke (2 epochs, 10 steps) — 验证 class-balanced + adapt 链路通"
+    stage: pretrain
+    script: pretrain_backbone.py
+    track: automotive
+    pretrain_variant: v7
+    data_dir: data/车/processed
+    yolo_weights: outputs/车/weights/cmpl_yolo26_supcon_v6.pt
+    epochs: 2
+    batch_size: 8
+    num_workers: 0
+    patience: 99
+    max_steps_per_epoch: 10
+    eval_every: 99
+    supcon_weight: 0.5
+    ce_weight: 0.5
+    mix_strategy: combined
+    label_namespace: global
+    supcon_temperature: 0.05
+    temperature_adapt: true
+    proj_dim: 64
+    feat_dim: 256
+    backbone_train_mode: indices
+    freeze_indices: "0,1,2,3,4,5"
+    unfreeze_epoch: 99
+    aux_scratch_head: true
+    lr_head: 1.0e-3
+    lr_backbone: 5.0e-4
+    pretrain_sampler: class_balanced
+    pretrain_sampler_apply: []
+    per_task_class_weight: inverse_sqrt
+    per_task_class_weight_apply: [carparts, syndcar]
+    out_weights: outputs/车/weights/cmpl_yolo26_supcon_v7_smoke.pt
+    out_checkpoint: outputs/车/checkpoints/pretrain_v7_smoke.pt
+    log_path: outputs/车/logs
+
+  cmpl_p0_v7:
+    description: "Phase0 v7 full (25 epochs, 300 steps) — class-balanced + tau=0.05 adapt"
+    stage: pretrain
+    script: pretrain_backbone.py
+    track: automotive
+    pretrain_variant: v7
+    data_dir: data/车/processed
+    yolo_weights: outputs/车/weights/cmpl_yolo26_supcon_v6.pt
+    epochs: 25
+    batch_size: 8
+    num_workers: 2
+    patience: 8
+    max_steps_per_epoch: 300
+    eval_every: 1
+    supcon_weight: 0.5
+    ce_weight: 0.5
+    mix_strategy: combined
+    label_namespace: global
+    supcon_temperature: 0.05
+    temperature_adapt: true
+    proj_dim: 64
+    feat_dim: 256
+    backbone_train_mode: indices
+    freeze_indices: "0,1,2,3,4,5"
+    unfreeze_epoch: 99
+    aux_scratch_head: true
+    lr_head: 1.0e-3
+    lr_backbone: 5.0e-4
+    pretrain_sampler: class_balanced
+    pretrain_sampler_apply: []
+    per_task_class_weight: inverse_sqrt
+    per_task_class_weight_apply: [carparts, syndcar]
+    out_weights: outputs/车/weights/cmpl_yolo26_supcon_v7.pt
+    out_checkpoint: outputs/车/checkpoints/pretrain_v7_best.pt
+    log_path: outputs/车/logs
+
+  # ========================================================================
+  # Phase 0 v8: Focal Loss (carparts) + Uncertainty Weighting (all tasks)
+  #   - Inherit from v7 backbone (cmpl_yolo26_supcon_v7.pt)
+  #   - carparts: Focal Loss (gamma=2.0) instead of CE — focus on hard minority samples
+  #   - All tasks: Uncertainty weighting (Kendall et al., 2018) — auto-balances task weights
+  #   - cardd: label_smoothing=0.05 + extended 35 epochs
+  #   - Expected: carparts 0.464 → 0.55+, cardd 0.899 → 0.92+, total score 0.793 → 0.85+
+  # ========================================================================
+  cmpl_p0_v8:
+    description: "Phase0 v8: carparts Focal+uncertainty weight; cardd label_smooth+35ep"
+    stage: pretrain
+    script: pretrain_backbone.py
+    track: automotive
+    pretrain_variant: v8
+    data_dir: data/车/processed
+    yolo_weights: outputs/车/weights/cmpl_yolo26_supcon_v7.pt
+    epochs: 35
+    batch_size: 4
+    num_workers: 2
+    patience: 10
+    max_steps_per_epoch: 300
+    eval_every: 1
+    supcon_weight: 0.5
+    ce_weight: 0.5
+    mix_strategy: combined
+    label_namespace: global
+    supcon_temperature: 0.05
+    temperature_adapt: true
+    proj_dim: 64
+    feat_dim: 256
+    backbone_train_mode: indices
+    freeze_indices: "0,1,2,3,4,5"
+    unfreeze_epoch: 99
+    aux_scratch_head: true
+    lr_head: 1.0e-3
+    lr_backbone: 5.0e-4
+    pretrain_sampler: class_balanced
+    pretrain_sampler_apply: []
+    per_task_class_weight: inverse_sqrt
+    per_task_class_weight_apply: [carparts, syndcar]
+    label_smoothing: 0.05
+    # v8 new:
+    use_focal_for: carparts
+    focal_gamma: 2.0
+    uncertainty_weighting: true
+    out_weights: outputs/车/weights/cmpl_yolo26_supcon_v8.pt
+    out_checkpoint: outputs/车/checkpoints/pretrain_v8_best.pt
+    log_path: outputs/车/logs
+
+  cmpl_p0_v8_smoke:
+    description: "Phase0 v8 smoke (2 epochs, 20 steps) — verify focal+uncertainty链路通"
+    extends: cmpl_p0_v8
+    epochs: 2
+    patience: 99
+    max_steps_per_epoch: 20
+    eval_every: 99
+
+  # ========================================================================
+  # Phase 0 v9: 全面重构 (P0-P5 修复) — 维持 v8 数据集, 只换训练策略
+  #   - 数据: cardd + carparts (active_tasks) — 去掉 minor_dent (单类无梯度) + syndcar (合成域偏移)
+  #   - P0: uncertainty_weighting warmup + 修复初始化 (log_sigma=-0.693 而非 0)
+  #   - P1: eval_metric=global_retrieval_top1 (跨任务 SupCon 检索, 衡量 embedding 质量)
+  #   - P1: val_split_strategy=stratified_kfold (carparts 5-fold, 验证集更稳)
+  #   - P3: label_namespace=per_task (避免 cardd.scratch 与 carparts.Scratch 负迁移)
+  #   - P3: aux_scratch_head 保留 (跨任务 scratch-family 融合, 但与 SupCon 解耦)
+  #   - P4: LDAM for carparts (s=0.3, 长尾决策边界)
+  #   - P4: 解冻深层 (freeze 0-15, 训练 16-22) — 允许 backbone 学车漆
+  #   - 续训: 从 cmpl_yolo26_supcon_v8.pt 出发
+  #   - 期望: carparts 0.46→0.65+, cardd 0.84→0.90+, total score 0.75→0.85+
+  # ========================================================================
+  cmpl_p0_v9:
+    description: "Phase0 v9: per_task SupCon + LDAM carparts + retrieval eval + kfold + warmup UW"
+    stage: pretrain
+    script: pretrain_backbone.py
+    track: automotive
+    pretrain_variant: v9
+    data_dir: data/车/processed
+    yolo_weights: outputs/车/weights/cmpl_yolo26_supcon_v8.pt
+    # P2: drop minor_dent (single-class no-gradient) and syndcar (synthetic domain shift)
+    active_tasks: "cardd,carparts"
+    # P4: only freeze shallow blocks, let deep layers learn car paint texture
+    epochs: 30
+    batch_size: 4
+    num_workers: 2
+    patience: 8
+    max_steps_per_epoch: 300
+    eval_every: 1
+    supcon_weight: 0.3
+    ce_weight: 0.7
+    mix_strategy: combined
+    label_namespace: per_task
+    supcon_temperature: 0.07
+    temperature_adapt: false
+    proj_dim: 64
+    feat_dim: 256
+    backbone_train_mode: indices
+    freeze_indices: "0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15"
+    unfreeze_epoch: 1
+    aux_scratch_head: true
+    lr_head: 1.0e-3
+    lr_backbone: 5.0e-5
+    # Class imbalance handling
+    pretrain_sampler: class_balanced
+    pretrain_sampler_apply: [cardd, carparts]
+    per_task_class_weight: inverse_sqrt
+    per_task_class_weight_apply: [carparts]
+    # P4: LDAM for carparts (long-tail decision boundary)
+    use_ldam_for: carparts
+    ldam_max_margin: 0.3
+    label_smoothing: 0.05
+    # P0: uncertainty with warmup (disabled for first 5 epochs)
+    uncertainty_weighting: true
+    uncertainty_warmup_epochs: 5
+    # P1: k-fold val (more stable validation for carparts)
+    val_split_strategy: stratified_kfold
+    val_split_k: 5
+    val_split_fold: 0
+    # P1: global retrieval top-1 as early-stop metric
+    eval_metric: global_retrieval_top1
+    out_weights: outputs/车/weights/cmpl_yolo26_supcon_v9.pt
+    out_checkpoint: outputs/车/checkpoints/pretrain_v9_best.pt
+    log_path: outputs/车/logs
+
+  cmpl_p0_v9_smoke:
+    description: "Phase0 v9 smoke (2 epochs, 20 steps) — verify per_task + LDAM + retrieval 链路通"
+    extends: cmpl_p0_v9
+    epochs: 2
+    patience: 99
+    max_steps_per_epoch: 20
+    eval_every: 99
+    eval_metric: mean_acc  # smoke uses mean_acc to avoid zero-supcon fast-path
+
+  # ========================================================================
+  # Meta v7 (car-only backbone): ProtoNet + v7 backbone (tau=0.05 adapt) -> CarDD test
+  #   - 用 cmpl_yolo26_supcon_v7.pt (best score=0.793) 作为预训练权重
+  #   - train_domains=0 (CarDD official train pool)
+  #   - 走 cmpl_protonet_v6_meta 同协议, 只是换 backbone
+  # ========================================================================
+  cmpl_protonet_v7_meta_smoke:
+    description: "Meta v7 smoke (40 iters, 20 tasks eval) — v7 backbone (tau=0.05 adapt)"
+    stage: train
+    extends: cmpl_protonet_unfreeze
+    exp_name: cmpl_protonet_v7_meta
+    yolo_weights: outputs/车/weights/cmpl_yolo26_supcon_v7.pt
+    embed_dim: 256
+    train_domains: "0"
+    test_domain: 3
+    iters: 40
+    eval_every: 20
+    eval_tasks: 20
+    eval_patience: 99
+
+  cmpl_protonet_v7_meta:
+    description: "Meta v7 (500 iters) — v7 backbone (tau=0.05 adapt) -> CarDD test"
+    stage: train
+    extends: cmpl_protonet_unfreeze
+    exp_name: cmpl_protonet_v7_meta
+    data_dir_path: data/车/processed
+    checkpoint_path: outputs/车/checkpoints
+    yolo_weights: outputs/车/weights/cmpl_yolo26_supcon_v7.pt
+    embed_dim: 256
+    train_domains: "0"
+    test_domain: 3
+    iters: 500
+    eval_every: 10
+    eval_tasks: 100
+    eval_patience: 10
+
+  cmpl_eval_v7_meta:
+    description: "3-seed final eval for v7 meta (v7 backbone tau=0.05 adapt)"
+    extends: cmpl_final_eval
+    checkpoint: outputs/车/checkpoints/cmpl_protonet_v7_meta/best.pt
+    out_json: outputs/车/reports/final_eval_cmpl_v7_meta.json
+    yolo_weights: outputs/车/weights/cmpl_yolo26_supcon_v7.pt
+    embed_dim: 256
+    train_domains: "0"
+    test_domain: 3
+    meta_algorithm: protonet
+    freeze_backbone: false
+
+  # ========================================================================
+  # Phase 1 v9 meta: ProtoNet unfreeze with v9 backbone (LDAM + kfold + per_task SupCon)
+  #   - Meta-train domain: 0 (ASDE) — same as v6/v7 for fair backbone comparison
+  #   - Meta-test domain: 3 (CarDD official test)
+  #   - iters: 500 (same as v6/v7 meta)
+  #   - 期望: 与 v6/v7 meta 对比, 看 backbone 改进对 meta-test acc 的边际收益
+  # ========================================================================
+  cmpl_protonet_v9_meta:
+    description: "Meta v9 (500 iters) — v9 backbone (LDAM+kfold+per_task SupCon) -> CarDD test"
+    stage: train
+    extends: cmpl_protonet_unfreeze
+    exp_name: cmpl_protonet_v9_meta
+    data_dir_path: data/车/processed
+    checkpoint_path: outputs/车/checkpoints
+    yolo_weights: outputs/车/weights/cmpl_yolo26_supcon_v9.pt
+    embed_dim: 256
+    train_domains: "0"
+    test_domain: 3
+    iters: 500
+    eval_every: 10
+    eval_tasks: 100
+    eval_patience: 10
+
+  cmpl_protonet_v9_meta_smoke:
+    description: "Meta v9 smoke (40 iters, 20 tasks) — verify v9 backbone loads + training loop OK"
+    stage: train
+    extends: cmpl_protonet_unfreeze
+    exp_name: cmpl_protonet_v9_meta_smoke
+    data_dir_path: data/车/processed
+    checkpoint_path: outputs/车/checkpoints
+    yolo_weights: outputs/车/weights/cmpl_yolo26_supcon_v9.pt
+    embed_dim: 256
+    train_domains: "0"
+    test_domain: 3
+    iters: 40
+    eval_every: 20
+    eval_tasks: 20
+    eval_patience: 99
+
+  # ========================================================================
+  # M1 落地方案: train_domains="0,2" — domain_0 ASDE + domain_2 CarDD val
+  #   - 预期: v10_meta 0.85~0.87 (vs v9 0.848 baseline)
+  #   - backbone: 沿用 v9 (cmpl_yolo26_supcon_v9.pt, 不重训 P0)
+  #   - 协议硬约束保留: test_domain=3 (CarDD test holdout, 543 specimen)
+  # ========================================================================
+  cmpl_protonet_v10_meta_smoke:
+    description: "M1 v10 smoke (40 iters, 20 tasks) — verify train_domains=0,2 loads + no crash"
+    stage: train
+    extends: cmpl_protonet_unfreeze
+    exp_name: cmpl_protonet_v10_meta_smoke
+    data_dir_path: data/车/processed
+    checkpoint_path: outputs/车/checkpoints
+    yolo_weights: outputs/车/weights/cmpl_yolo26_supcon_v9.pt
+    embed_dim: 256
+    train_domains: "0,2"
+    test_domain: 3
+    iters: 40
+    eval_every: 20
+    eval_tasks: 20
+    eval_patience: 99
+
+  cmpl_protonet_v10_meta:
+    description: "M1 v10 (500 iters) — train_domains=0,2 (ASDE + CarDD val) -> CarDD test"
+    stage: train
+    extends: cmpl_protonet_unfreeze
+    exp_name: cmpl_protonet_v10_meta
+    data_dir_path: data/车/processed
+    checkpoint_path: outputs/车/checkpoints
+    yolo_weights: outputs/车/weights/cmpl_yolo26_supcon_v9.pt
+    embed_dim: 256
+    train_domains: "0,2"
+    test_domain: 3
+    iters: 500
+    eval_every: 10
+    eval_tasks: 100
+    eval_patience: 10
+
+  cmpl_eval_v10_meta:
+    description: "3-seed final eval for v10 meta (M1: train_domains=0,2)"
+    extends: cmpl_final_eval
+    checkpoint: outputs/车/checkpoints/cmpl_protonet_v10_meta/best.pt
+    out_json: outputs/车/reports/final_eval_cmpl_v10_meta.json
+    yolo_weights: outputs/车/weights/cmpl_yolo26_supcon_v9.pt
+    embed_dim: 256
+    train_domains: "0,2"
+    test_domain: 3
+    meta_algorithm: protonet
+    freeze_backbone: false
+
+  # ========================================================================
+  # M2 v11 (基于 M1 修复 overfit): train_domains="0,2" + freeze_backbone=True
+  #   - 假设: v10 best @ iter50=0.87 但 eval@150=0.85 → overfit
+  #   - 改动: 训练时冻结 backbone (eval 协议一致) + eval_patience=5
+  #   - backbone 已经在 v9 supcon 训好, meta 阶段再更新只会让 backbone 漂移
+  #   - 预期: 比 v10 更稳 (3-seed eval mean ± std 区间更窄)
+  # ========================================================================
+  cmpl_protonet_v11_meta_smoke:
+    description: "M2 v11 smoke (40 iters) — verify freeze_backbone train path"
+    stage: train
+    extends: cmpl_protonet_freeze
+    exp_name: cmpl_protonet_v11_meta_smoke
+    data_dir_path: data/车/processed
+    checkpoint_path: outputs/车/checkpoints
+    yolo_weights: outputs/车/weights/cmpl_yolo26_supcon_v9.pt
+    embed_dim: 256
+    train_domains: "0,2"
+    test_domain: 3
+    iters: 40
+    eval_every: 20
+    eval_tasks: 20
+    eval_patience: 99
+
+  cmpl_protonet_v11_meta:
+    description: "M2 v11 (500 iters) — freeze backbone train + patience=5 + min_delta=0.005"
+    stage: train
+    extends: cmpl_protonet_freeze
+    exp_name: cmpl_protonet_v11_meta
+    data_dir_path: data/车/processed
+    checkpoint_path: outputs/车/checkpoints
+    yolo_weights: outputs/车/weights/cmpl_yolo26_supcon_v9.pt
+    embed_dim: 256
+    train_domains: "0,2"
+    test_domain: 3
+    iters: 500
+    eval_every: 10
+    eval_tasks: 50
+    eval_patience: 5
+    early_stop_min_delta: 0.005
+
+  cmpl_eval_v11_meta:
+    description: "3-seed final eval for v11 meta (M2: freeze_backbone train)"
+    extends: cmpl_final_eval
+    checkpoint: outputs/车/checkpoints/cmpl_protonet_v11_meta/best.pt
+    out_json: outputs/车/reports/final_eval_cmpl_v11_meta.json
+    yolo_weights: outputs/车/weights/cmpl_yolo26_supcon_v9.pt
+    embed_dim: 256
+    train_domains: "0,2"
+    test_domain: 3
+    meta_algorithm: protonet
+    freeze_backbone: true
+    protonet_prototype_type: mean
+    protonet_distance: euclidean
+
+  # ========================================================================
+  # v12: 方案C trim_mean 移植 (trail.txt 经验)
+  #   - v10/v11 model 是冻结/解冻 backbone 训完的 head
+  #   - v12 只在 final_eval 阶段改 prototype 计算 (5-shot 去掉 1 个最远点)
+  #   - 4 组合设计 (v10/v11) × (mean/trim_mean) → 验证 freeze + trim 协同
+  #   - 不重训, 复用 v10/v11 best.pt
+  # ========================================================================
+  cmpl_eval_v12_v10_mean:
+    description: "v12 control: v10 model + mean prototype (与 v10 默认协议对齐)"
+    extends: cmpl_final_eval
+    checkpoint: outputs/车/checkpoints/cmpl_protonet_v10_meta/best.pt
+    out_json: outputs/车/reports/final_eval_cmpl_v12_v10_mean.json
+    yolo_weights: outputs/车/weights/cmpl_yolo26_supcon_v9.pt
+    embed_dim: 256
+    train_domains: "0,2"
+    test_domain: 3
+    meta_algorithm: protonet
+    freeze_backbone: false
+    protonet_prototype_type: mean
+    protonet_distance: euclidean
+
+  cmpl_eval_v12_v10_trim:
+    description: "v12 test A: v10 model + trim_mean (方案C 移植, 验证对 unfreeze 模型是否有效)"
+    extends: cmpl_final_eval
+    checkpoint: outputs/车/checkpoints/cmpl_protonet_v10_meta/best.pt
+    out_json: outputs/车/reports/final_eval_cmpl_v12_v10_trim.json
+    yolo_weights: outputs/车/weights/cmpl_yolo26_supcon_v9.pt
+    embed_dim: 256
+    train_domains: "0,2"
+    test_domain: 3
+    meta_algorithm: protonet
+    freeze_backbone: false
+    protonet_prototype_type: trim_mean
+    protonet_distance: euclidean
+
+  cmpl_eval_v12_v11_mean:
+    description: "v12 control: v11 model + mean prototype (v11 默认协议对齐)"
+    extends: cmpl_final_eval
+    checkpoint: outputs/车/checkpoints/cmpl_protonet_v11_meta/best.pt
+    out_json: outputs/车/reports/final_eval_cmpl_v12_v11_mean.json
+    yolo_weights: outputs/车/weights/cmpl_yolo26_supcon_v9.pt
+    embed_dim: 256
+    train_domains: "0,2"
+    test_domain: 3
+    meta_algorithm: protonet
+    freeze_backbone: true
+    protonet_prototype_type: mean
+    protonet_distance: euclidean
+
+  cmpl_eval_v12_v11_trim:
+    description: "v12 主线: v11 model + trim_mean (freeze backbone + 鲁棒原型, 预期 +1~3pt)"
+    extends: cmpl_final_eval
+    checkpoint: outputs/车/checkpoints/cmpl_protonet_v11_meta/best.pt
+    out_json: outputs/车/reports/final_eval_cmpl_v12_v11_trim.json
+    yolo_weights: outputs/车/weights/cmpl_yolo26_supcon_v9.pt
+    embed_dim: 256
+    train_domains: "0,2"
+    test_domain: 3
+    meta_algorithm: protonet
+    freeze_backbone: true
+    protonet_prototype_type: trim_mean
+    protonet_distance: euclidean
+
+  cmpl_eval_v9_meta:
+    description: "3-seed final eval for v9 meta (v9 backbone LDAM+kfold)"
+    extends: cmpl_final_eval
+    checkpoint: outputs/车/checkpoints/cmpl_protonet_v9_meta/best.pt
+    out_json: outputs/车/reports/final_eval_cmpl_v9_meta.json
+    yolo_weights: outputs/车/weights/cmpl_yolo26_supcon_v9.pt
+    embed_dim: 256
+    train_domains: "0"
+    test_domain: 3
+    meta_algorithm: protonet
+    freeze_backbone: false
+
+  # ========================================================================
+  # CFF smoke: 验证多尺度 CFF + CBAM + ProtoNet 链路
+  #   - 复用 v9 backbone (已有预训练权重)
+  #   - 新增 use_multiscale_cff=true + rgb_cbam=true
+  #   - 与 cmpl_protonet_v9_meta_smoke 对比（同样 40 iters / 20 eval tasks）
+  # ========================================================================
+  cmpl_protonet_cff_smoke:
+    description: "CFF smoke (40 iters, 20 tasks) — verify multi-scale CFF+CBAM train path"
+    stage: train
+    extends: cmpl_protonet_unfreeze
+    exp_name: cmpl_protonet_cff_smoke
+    data_dir_path: data/车/processed
+    checkpoint_path: outputs/车/checkpoints
+    yolo_weights: outputs/车/weights/cmpl_yolo26_supcon_v9.pt
+    embed_dim: 128
+    train_domains: "0"
+    test_domain: 3
+    iters: 40
+    eval_every: 20
+    eval_tasks: 20
+    eval_patience: 99
+    # --- CFF 实验参数 ---
+    use_multiscale_cff: true
+    rgb_cbam: true
+    protonet_prototype_type: trim_mean
+    protonet_distance: euclidean
+
+  # ========================================================================
+  # CFF 正式训练 (500 iters / 100 eval tasks)
+  #   - 复用 v9 backbone (已有预训练权重)
+  #   - use_multiscale_cff + rgb_cbam + trim_mean
+  #   - 与 cmpl_protonet_v9_meta (500 iters) 对比
+  # ========================================================================
+  cmpl_protonet_cff:
+    description: "CFF 正式训练 (500 iters, 100 eval tasks) — multi-scale CFF+CBAM ProtoNet"
+    stage: train
+    extends: cmpl_protonet_unfreeze
+    exp_name: cmpl_protonet_cff
+    data_dir_path: data/车/processed
+    checkpoint_path: outputs/车/checkpoints
+    yolo_weights: outputs/车/weights/cmpl_yolo26_supcon_v9.pt
+    embed_dim: 128
+    train_domains: "0"
+    test_domain: 3
+    iters: 500
+    eval_every: 10
+    eval_tasks: 100
+    eval_patience: 10
+    # --- CFF 实验参数 ---
+    use_multiscale_cff: true
+    rgb_cbam: true
+    protonet_prototype_type: trim_mean
+    protonet_distance: euclidean
+
+  # ========================================================================
+  # v13: Adaptive Prototype 实验 (cross-attention prototype-query 交互)
+  #   - 复用 v9 backbone (已有预训练权重)
+  #   - use_multiscale_cff + rgb_cbam + trim_mean + adaptive_proto
+  #   - 对照: cmpl_protonet_cff (无 adaptive_proto)
+  # ========================================================================
+  cmpl_protonet_v13_adaptive:
+    description: "v13 (500 iters) — CFF + Adaptive Prototype (cross-attn query-aware prototype)"
+    stage: train
+    extends: cmpl_protonet_unfreeze
+    exp_name: cmpl_protonet_v13_adaptive
+    data_dir_path: data/车/processed
+    checkpoint_path: outputs/车/checkpoints
+    yolo_weights: outputs/车/weights/cmpl_yolo26_supcon_v9.pt
+    embed_dim: 128
+    train_domains: "0"
+    test_domain: 3
+    iters: 500
+    eval_every: 10
+    eval_tasks: 100
+    eval_patience: 10
+    # --- CFF + Adaptive Proto 参数 ---
+    use_multiscale_cff: true
+    rgb_cbam: true
+    use_adaptive_proto: true
+    protonet_prototype_type: trim_mean
+    protonet_distance: euclidean
+
+  # ========================================================================
+  # NEU-CLS 6-class metal surface defect meta-learning experiments
+  #   - Data: data/NEU-CLS/processed/neu_cls/domain_{0,1,2}/
+  #   - 6 classes: Cr, In, Pa, PS, RS, Sc (300/class total → 200/50/50 per domain)
+  #   - Phase 0 pretrain: neu_yolo26_supcon_pretrain.pt (训完前用 cmpl_v9 backbone 基线)
+  #   - 域内分割模拟 R2-Net 跨域: domain_0=train, domain_2=test (同一数据集不同实例)
+  # ========================================================================
+
+  # --- NEU-CLS meta smoke: 先用 automotive 权重跑基线 ---
+  neu_protonet_smoke:
+    description: "NEU-CLS smoke (40 iters) — cmpl_v9 backbone 基线, 6w5s, domain_0->domain_2"
+    stage: train
+    script: train.py
+    track: automotive
+    data_dir_path: data/NEU-CLS/processed
+    dataset_name: neu_cls
+    checkpoint_path: outputs/车/checkpoints
+    yolo_weights: outputs/车/weights/cmpl_yolo26_supcon_v9.pt
+    embed_dim: 256
+    ways: 6
+    shots: 5
+    train_domains: "0"
+    test_domain: 2
+    meta_algorithm: protonet
+    freeze_backbone: false
+    protonet_distance: euclidean
+    protonet_prototype_type: mean
+    rgb_only: true
+    first_order: true
+    fast_lr: 0.02
+    adapt_steps: 5
+    backbone_meta_lr: 1e-5
+    head_meta_lr: 1e-3
+    iters: 40
+    eval_every: 20
+    eval_tasks: 20
+    eval_patience: 99
+    seed: 42
+    w_rl_max: 0
+    exp_name: neu_protonet_smoke
+
+  # --- NEU-CLS meta full (500 iters) 基线 ---
+  neu_protonet_baseline:
+    description: "NEU-CLS 6w5s 基线 (500 iters, 100 tasks eval) — cmpl_v9 backbone"
+    stage: train
+    script: train.py
+    track: automotive
+    data_dir_path: data/NEU-CLS/processed
+    dataset_name: neu_cls
+    checkpoint_path: outputs/车/checkpoints
+    yolo_weights: outputs/车/weights/cmpl_yolo26_supcon_v9.pt
+    embed_dim: 256
+    ways: 6
+    shots: 5
+    train_domains: "0"
+    test_domain: 2
+    meta_algorithm: protonet
+    freeze_backbone: false
+    protonet_distance: euclidean
+    protonet_prototype_type: mean
+    rgb_only: true
+    first_order: true
+    fast_lr: 0.02
+    adapt_steps: 5
+    backbone_meta_lr: 1e-5
+    head_meta_lr: 1e-3
+    iters: 500
+    eval_every: 10
+    eval_tasks: 100
+    eval_patience: 10
+    seed: 42
+    w_rl_max: 0
+    exp_name: neu_protonet_baseline
+
+  # --- NEU-CLS meta: 用 trim_mean (方案C 移植) ---
+  neu_protonet_trim:
+    description: "NEU-CLS 6w5s trim_mean (方案C 移植, 预期 +1~2pt)"
+    stage: train
+    script: train.py
+    track: automotive
+    data_dir_path: data/NEU-CLS/processed
+    dataset_name: neu_cls
+    checkpoint_path: outputs/车/checkpoints
+    yolo_weights: outputs/车/weights/cmpl_yolo26_supcon_v9.pt
+    embed_dim: 256
+    ways: 6
+    shots: 5
+    train_domains: "0"
+    test_domain: 2
+    meta_algorithm: protonet
+    freeze_backbone: false
+    protonet_distance: euclidean
+    protonet_prototype_type: trim_mean
+    rgb_only: true
+    first_order: true
+    fast_lr: 0.02
+    adapt_steps: 5
+    backbone_meta_lr: 1e-5
+    head_meta_lr: 1e-3
+    iters: 500
+    eval_every: 10
+    eval_tasks: 100
+    eval_patience: 10
+    seed: 42
+    w_rl_max: 0
+    exp_name: neu_protonet_trim
+
+  # --- NEU-CLS meta: CFF + CBAM (NEU 专属 backbone 后) ---
+  neu_protonet_cff:
+    description: "NEU-CLS 6w5s CFF+CBAM (NEU 专属 backbone)"
+    stage: train
+    script: train.py
+    track: automotive
+    data_dir_path: data/NEU-CLS/processed
+    dataset_name: neu_cls
+    checkpoint_path: outputs/车/checkpoints
+    yolo_weights: outputs/车/weights/neu_yolo26_supcon_pretrain.pt
+    embed_dim: 128
+    ways: 6
+    shots: 5
+    train_domains: "0"
+    test_domain: 2
+    meta_algorithm: protonet
+    freeze_backbone: false
+    protonet_distance: euclidean
+    protonet_prototype_type: trim_mean
+    use_multiscale_cff: true
+    rgb_cbam: true
+    rgb_only: true
+    first_order: true
+    fast_lr: 0.02
+    adapt_steps: 5
+    backbone_meta_lr: 1e-5
+    head_meta_lr: 1e-3
+    iters: 500
+    eval_every: 10
+    eval_tasks: 100
+    eval_patience: 10
+    seed: 42
+    w_rl_max: 0
+    exp_name: neu_protonet_cff
+
+  # ========================================================================
+  # NEU-CLS Phase 0 Pretrain (NEU-only backbone)
+  #   - 训完后输出: outputs/车/weights/neu_yolo26_supcon_pretrain.pt
+  #   - meta 训练: neu_protonet_cff 使用此权重
+  # ========================================================================
+
+  neu_p0_smoke:
+    description: "NEU Phase0 smoke (2 epochs, 15 steps) — 验证 neu 链路通"
+    stage: pretrain
+    script: pretrain.py
+    track: automotive
+    pretrain_variant: neu
+    data_dir: data/NEU-CLS/processed
+    yolo_weights: outputs/车/weights/yolo26n.pt
+    epochs: 2
+    batch_size: 8
+    num_workers: 0
+    patience: 99
+    max_steps_per_epoch: 15
+    eval_every: 99
+    supcon_weight: 0.5
+    ce_weight: 0.5
+    mix_strategy: combined
+    label_namespace: global
+    supcon_temperature: 0.07
+    proj_dim: 64
+    feat_dim: 256
+    backbone_train_mode: indices
+    freeze_indices: "0,1,2,3,4,5"
+    unfreeze_epoch: 99
+    aux_scratch_head: false
+    lr_head: 1.0e-3
+    lr_backbone: 5.0e-4
+    out_weights: outputs/车/weights/neu_yolo26_supcon_pretrain_smoke.pt
+    out_checkpoint: outputs/车/checkpoints/pretrain_neu_smoke.pt
+    log_path: outputs/车/logs
+
+  neu_p0:
+    description: "NEU Phase0 full (25 epochs, 300 steps) — NEU 专属 backbone 主结果"
+    stage: pretrain
+    script: pretrain.py
+    track: automotive
+    pretrain_variant: neu
+    data_dir: data/NEU-CLS/processed
+    yolo_weights: outputs/车/weights/yolo26n.pt
+    epochs: 25
+    batch_size: 8
+    num_workers: 2
+    patience: 8
+    max_steps_per_epoch: 300
+    eval_every: 1
+    supcon_weight: 0.5
+    ce_weight: 0.5
+    mix_strategy: combined
+    label_namespace: global
+    supcon_temperature: 0.07
+    proj_dim: 64
+    feat_dim: 256
+    backbone_train_mode: indices
+    freeze_indices: "0,1,2,3,4,5"
+    unfreeze_epoch: 99
+    aux_scratch_head: false
+    lr_head: 1.0e-3
+    lr_backbone: 5.0e-4
+    out_weights: outputs/车/weights/neu_yolo26_supcon_pretrain.pt
+    out_checkpoint: outputs/车/checkpoints/pretrain_neu_best.pt
+    log_path: outputs/车/logs
+

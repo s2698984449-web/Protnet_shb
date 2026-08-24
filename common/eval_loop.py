@@ -115,12 +115,13 @@ def evaluate_tasks(
         learner_or_model, test_tasks, domain_meta, shots, ways, adapt_steps, n_tasks,
         device, fusion_only=False, meta_algorithm='maml',
         protonet_distance='euclidean', protonet_prototype_type='mean',
-        mahal_head=None,
+        mahal_head=None, adaptive_proto=None,
         tta_scales=None,
         tta_base_imgsz=640):
     """Unified eval entry: MAML wrapper or bare model for ProtoNet.
 
     tta_scales: if set, enables multi-scale TTA for ProtoNet (e.g. (320,480,640)).
+    adaptive_proto: optional AdaptivePrototype module (query-aware prototype refinement).
     """
     if meta_algorithm == 'protonet':
         if tta_scales:
@@ -135,7 +136,8 @@ def evaluate_tasks(
             learner_or_model, test_tasks, domain_meta, shots, ways, n_tasks, device,
             distance=protonet_distance,
             prototype_type=protonet_prototype_type,
-            mahal_head=mahal_head)
+            mahal_head=mahal_head,
+            adaptive_proto=adaptive_proto)
     return evaluate_tasks_maml(
         learner_or_model, test_tasks, domain_meta, shots, ways, adapt_steps, n_tasks,
         device, fusion_only=fusion_only)

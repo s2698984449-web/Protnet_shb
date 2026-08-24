@@ -1,0 +1,97 @@
+# ─────────────────────────────────────────────────────────────────
+# 项目级集中配置文件 (single source of truth for all experiments)
+#
+# 这个文件定义了所有"实验无关"的结构性超参, 避免在脚本里散落硬编码.
+# 实验特定的超参 (lr / iters / batch_size) 留在各自的 yaml (config/automotive,
+# config/aerospace 等) 里, 通过 config_loader 合并 common + 子配置.
+#
+# 版本号: 任何结构性变更 (维度, FiLM 参数, 工况定义) → 同步更新 VERSION.
+# ─────────────────────────────────────────────────────────────────
+
+VERSION: "phase1.0.0"
+LAST_UPDATED: "2026-08-23"
+
+# ─── 工况编码规范 (CONDITION_SPEC) ────────────────────────────
+# 所有工况相关维度、阈值、估算函数都受此控制.
+CONDITION_SPEC:
+  n_conditions: 7                       # 与 ConditionEncoder / MultiDomainPretrainModel 默认一致
+  # 7 维顺序定义 (multi-hot, 每维 0/1):
+  dim_names: [bright, dim, low_contrast, noisy, blur, color_cast, view]
+  # 各维估算阈值 (用于 _estimate_condition):
+  thresholds:
+    bright_mean_gt:        180    # c0: 灰度均值 > 此值 → bright
+    dim_mean_lt:            60    # c1: 灰度均值 < 此值 → dim
+    low_contrast_std_lt:    25    # c2: 灰度 std   < 此值 → low_contrast
+    noisy_lap_var_gt:      500    # c3: Laplacian var > 此值 → noisy
+    blur_lap_var_lt:        50    # c4: Laplacian var < 此值 → blur
+    color_cast_ch_diff_gt:  25    # c5: 通道均值差 > 此值 → color_cast
+    # c6 (view): 占位; 由 metadata 注入 (top/side/angle → one-hot, 无标注则全 0)
+  # 光源类型 (LED/荧光/自然光/红外) 当前不在 _estimate_condition 里估算,
+  # 由 metadata 注入; 若需要请扩展 dim_names 并加 dim light_source 到 8 维.
+
+# ─── 产品空间 (PRODUCT_SPEC) ────────────────────────────────
+# ProductEncoder slot 分配, 跨所有 dataset 统一.
+PRODUCT_SPEC:
+  n_products: 17
+  # 0-14:  MVTEC (15 products, 详见 common/multi_domain_datasets.py:MVTEC_PRODUCTS)
+  # 15:    GC10   (steel plate, single product)
+  # 16:    NEU    (steel strip, single product)
+  cross_domain_test_products: [17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28]
+  # ↑ Phase 2 cross-domain 测试时用到的 product slots (汽车/航天/电池等).
+  #   与 0-16 复用同一个 ProductEncoder, cold-start 时模型通过 prod_emb 注入.
+
+# ─── FiLM 调制 (FILM_SPEC) ────────────────────────────────
+# 方案 B: 限幅, 防训练崩溃.
+FILM_SPEC:
+  layer:        "layer4"                 # 在 ResNet18 的哪一层后调制
+  film_channels: 512                     # layer4 输出通道
+  # 限幅参数 (新加, 2026-08-23):
+  rho:           0.5                     # γ ∈ [-ρ, +ρ], β ∈ [-ρ, +ρ]
+  gate_clamp:    true                    # 是否做 per-sample σ 限幅
+  gate_clamp_std: 5.0                    # 限幅 σ 倍数 (±kσ)
+
+# ─── Episode 采样 (EPISODE_SPEC) ───────────────────────────────
+# N-way K-shot meta-train 默认.
+EPISODE_SPEC:
+  n_way:    5                            # 默认 5-way; adaptive products 自动 min(N, n_classes)
+  k_shot:   5
+  q_query:  5
+  img_size: 224
+  adaptive_min_classes: 4                # < 4 类直接 SKIP, 4-way = min(5, 4)
+
+# ─── Backbone & 投影维度 ────────────────────────────────
+BACKBONE_SPEC:
+  type:           "resnet18"
+  feat_dim:       128                    # backbone 投影输出 dim
+  proj_dim:       64                     # SupCon 投影 head 输出 dim
+  supcon_temperature: 0.07
+  freeze_backbone_default: true          # Phase 1 默认冻结; Phase 2 cross-domain 可解冻
+
+# ─── ConditionEncoder 维度 ────────────────────────────────
+CONDITION_ENCODER_SPEC:
+  d_cond:  128
+  d_prod:  128                           # ProductEncoder 维度
+  hidden:  128                           # ConditionEncoder 内部隐层
+
+# ─── 数据切分 (DATA_SPLIT_SPEC) ────────────────────────────────
+DATA_SPLIT_SPEC:
+  seed:             42
+  train_ratio:      0.8
+  test_ratio:       0.2
+  splits_dir:       "data/splits"
+  outputs:          ["gc10_split.json", "neu_split.json", "mvtec_test_split.json"]
+
+# ─── 文件命名规范 ────────────────────────────────
+FILE_NAMING_SPEC:
+  ckpt_suffix:      "best.pt"            # 最优 (按 meta_test acc)
+  ckpt_final:       "final.pt"           # 训练结束
+  ckpt_iter_prefix: "iter_"              # iter_0050.pt
+  config_file:      "run_config.json"
+  log_file:         "train.log"
+  report_dir:       "reports/"
+
+# ─── 工具函数路径 ────────────────────────────────
+logger_setup:
+  datefmt:          "%H:%M:%S"
+  format:           "[%(asctime)s] %(message)s"
+  encoding:         "utf-8"
