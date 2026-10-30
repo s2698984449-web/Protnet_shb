@@ -1,0 +1,48 @@
+{
+  "timestamp": "2026-09-23T13:37:22",
+  "checkpoint": "D:\\元强化学习\\代码\\航空缺陷检测\\checkpoints\\phase1_4w5s_C2_mahal\\best.pt",
+  "protocol": {
+    "n_way": 4,
+    "k_shot": 5,
+    "q_query": 5,
+    "distance": "mahalanobis",
+    "prototype_type": "mean",
+    "mahal_head_loaded": true,
+    "domain_reliability_loaded": false,
+    "seeds": [
+      42,
+      43,
+      44
+    ],
+    "eval_tasks_per_seed": 100,
+    "augment_eval": false,
+    "note": "CA-IS-MetaProto 新管线 (train_meta.py) 多 seed 评测"
+  },
+  "per_seed": {
+    "42": {
+      "mean": 0.6155000022053718,
+      "std": 0.17402514056929827,
+      "n_tasks": 100
+    },
+    "43": {
+      "mean": 0.5844999996572733,
+      "std": 0.1857006998072688,
+      "n_tasks": 100
+    },
+    "44": {
+      "mean": 0.6545000001788139,
+      "std": 0.16971962207594093,
+      "n_tasks": 100
+    }
+  },
+  "pooled": {
+    "n_tasks": 300,
+    "mean": 0.6591666668156783,
+    "std": 0.18661114098840273,
+    "ci95_low": 0.6379958324593803,
+    "ci95_high": 0.67983333371828,
+    "ci95_margin": 0.020918750629449867,
+    "verdict": "limited",
+    "verdict_text": "结果有效但置信度有限（下界 0.55–0.65）"
+  }
+}

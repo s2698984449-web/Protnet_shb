@@ -31,6 +31,17 @@ import torch.nn.functional as F
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+# 强制 UTF-8 stdout (PowerShell 默认 GBK; 不然中文路径/打印会变乱码)
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+try:
+    import ctypes
+    ctypes.windll.kernel32.SetConsoleOutputCP(65001)
+except Exception:
+    pass
+os.environ.setdefault('PYTHONIOENCODING', 'utf-8')
+
 from common.multi_domain_model import MultiDomainPretrainModel
 from common.multi_domain_episode import build_episode_samplers
 try:
@@ -359,13 +370,31 @@ def main():
                         help='距离度量: mahalanobis (默认, 考虑协方差)')
     parser.add_argument('--prototype', choices=['mean', 'trim_mean'], default='trim_mean',
                         help='原型构建: trim_mean (默认, 去异常值)')
+    # ── 架构开关 (默认开启, 与设计意图一致) ──
     parser.add_argument('--unfreeze-backbone', action='store_true',
                         help='解冻 backbone (默认关闭, 保持预训练质量)')
-    parser.add_argument('--unfreeze-prod', action='store_true',
-                        help='训练 ProductEncoder 注入项 (cross-domain 微调)')
-    parser.add_argument('--unfreeze-film', action='store_true')
-    parser.add_argument('--use-anil-head', action='store_true',
-                        help='在 prototype 上加可训 linear head 做 ANIL')
+    # FiLM/Prod 默认开启 (与 cond_enc 协同) - gamma=0 初始化保证训练初期不破坏 backbone
+    parser.add_argument('--unfreeze-film', action='store_true', default=True,
+                        help='训练 FiLM γ,β (默认开启, 与 cond_enc 协同)')
+    parser.add_argument('--no-unfreeze-film', dest='unfreeze_film', action='store_false')
+    parser.add_argument('--unfreeze-prod', action='store_true', default=True,
+                        help='训练 ProductEncoder 注入项 (默认开启, 让 PID 信号生效)')
+    parser.add_argument('--no-unfreeze-prod', dest='unfreeze_prod', action='store_false')
+    parser.add_argument('--use-anil-head', action='store_true', default=False,
+                        help='在 prototype 上加可训 linear head 做 ANIL (默认关闭, '
+                             'ProtoNet baseline 不要开; 开后会改变 eval 预测方式)')
+    parser.add_argument('--no-anil-head', dest='use_anil_head', action='store_false')
+    # ── episode 采样 (multi-worker 加速) ──
+    parser.add_argument('--num-workers', type=int, default=2,
+                        help='episode 采样的 DataLoader worker 数 (默认 2). '
+                             'CPU 上设 2-4 即可, 多了反而 IO 竞争.')
+    parser.add_argument('--prefetch-batches', type=int, default=4,
+                        help='prefetch queue 长度 (默认 4, 让采样和训练 overlap).')
+    parser.add_argument('--async-cross-domain-prob', type=float, default=0.3,
+                        help='异步模式下, 每个 episode 强制跨域采样的概率 (默认 0.3). '
+                             'Domain Reliability 加权需要足够跨域样本.')
+    parser.add_argument('--no-async-sampler', action='store_true',
+                        help='关闭异步采样 (调试用; 默认异步)')
     parser.add_argument('--augment', action='store_true', default=True,
                         help='episode 级数据增强 (5 种策略: hflip/hflip_rotate/'
                              'color_jitter/random_erasing/illumination_aug). '
@@ -395,6 +424,20 @@ def main():
         aero_real_root=args.aero_real_root,
         mvtec_dropout_root=(args.mvtec_root if args.use_mvtec_dropout else None))
     logger.info(f'aero_ds: {aero_ds is not None}, mvtec_dropout_ds: {mvtec_dropout_ds is not None}')
+
+    # ── 异步 episode 采样 (multi-worker 把 IO 和算力 overlap) ──
+    from common.multi_domain_episode import AsyncEpisodeSampler
+    async_sampler = None
+    if not args.no_async_sampler and args.num_workers > 0:
+        async_sampler = AsyncEpisodeSampler(
+            sampler, num_workers=args.num_workers,
+            max_queue=args.prefetch_batches,
+            cross_domain_prob=args.async_cross_domain_prob)
+        logger.info(f'[AsyncSampler] num_workers={args.num_workers}, '
+                    f'prefetch={args.prefetch_batches}, '
+                    f'cross_domain_prob={args.async_cross_domain_prob}')
+    else:
+        logger.info(f'[AsyncSampler] 关闭 (--no-async-sampler 或 num_workers=0)')
     # 应用 --skip-products (强制从 episode pool 剔除)
     if args.skip_products:
         skip_pids = set()
@@ -462,17 +505,28 @@ def main():
         logger.warning(f'pretrain not found at {args.pretrain_ckpt}; random init.')
 
     # 选择可训参数
+    trainable_modules = {}
     if args.unfreeze_backbone:
         for p in model.backbone_params(): p.requires_grad = True
+        trainable_modules['backbone'] = sum(p.numel() for p in model.backbone_params())
     else:
         for p in model.backbone_params(): p.requires_grad = False
     for p in model.cond_enc.parameters(): p.requires_grad = True
+    trainable_modules['cond_enc'] = sum(p.numel() for p in model.cond_enc.parameters())
     for p in model.film.parameters():
         p.requires_grad = args.unfreeze_film
+    if args.unfreeze_film:
+        trainable_modules['film'] = sum(p.numel() for p in model.film.parameters())
     for p in model.prod_enc.parameters():
         p.requires_grad = args.unfreeze_prod
+    if args.unfreeze_prod:
+        trainable_modules['prod_enc'] = sum(p.numel() for p in model.prod_enc.parameters())
     for p in model._prod_proj.parameters():
         p.requires_grad = args.unfreeze_prod
+    if args.unfreeze_prod:
+        trainable_modules['prod_proj'] = sum(p.numel() for p in model._prod_proj.parameters())
+    logger.info(f'[Trainable modules] ' + ', '.join(
+        f'{k}={v:,}' for k, v in trainable_modules.items()))
 
     model = model.to(args.device)
 
@@ -522,9 +576,12 @@ def main():
     total_count = 0
     t0 = time.time()
     for it in range(1, args.iters + 1):
-        # 1) 抽 train episode
+        # 1) 抽 train episode (异步: 立即返回, worker 在后台攒下一批)
         try:
-            ep = sampler.sample(split='meta_train')
+            if async_sampler is not None:
+                ep = async_sampler.get()
+            else:
+                ep = sampler.sample(split='meta_train')
         except ValueError as e:
             logger.warning(f'iter {it} skip: {e}')
             continue
@@ -533,18 +590,23 @@ def main():
 
         # 2) 课程学习: 判断是否跨域
         is_cross = is_cross_domain_episode(ep)
+        # 注意: 异步模式下 worker 内部已经按 --async-cross-domain-prob 概率
+        #       决定要不要 force_cross_domain, main 线程不再重抽 (避免破坏 prefetch).
+        #       curriculum_probs 的"课程学习"调度仅在 --no-async-sampler 同步模式下生效.
         cross_prob = get_cross_domain_prob(it, args.iters, curriculum_stages, curriculum_probs)
 
-        # 随机决定是否强制跨域/同域
+        # 随机决定是否强制跨域/同域 (仅同步模式有效)
         r = torch.rand(1).item()
         force_cross = r < cross_prob  # 这轮要跨域采样
 
-        # 如果当前 episode 类型不符合预期，尝试重新采样（最多3次）
+        # 如果当前 episode 类型不符合预期，重新采样 (仅同步模式; 异步模式由 worker 内部决定)
         for _ in range(3):
             if (force_cross and is_cross) or (not force_cross and not is_cross):
                 break
+            if async_sampler is not None:
+                break  # 异步模式下不再重抽, 信任 worker
             try:
-                ep = sampler.sample(split='meta_train')
+                ep = sampler.sample(split='meta_train', force_cross_domain=force_cross)
                 is_cross = is_cross_domain_episode(ep)
             except ValueError:
                 break

@@ -1,0 +1,48 @@
+{
+  "timestamp": "2026-09-24T13:37:20",
+  "checkpoint": "D:\\元强化学习\\代码\\航空缺陷检测\\checkpoints\\phase1_4w5s_C2_cosine\\best.pt",
+  "protocol": {
+    "n_way": 4,
+    "k_shot": 5,
+    "q_query": 5,
+    "distance": "cosine",
+    "prototype_type": "mean",
+    "mahal_head_loaded": false,
+    "domain_reliability_loaded": false,
+    "seeds": [
+      42,
+      43,
+      44
+    ],
+    "eval_tasks_per_seed": 100,
+    "augment_eval": false,
+    "note": "CA-IS-MetaProto 新管线 (train_meta.py) 多 seed 评测"
+  },
+  "per_seed": {
+    "42": {
+      "mean": 0.6144999983906746,
+      "std": 0.1826602022673452,
+      "n_tasks": 100
+    },
+    "43": {
+      "mean": 0.6120000033080578,
+      "std": 0.15526107194982616,
+      "n_tasks": 100
+    },
+    "44": {
+      "mean": 0.6140000019967556,
+      "std": 0.17791571047408383,
+      "n_tasks": 100
+    }
+  },
+  "pooled": {
+    "n_tasks": 300,
+    "mean": 0.6586666664977868,
+    "std": 0.20280199697384804,
+    "ci95_low": 0.6351666667448977,
+    "ci95_high": 0.6821666660743455,
+    "ci95_margin": 0.02349999966472388,
+    "verdict": "limited",
+    "verdict_text": "结果有效但置信度有限（下界 0.55–0.65）"
+  }
+}

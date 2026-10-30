@@ -1,0 +1,146 @@
+{
+  "started_at": "2026-09-23T11:16:38",
+  "common_args": {
+    "n_way": 4,
+    "k_shot": 5,
+    "q_query": 5,
+    "iters": 200,
+    "eval_every": 200,
+    "eval_episodes": 50,
+    "lr": 0.0001,
+    "seed": 42,
+    "mvtec_root": "D:\\元强化学习\\代码\\data\\MVTEC",
+    "gc10_root": "D:\\元强化学习\\代码\\data\\GC10-DET",
+    "neu_root": "D:\\元强化学习\\代码\\data\\NEU-CLS\\NEU-CLS",
+    "pretrain_ckpt": "D:\\元强化学习\\代码\\outputs\\multi_domain_smoke.pt"
+  },
+  "eval_args": {
+    "seeds_eval": "42,43,44",
+    "eval_tasks_final": 100
+  },
+  "stages": {
+    "C0_baseline": {
+      "description": "新管线基线 (euclidean + mean, 无 curriculum, 无 domain reliability)",
+      "train": {
+        "best_val_acc": 0.5400000017881393,
+        "final_acc": 0.5400000017881393,
+        "n_iters_ran": 200,
+        "duration_sec": 775.2370164394379,
+        "exit_code": 0,
+        "skipped": false
+      },
+      "eval": {
+        "status": "ok",
+        "exit_code": 0,
+        "duration_sec": 1700.759878396988,
+        "pooled_mean": 0.6971666661898295,
+        "pooled_std": 0.19211106303287973,
+        "pooled_ci95_low": 0.6755000000509123,
+        "pooled_ci95_high": 0.7181708334200084,
+        "pooled_n_tasks": 300,
+        "verdict": "ok",
+        "report_path": "D:\\元强化学习\\代码\\航空缺陷检测\\reports\\final_eval_C0_baseline\\final_eval_phase1_4w5s_C0_baseline.json"
+      },
+      "duration_sec": 2478.3958039283752
+    },
+    "C1_curriculum": {
+      "description": "+ 课程学习跨域采样",
+      "train": {
+        "best_val_acc": 0.5100000017881393,
+        "final_acc": 0.5100000017881393,
+        "n_iters_ran": 200,
+        "duration_sec": 1191.061433315277,
+        "exit_code": 0,
+        "skipped": false
+      },
+      "eval": {
+        "status": "ok",
+        "exit_code": 0,
+        "duration_sec": 1652.0950877666473,
+        "pooled_mean": 0.6934999990959962,
+        "pooled_std": 0.1873938922655034,
+        "pooled_ci95_low": 0.6721666665660838,
+        "pooled_ci95_high": 0.7140083328510324,
+        "pooled_n_tasks": 300,
+        "verdict": "ok",
+        "report_path": "D:\\元强化学习\\代码\\航空缺陷检测\\reports\\final_eval_C1_curriculum\\final_eval_phase1_4w5s_C1_curriculum.json"
+      },
+      "duration_sec": 2843.2247574329376
+    },
+    "C2_mahal": {
+      "description": "+ Mahalanobis 距离",
+      "train": {
+        "best_val_acc": 0.48700000151991846,
+        "final_acc": 0.48700000151991846,
+        "n_iters_ran": 200,
+        "duration_sec": 1231.7988488674164,
+        "exit_code": 0,
+        "skipped": false
+      },
+      "eval": {
+        "status": "ok",
+        "exit_code": 0,
+        "duration_sec": 1770.7544391155243,
+        "pooled_mean": 0.6591666668156783,
+        "pooled_std": 0.18661114098840273,
+        "pooled_ci95_low": 0.6379958324593803,
+        "pooled_ci95_high": 0.67983333371828,
+        "pooled_n_tasks": 300,
+        "verdict": "limited",
+        "report_path": "D:\\元强化学习\\代码\\航空缺陷检测\\reports\\final_eval_C2_mahal\\final_eval_phase1_4w5s_C2_mahal.json"
+      },
+      "duration_sec": 3002.621273756027
+    },
+    "C3_trim_mean": {
+      "description": "+ Trim-Mean 原型",
+      "train": {
+        "best_val_acc": 0.5010000023245812,
+        "final_acc": 0.5010000023245812,
+        "n_iters_ran": 200,
+        "duration_sec": 1136.6986863613129,
+        "exit_code": 0,
+        "skipped": false
+      },
+      "eval": {
+        "status": "ok",
+        "exit_code": 0,
+        "duration_sec": 1688.9503722190857,
+        "pooled_mean": 0.6521666689713796,
+        "pooled_std": 0.18411945061665297,
+        "pooled_ci95_low": 0.6319958350099623,
+        "pooled_ci95_high": 0.6721708361431956,
+        "pooled_n_tasks": 300,
+        "verdict": "limited",
+        "report_path": "D:\\元强化学习\\代码\\航空缺陷检测\\reports\\final_eval_C3_trim_mean\\final_eval_phase1_4w5s_C3_trim_mean.json"
+      },
+      "duration_sec": 2825.7200491428375
+    },
+    "C4_full": {
+      "description": "+ Domain Reliability 加权 (Full = CA-IS-MetaProto 当前架构)",
+      "train": {
+        "best_val_acc": 0.5190000024437904,
+        "final_acc": 0.5190000024437904,
+        "n_iters_ran": 200,
+        "duration_sec": 1148.954638004303,
+        "exit_code": 0,
+        "skipped": false
+      },
+      "eval": {
+        "status": "ok",
+        "exit_code": 0,
+        "duration_sec": 1657.8370139598846,
+        "pooled_mean": 0.6779999995479981,
+        "pooled_std": 0.1788555194160199,
+        "pooled_ci95_low": 0.6574999996982516,
+        "pooled_ci95_high": 0.699504166537275,
+        "pooled_n_tasks": 300,
+        "verdict": "ok",
+        "report_path": "D:\\元强化学习\\代码\\航空缺陷检测\\reports\\final_eval_C4_full\\final_eval_phase1_4w5s_C4_full.json"
+      },
+      "duration_sec": 2806.8549835681915
+    }
+  },
+  "ended_at": "2026-09-23T15:13:15",
+  "total_duration_sec": 14196.821225881577,
+  "failed_stage": null
+}

@@ -1,0 +1,50 @@
+{
+  "started_at": "2026-09-27T18:12:19",
+  "common_args": {
+    "n_way": 4,
+    "k_shot": 5,
+    "q_query": 5,
+    "iters": 10000,
+    "eval_every": 250,
+    "eval_episodes": 50,
+    "lr": 0.0001,
+    "seed": 42,
+    "mvtec_root": "D:\\元强化学习\\代码\\data\\MVTEC",
+    "gc10_root": "D:\\元强化学习\\代码\\data\\GC10-DET",
+    "neu_root": "D:\\元强化学习\\代码\\data\\NEU-CLS\\NEU-CLS",
+    "pretrain_ckpt": "D:\\元强化学习\\代码\\航空缺陷检测\\checkpoints\\phase1_4w5s_aug_unfreeze\\best.pt"
+  },
+  "eval_args": {
+    "seeds_eval": "42,43,44",
+    "eval_tasks_final": 100
+  },
+  "stages": {
+    "C4_full": {
+      "description": "+ Domain Reliability 加权 (基于 euclidean+mean, Full v2, FiLM+Prod 解冻)",
+      "train": {
+        "best_val_acc": 0.588000009059906,
+        "final_acc": 0.588000009059906,
+        "n_iters_ran": 7250,
+        "duration_sec": 16178.16989517212,
+        "exit_code": 0,
+        "skipped": false
+      },
+      "eval": {
+        "status": "ok",
+        "exit_code": 0,
+        "duration_sec": 1444.4516546726227,
+        "pooled_mean": 0.7506666781504949,
+        "pooled_std": 0.203767743540989,
+        "pooled_ci95_low": 0.7275000122450292,
+        "pooled_ci95_high": 0.773833343397826,
+        "pooled_n_tasks": 300,
+        "verdict": "ok",
+        "report_path": "D:\\元强化学习\\代码\\航空缺陷检测\\reports\\final_eval_C4_full\\final_eval_phase1_4w5s_C4_full.json"
+      },
+      "duration_sec": 17624.51262140274
+    }
+  },
+  "ended_at": "2026-09-27T23:06:04",
+  "total_duration_sec": 17624.519622325897,
+  "failed_stage": null
+}

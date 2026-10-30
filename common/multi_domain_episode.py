@@ -835,13 +835,16 @@ class MultiDomainEpisodeSampler:
         return min(self.n_way, self.product_n_classes.get(product_id, 2))
 
     def sample(self, source_filter: Optional[str] = None,
-               split: Optional[str] = None) -> dict:
+               split: Optional[str] = None,
+               force_cross_domain: bool = False) -> dict:
         """随机抽一个 episode.
 
         source_filter: 若指定 ('mvtec'/'gc10'/'neu'), 限定从某 source 采样.
         split: 若指定, 切换 ds 的 split pool (e.g. 'meta_test' for eval).
                注意: 切换 split 需要 sampler 在 init 时已分别加载 train/test pool,
                或者重新加载 ds. 这里简单做法: 重新加载 split.
+        force_cross_domain: 若 True, 强制让 query 来自另一个 product (跨域 episode).
+                          用于 Domain Reliability 加权 loss (跨域才有意义).
         """
         # 为支持 split 切换, 在每次 sample 时根据 split 重新加载 ds (lazy)
         mvtec_ds, gc10_ds, neu_ds, carpaint_ds, aero_ds, mvtec_dropout_ds = \
@@ -892,6 +895,47 @@ class MultiDomainEpisodeSampler:
                                         self._transform, rng)
                 q_imgs.append(img); q_y.append(ep_label); q_pid.append(product_id)
                 q_cond.append(cond)
+
+        # ── 可选: 强制跨域 — query 来自另一个 product, label 沿用支持集的 ep_label ──
+        if force_cross_domain and len(self.usable_products) >= 2 and q_imgs:
+            other_pid = rng.choice([p for p in self.usable_products if p != product_id])
+            _, other_ds = self.product_to_source[other_pid]
+            other_n = other_ds.num_defects(other_pid)
+            if other_n >= 1:
+                # 替换 query 图片, 但 q_y 沿用 chosen_classes 的 ep_label
+                new_q_imgs, new_q_cond = [], []
+                for ep_label, class_label in enumerate(chosen_classes):
+                    # 优先 other_pid 的同类 defect; 若越界则从任意 defect 抽
+                    lid = class_label if class_label < other_n else rng.randrange(other_n)
+                    other_paths = other_ds.sample_paths(other_pid, lid)
+                    if not other_paths:
+                        continue
+                    need_q = self.q_query
+                    if len(other_paths) >= need_q:
+                        qpicks = rng.sample(other_paths, need_q)
+                    else:
+                        qpicks = [rng.choice(other_paths) for _ in range(need_q)]
+                    for p_ in qpicks:
+                        img, cond = _load_image(p_, self._transform, rng)
+                        new_q_imgs.append(img); new_q_cond.append(cond)
+                # 用新图片替换原 query, q_y 和 q_pid 一起替换 (q_y 长度不变)
+                if new_q_imgs:
+                    q_imgs = new_q_imgs
+                    q_cond = new_q_cond
+                    q_pid = [other_pid] * len(q_imgs)
+                # q_y 保持原 chosen_classes 的 ep_label (与 q_imgs 一致)
+                # 兜底: 如果 q_imgs 数 < q_y 数 (因为 other_pid 某些 defect 抽不到图), 截断 q_y
+                # 或补齐 q_imgs. 这里选补齐 q_imgs (用现有图重复)
+                while len(q_imgs) < len(q_y) and q_imgs:
+                    idx = len(q_imgs) % len(q_imgs)
+                    q_imgs.append(q_imgs[idx])
+                    q_cond.append(q_cond[idx])
+                    q_pid.append(other_pid)
+                # 反之如果 q_imgs 数 > q_y, 截断到一致
+                if len(q_imgs) > len(q_y):
+                    q_imgs = q_imgs[:len(q_y)]
+                    q_cond = q_cond[:len(q_y)]
+                    q_pid = q_pid[:len(q_y)]
 
         return {
             'support_rgb': torch.stack(s_imgs, 0) if s_imgs else torch.empty(0),
@@ -1011,3 +1055,74 @@ def build_episode_samplers(mvtec_root, gc10_root, neu_root,
                                         n_way=n_way, k_shot=k_shot, q_query=q_query,
                                         augment=augment)
     return sampler, mvtec, gc10, neu, carpaint, aero, mvtec_dropout
+
+
+# ---------------------------------------------------------------------------
+# 异步 Episode Sampler (用 DataLoader 的 multi-worker 把 IO 和算力 overlap)
+# ---------------------------------------------------------------------------
+class AsyncEpisodeSampler:
+    """包装一个 MultiDomainEpisodeSampler, 用后台线程并行预取 episode.
+
+    解决原 sampler 在主线程串行 IO 的瓶颈. Windows 上 PyTorch DataLoader 的
+    multi-process spawn 不能 picklable MultiDomainEpisodeSampler, 改用线程方案.
+    PIL/Pillow 的 IO 受 GIL 释放, 线程预取仍然有效.
+
+    Args:
+        cross_domain_prob: 异步模式下, 每个 episode 强制跨域采样 (query 来自其他 product) 的概率.
+                          0.0 = 永不跨域, 1.0 = 总是跨域. 用于 Domain Reliability 加权 loss.
+
+    Usage:
+        async_sampler = AsyncEpisodeSampler(sampler, num_workers=2, max_queue=4,
+                                            cross_domain_prob=0.3)
+        ep = async_sampler.get()
+    """
+
+    def __init__(self, base_sampler: 'MultiDomainEpisodeSampler',
+                 num_workers: int = 2, max_queue: int = 4,
+                 cross_domain_prob: float = 0.0):
+        from queue import Queue
+        from threading import Thread
+        import random as _r
+        self.base_sampler = base_sampler
+        self.num_workers = max(0, num_workers)
+        self.max_queue = max_queue
+        self._cross_domain_prob = float(cross_domain_prob)
+        self._queue = Queue(maxsize=max_queue) if num_workers > 0 else None
+        self._stop_flag = False
+
+        if self.num_workers == 0:
+            return
+
+        def _worker(seed_offset):
+            # 每个 worker 独立 RNG, 避免与主线程冲突
+            rng = _r.Random(seed_offset)
+            while not self._stop_flag:
+                force = rng.random() < self._cross_domain_prob
+                try:
+                    ep = self.base_sampler.sample(force_cross_domain=force)
+                except Exception as exc:
+                    # 出错就跳过 (不阻塞训练)
+                    continue
+                self._queue.put(ep)
+
+        # 启动 num_workers 个 worker 线程
+        self._threads = []
+        base_seed = id(self) & 0xFFFF
+        for i in range(self.num_workers):
+            t = Thread(target=_worker, args=(base_seed + i * 7919,), daemon=True)
+            t.start()
+            self._threads.append(t)
+
+    def get(self, timeout: float = 60.0):
+        """阻塞获取下一个 episode."""
+        if self.num_workers == 0 or self._queue is None:
+            return self.base_sampler.sample()
+        return self._queue.get(timeout=timeout)
+
+    def stop(self):
+        """显式停止 (线程随主进程退出自动清理)."""
+        self._stop_flag = True
+
+    def __iter__(self):
+        while True:
+            yield self.get()
