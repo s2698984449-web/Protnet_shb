@@ -1,0 +1,410 @@
+{
+  "train_dir": {
+    "dir": "D:\\元强化学习\\代码\\data\\steel_merged\\train",
+    "classes": [
+      "crack",
+      "crease",
+      "crescent",
+      "inclusion",
+      "macular",
+      "oil",
+      "oxide",
+      "patch",
+      "pit",
+      "punch",
+      "roll_print",
+      "scratch",
+      "water",
+      "weld"
+    ],
+    "counts": {
+      "crack": {
+        "CAST": 73,
+        "NEU": 177
+      },
+      "crease": {
+        "GC10": 122,
+        "PIPE": 241
+      },
+      "crescent": {
+        "GC10": 136
+      },
+      "inclusion": {
+        "CR7": 360,
+        "GC10": 130,
+        "NEU": 180,
+        "PLATE": 144,
+        "XSDD": 143
+      },
+      "macular": {
+        "CR7": 359
+      },
+      "oil": {
+        "CR7": 360,
+        "GC10": 122
+      },
+      "oxide": {
+        "CAST": 79,
+        "NEU": 180,
+        "PLATE": 144,
+        "XSDD": 471
+      },
+      "patch": {
+        "NEU": 163
+      },
+      "pit": {
+        "CR7": 322,
+        "GC10": 19,
+        "NEU": 157
+      },
+      "punch": {
+        "CR7": 335,
+        "GC10": 131
+      },
+      "roll_print": {
+        "XSDD": 122
+      },
+      "scratch": {
+        "CAST": 83,
+        "CR7": 346,
+        "NEU": 150,
+        "PIPE": 88,
+        "XSDD": 80
+      },
+      "water": {
+        "GC10": 173
+      },
+      "weld": {
+        "GC10": 164
+      }
+    },
+    "cross_source": true,
+    "cross_classes": [
+      "crack",
+      "crease",
+      "inclusion",
+      "oil",
+      "oxide",
+      "pit",
+      "punch",
+      "scratch"
+    ],
+    "cond_slots": [
+      "material",
+      "surface",
+      "illuminance",
+      "light_mode",
+      "exposure",
+      "camera"
+    ],
+    "mask_root": "D:/元强化学习/代码/data/steel_masks/train",
+    "restored_root": null,
+    "episode": {
+      "class_names": [
+        "punch",
+        "scratch",
+        "oil",
+        "crack",
+        "inclusion"
+      ],
+      "support_x": [
+        15,
+        3,
+        224,
+        224
+      ],
+      "query_x": [
+        15,
+        3,
+        224,
+        224
+      ],
+      "support_cond": [
+        15,
+        6
+      ],
+      "support_cond_mask_mean": [
+        1.0,
+        1.0,
+        1.0,
+        0.2,
+        0.0,
+        1.0
+      ],
+      "support_has_mask_ratio": 0.6000000238418579,
+      "query_has_mask_ratio": 1.0
+    }
+  },
+  "val_dir": {
+    "dir": "D:\\元强化学习\\代码\\data\\steel_merged\\val",
+    "classes": [
+      "crack",
+      "crease",
+      "crescent",
+      "inclusion",
+      "macular",
+      "oil",
+      "oxide",
+      "patch",
+      "pit",
+      "punch",
+      "roll_print",
+      "scratch",
+      "water",
+      "weld"
+    ],
+    "counts": {
+      "crack": {
+        "CAST": 24,
+        "NEU": 59
+      },
+      "crease": {
+        "GC10": 41,
+        "PIPE": 80
+      },
+      "crescent": {
+        "GC10": 45
+      },
+      "inclusion": {
+        "CR7": 120,
+        "GC10": 43,
+        "NEU": 60,
+        "PLATE": 48,
+        "XSDD": 48
+      },
+      "macular": {
+        "CR7": 120
+      },
+      "oil": {
+        "CR7": 120,
+        "GC10": 41
+      },
+      "oxide": {
+        "CAST": 26,
+        "NEU": 60,
+        "PLATE": 48,
+        "XSDD": 157
+      },
+      "patch": {
+        "NEU": 54
+      },
+      "pit": {
+        "CR7": 107,
+        "GC10": 6,
+        "NEU": 52
+      },
+      "punch": {
+        "CR7": 112,
+        "GC10": 44
+      },
+      "roll_print": {
+        "XSDD": 41
+      },
+      "scratch": {
+        "CAST": 28,
+        "CR7": 115,
+        "NEU": 50,
+        "PIPE": 29,
+        "XSDD": 27
+      },
+      "water": {
+        "GC10": 58
+      },
+      "weld": {
+        "GC10": 55
+      }
+    },
+    "cross_source": true,
+    "cross_classes": [
+      "crack",
+      "crease",
+      "inclusion",
+      "oil",
+      "oxide",
+      "pit",
+      "punch",
+      "scratch"
+    ],
+    "cond_slots": [
+      "material",
+      "surface",
+      "illuminance",
+      "light_mode",
+      "exposure",
+      "camera"
+    ],
+    "mask_root": "D:/元强化学习/代码/data/steel_masks/val",
+    "restored_root": null,
+    "episode": {
+      "class_names": [
+        "punch",
+        "scratch",
+        "oil",
+        "crack",
+        "inclusion"
+      ],
+      "support_x": [
+        15,
+        3,
+        224,
+        224
+      ],
+      "query_x": [
+        15,
+        3,
+        224,
+        224
+      ],
+      "support_cond": [
+        15,
+        6
+      ],
+      "support_cond_mask_mean": [
+        1.0,
+        1.0,
+        1.0,
+        0.4,
+        0.0,
+        1.0
+      ],
+      "support_has_mask_ratio": 0.800000011920929,
+      "query_has_mask_ratio": 1.0
+    }
+  },
+  "test_dir": {
+    "dir": "D:\\元强化学习\\代码\\data\\steel_merged\\test",
+    "classes": [
+      "crack",
+      "crease",
+      "crescent",
+      "inclusion",
+      "macular",
+      "oil",
+      "oxide",
+      "patch",
+      "pit",
+      "punch",
+      "roll_print",
+      "scratch",
+      "water",
+      "weld"
+    ],
+    "counts": {
+      "crack": {
+        "CAST": 25,
+        "NEU": 59
+      },
+      "crease": {
+        "GC10": 40,
+        "PIPE": 80
+      },
+      "crescent": {
+        "GC10": 45
+      },
+      "inclusion": {
+        "CR7": 120,
+        "GC10": 43,
+        "NEU": 60,
+        "PLATE": 48,
+        "XSDD": 47
+      },
+      "macular": {
+        "CR7": 120
+      },
+      "oil": {
+        "CR7": 120,
+        "GC10": 41
+      },
+      "oxide": {
+        "CAST": 26,
+        "NEU": 60,
+        "PLATE": 48,
+        "XSDD": 157
+      },
+      "patch": {
+        "NEU": 54
+      },
+      "pit": {
+        "CR7": 108,
+        "GC10": 6,
+        "NEU": 52
+      },
+      "punch": {
+        "CR7": 112,
+        "GC10": 44
+      },
+      "roll_print": {
+        "XSDD": 40
+      },
+      "scratch": {
+        "CAST": 27,
+        "CR7": 115,
+        "NEU": 50,
+        "PIPE": 30,
+        "XSDD": 27
+      },
+      "water": {
+        "GC10": 58
+      },
+      "weld": {
+        "GC10": 54
+      }
+    },
+    "cross_source": true,
+    "cross_classes": [
+      "crack",
+      "crease",
+      "inclusion",
+      "oil",
+      "oxide",
+      "pit",
+      "punch",
+      "scratch"
+    ],
+    "cond_slots": [
+      "material",
+      "surface",
+      "illuminance",
+      "light_mode",
+      "exposure",
+      "camera"
+    ],
+    "mask_root": "D:/元强化学习/代码/data/steel_masks/test",
+    "restored_root": null,
+    "episode": {
+      "class_names": [
+        "punch",
+        "scratch",
+        "oil",
+        "crack",
+        "inclusion"
+      ],
+      "support_x": [
+        15,
+        3,
+        224,
+        224
+      ],
+      "query_x": [
+        15,
+        3,
+        224,
+        224
+      ],
+      "support_cond": [
+        15,
+        6
+      ],
+      "support_cond_mask_mean": [
+        1.0,
+        1.0,
+        1.0,
+        0.4,
+        0.0,
+        1.0
+      ],
+      "support_has_mask_ratio": 0.800000011920929,
+      "query_has_mask_ratio": 1.0
+    }
+  }
+}

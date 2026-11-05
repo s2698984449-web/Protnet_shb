@@ -1,0 +1,89 @@
+# 原始类名 -> 语义类。来源名会变成语义类下面的子目录。
+# 映射表里没有的类名不会进入合并目录。一张图映射到多个语义类时整张跳过。
+
+out_dir: D:/元强化学习/代码/data/steel_merged
+mask_dir: D:/元强化学习/代码/data/steel_masks
+seed: 0
+ratios: [0.6, 0.2, 0.2]
+
+sources:
+  - name: NEU
+    kind: voc_flat
+    image_dir: D:/元强化学习/代码/data/steel_raw/NEU-DET/NEU-DET/IMAGES
+    box_dir: D:/元强化学习/代码/data/steel_raw/NEU-DET/NEU-DET/ANNOTATIONS
+    class_map:
+      scratches: scratch
+      inclusion: inclusion
+      patches: patch
+      crazing: crack
+      pitted_surface: pit
+      rolled-in_scale: oxide
+
+  - name: XSDD
+    kind: folder
+    image_dir: D:/元强化学习/代码/data/steel_raw/X-SDD-A-New-benchmark/X-SDD/datas
+    class_map:
+      surface scratch: scratch
+      slag inclusion: inclusion
+      oxide scale of plate system: oxide
+      oxide scale of temperature system: oxide
+      red iron: oxide
+      iron sheet ash: oxide
+      finishing roll printing: roll_print
+
+  - name: GC10
+    kind: folder_voc
+    image_dir: D:/元强化学习/代码/data/GC10-DET
+    box_dir: D:/元强化学习/代码/data/GC10-DET/lable
+    skip_dirs: [lable, cls_8class]
+    class_map:
+      "1": punch
+      "2": weld
+      "3": crescent
+      "4": water
+      "5": oil
+      "7": inclusion
+      "8": pit
+      "9": crease
+      "10": crease
+
+  - name: CR7
+    kind: yolo_flat
+    image_dir: D:/元强化学习/代码/data/steel_raw/CR7-DET/CR7-DET/CR7-DET/image
+    box_dir: D:/元强化学习/代码/data/steel_raw/CR7-DET/CR7-DET/CR7-DET/label
+    class_map:
+      "0": inclusion
+      "2": oil
+      "3": pit
+      "4": punch
+      "5": scratch
+      "6": macular
+
+  - name: PLATE
+    kind: folder_yolo
+    image_dir: D:/元强化学习/代码/data/steel_raw/open_source_datasets/MHPSDS/images
+    box_dir: D:/元强化学习/代码/data/steel_raw/open_source_datasets/MHPSDS/labels
+    class_map:
+      In: inclusion
+      Foe: inclusion
+      Bs: oxide
+      Ss: oxide
+
+  - name: CAST
+    kind: yolo_flat
+    image_dir: D:/元强化学习/代码/data/steel_raw/open_source_datasets/casting_billet/casting_billet/images
+    box_dir: D:/元强化学习/代码/data/steel_raw/open_source_datasets/casting_billet/casting_billet/labels
+    class_map:
+      "0": scratch
+      "4": oxide
+      "5": crack
+
+  - name: PIPE
+    kind: yolo_flat
+    image_dir: D:/元强化学习/代码/data/steel_raw/open_source_datasets/steel_pipe/images
+    box_dir: D:/元强化学习/代码/data/steel_raw/open_source_datasets/steel_pipe/labels
+    class_map:
+      "0": crease
+      "1": crease
+      "2": crease
+      "3": scratch

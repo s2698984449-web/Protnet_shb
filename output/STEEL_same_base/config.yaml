@@ -1,0 +1,113 @@
+exp_name: STEEL_same_base
+train_dir: D:/元强化学习/代码/data/steel_merged/train
+val_dir: D:/元强化学习/代码/data/steel_merged/val
+test_dir: D:/元强化学习/代码/data/steel_merged/test
+exclude_classes: []
+cross_source: false
+include_classes:
+- crack
+- crease
+- inclusion
+- oil
+- oxide
+- pit
+- punch
+- scratch
+source_table:
+  NEU:
+    material: 1.0
+    surface: 1.0
+    illuminance: 0.477
+    camera: 0.0
+  XSDD:
+    material: 1.0
+    surface: 1.0
+    illuminance: 0.508
+    camera: 0.0
+  GC10:
+    material: 1.0
+    surface: 0.0
+    illuminance: 0.328
+    light_mode: 1.0
+    camera: 0.0
+  CR7:
+    material: 1.0
+    surface: 0.25
+    illuminance: 0.44
+    camera: 0.0
+  PLATE:
+    material: 1.0
+    surface: 0.8
+    illuminance: 0.275
+    camera: 0.0
+  CAST:
+    material: 1.0
+    surface: 0.55
+    illuminance: 0.398
+    camera: 0.0
+  PIPE:
+    material: 1.0
+    surface: 0.4
+    illuminance: 0.371
+    camera: 0.0
+cond_slots:
+- material
+- surface
+- illuminance
+- light_mode
+- exposure
+- camera
+cond_dim: 6
+condition_file: null
+illumination_manifest: null
+cond_fallback_image_stats: false
+illuminance_offset_scale: 80.0
+mask_root: null
+mask_root_train: D:/元强化学习/代码/data/steel_masks/train
+mask_root_val: D:/元强化学习/代码/data/steel_masks/val
+mask_root_test: D:/元强化学习/代码/data/steel_masks/test
+mask_pattern: '{stem}.png'
+use_mask_proto: true
+gauss_sigma_ratio: 0.15
+location_loss_weight: 0.5
+restored_root: null
+image_size: 224
+n_way: 5
+k_shot: 3
+q_query: 3
+feat_dim: 128
+film_rho: 0.5
+policy_rho: 0.5
+topk_ratio: 0.1
+adapt_steps: 0
+adapt_lr: 0.1
+pretrained_backbone: true
+freeze_backbone: true
+lr: 0.001
+weight_decay: 0.0001
+grad_clip: 1.0
+iters: 200
+eval_every: 5
+eval_tasks: 20
+early_stop: true
+early_start: 100
+patience: 10
+monitor: loss
+min_delta: 0.0
+seed: 0
+device: cuda
+freeze:
+  backbone: true
+  proj: false
+  proj3: false
+  proj4: false
+  cond_encoder: true
+  part_encoder: true
+  film: true
+  policy: true
+  policy_trunk: true
+  g_head: true
+  alpha_head: true
+  gate_head: true
+  tau_head: true
+config_path: D:\元强化学习\代码\config\cspd_test.yaml
