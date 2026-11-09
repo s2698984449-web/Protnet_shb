@@ -10,8 +10,10 @@ class SpatialResNet18(nn.Module):
     """ImageNet ResNet18。
 
     224 输入时:
+      layer2: (B, 128, 28, 28)
       layer3: (B, 256, 14, 14)
       layer4: (B, 512, 7, 7)
+    forward 仍返回 (layer3, layer4)，兼容旧调用；要 layer2 用 forward_maps。
     """
 
     def __init__(self, pretrained=True, freeze=True):
@@ -47,7 +49,7 @@ class SpatialResNet18(nn.Module):
             super().train(False)
         return self
 
-    def forward(self, x):
+    def forward_maps(self, x):
         if x.shape[1] == 1:
             x = x.repeat(1, 3, 1, 1)
         x = self.conv1(x)
@@ -55,11 +57,17 @@ class SpatialResNet18(nn.Module):
         x = self.relu(x)
         x = self.maxpool(x)
         x = self.layer1(x)
-        x = self.layer2(x)
-        layer3 = self.layer3(x)
+        layer2 = self.layer2(x)
+        if self.frozen:
+            layer2 = layer2.detach()
+        layer3 = self.layer3(layer2)
         if self.frozen:
             layer3 = layer3.detach()
         layer4 = self.layer4(layer3)
         if self.frozen and not self.train_layer4:
             layer4 = layer4.detach()
+        return layer2, layer3, layer4
+
+    def forward(self, x):
+        _, layer3, layer4 = self.forward_maps(x)
         return layer3, layer4

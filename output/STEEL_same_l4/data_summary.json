@@ -54,7 +54,19 @@
         "XSDD": 80
       }
     },
-    "cross_source": true,
+    "cross_source": false,
+    "holdout_source": null,
+    "query_source": null,
+    "pool": [
+      "crack",
+      "crease",
+      "inclusion",
+      "oil",
+      "oxide",
+      "pit",
+      "punch",
+      "scratch"
+    ],
     "cross_classes": [
       "crack",
       "crease",
@@ -107,8 +119,8 @@
         0.0,
         1.0
       ],
-      "support_has_mask_ratio": 0.6000000238418579,
-      "query_has_mask_ratio": 1.0
+      "support_has_mask_ratio": 0.800000011920929,
+      "query_has_mask_ratio": 0.800000011920929
     }
   },
   "val_dir": {
@@ -166,7 +178,19 @@
         "XSDD": 27
       }
     },
-    "cross_source": true,
+    "cross_source": false,
+    "holdout_source": null,
+    "query_source": null,
+    "pool": [
+      "crack",
+      "crease",
+      "inclusion",
+      "oil",
+      "oxide",
+      "pit",
+      "punch",
+      "scratch"
+    ],
     "cross_classes": [
       "crack",
       "crease",
@@ -215,12 +239,12 @@
         1.0,
         1.0,
         1.0,
-        0.4,
+        0.2,
         0.0,
         1.0
       ],
-      "support_has_mask_ratio": 0.800000011920929,
-      "query_has_mask_ratio": 1.0
+      "support_has_mask_ratio": 0.6000000238418579,
+      "query_has_mask_ratio": 0.6000000238418579
     }
   },
   "test_dir": {
@@ -278,7 +302,19 @@
         "XSDD": 27
       }
     },
-    "cross_source": true,
+    "cross_source": false,
+    "holdout_source": null,
+    "query_source": null,
+    "pool": [
+      "crack",
+      "crease",
+      "inclusion",
+      "oil",
+      "oxide",
+      "pit",
+      "punch",
+      "scratch"
+    ],
     "cross_classes": [
       "crack",
       "crease",
@@ -327,12 +363,12 @@
         1.0,
         1.0,
         1.0,
-        0.4,
+        0.2,
         0.0,
         1.0
       ],
-      "support_has_mask_ratio": 0.800000011920929,
-      "query_has_mask_ratio": 1.0
+      "support_has_mask_ratio": 0.6000000238418579,
+      "query_has_mask_ratio": 0.6000000238418579
     }
   }
 }

@@ -1,0 +1,1143 @@
+{
+  "protocol": "industrial_dual_proto_v1",
+  "feature": "frozen_imagenet_layer4_core_ring",
+  "score": "d_core + beta * d_ring  (d=1-cos)",
+  "context_dilate_px": 16,
+  "primary_metric_select": "delta_hard @ k=3 on CAST",
+  "delivery_metrics": [
+    "defect_acc",
+    "delta_bg",
+    "delta_hard",
+    "confusion_rate"
+  ],
+  "notes": [
+    "不训练；远背景不进类原型与分数；支持/查询按伪批次分离",
+    "β 只在铸坯开发集选一次；分母不参与选参",
+    "跨来源支持仅附录"
+  ],
+  "selection": {
+    "candidates": [
+      0.25,
+      0.5
+    ],
+    "select_k": 3,
+    "check_k": 5,
+    "metric": "delta_hard",
+    "scores_k3": {
+      "0.25": 0.1089,
+      "0.5": 0.1436
+    },
+    "scores_k5": {
+      "0.25": 0.0976,
+      "0.5": 0.1084
+    },
+    "locked_beta": 0.25,
+    "reason": "close_prefer_0.25",
+    "gap_k3": 0.0347,
+    "order_reversal_k3_vs_k5": false,
+    "grid": {
+      "0.25": {
+        "k3": {
+          "beta": 0.25,
+          "k": 3,
+          "support_mode": "same",
+          "defect_acc": 0.9081,
+          "defect_ci": [
+            0.853,
+            0.9451
+          ],
+          "bg_acc": 0.7992,
+          "geo_acc": 0.5775,
+          "delta_bg": 0.1089,
+          "delta_bg_ci": [
+            0.0181,
+            0.1893
+          ],
+          "pass_vs_bg": true,
+          "delta_hard": 0.1089,
+          "delta_hard_ci": [
+            0.0181,
+            0.1893
+          ],
+          "pass_vs_hard": true,
+          "power_bg": {
+            "se_approx": 0.0437,
+            "need_point_for_ci_lower_gt0": 0.0856,
+            "mde80_paired": 0.1224,
+            "mde80_indep_two_methods": 0.173,
+            "note": "配对比较同一批图像时用 mde80_paired；两套独立重跑用 mde80_indep"
+          },
+          "power_hard": {
+            "se_approx": 0.0437,
+            "need_point_for_ci_lower_gt0": 0.0856,
+            "mde80_paired": 0.1224,
+            "mde80_indep_two_methods": 0.173,
+            "note": "配对比较同一批图像时用 mde80_paired；两套独立重跑用 mde80_indep"
+          },
+          "n_eval_images": 78,
+          "support_repeats_used": 20,
+          "confusion_rate": {
+            "crack": {
+              "crack": 0.8714,
+              "oxide": 0.1071,
+              "scratch": 0.0214
+            },
+            "oxide": {
+              "crack": 0.0759,
+              "oxide": 0.9241,
+              "scratch": 0.0
+            },
+            "scratch": {
+              "crack": 0.041,
+              "oxide": 0.0082,
+              "scratch": 0.9508
+            }
+          }
+        },
+        "k5": {
+          "beta": 0.25,
+          "k": 5,
+          "support_mode": "same",
+          "defect_acc": 0.9325,
+          "defect_ci": [
+            0.8955,
+            0.9624
+          ],
+          "bg_acc": 0.8349,
+          "geo_acc": 0.5821,
+          "delta_bg": 0.0976,
+          "delta_bg_ci": [
+            0.0407,
+            0.1546
+          ],
+          "pass_vs_bg": true,
+          "delta_hard": 0.0976,
+          "delta_hard_ci": [
+            0.0407,
+            0.1546
+          ],
+          "pass_vs_hard": true,
+          "power_bg": {
+            "se_approx": 0.0291,
+            "need_point_for_ci_lower_gt0": 0.0569,
+            "mde80_paired": 0.0814,
+            "mde80_indep_two_methods": 0.1151,
+            "note": "配对比较同一批图像时用 mde80_paired；两套独立重跑用 mde80_indep"
+          },
+          "power_hard": {
+            "se_approx": 0.0291,
+            "need_point_for_ci_lower_gt0": 0.0569,
+            "mde80_paired": 0.0814,
+            "mde80_indep_two_methods": 0.1151,
+            "note": "配对比较同一批图像时用 mde80_paired；两套独立重跑用 mde80_indep"
+          },
+          "n_eval_images": 78,
+          "support_repeats_used": 20,
+          "confusion_rate": {
+            "crack": {
+              "crack": 0.9513,
+              "oxide": 0.0398,
+              "scratch": 0.0088
+            },
+            "oxide": {
+              "crack": 0.0983,
+              "oxide": 0.9017,
+              "scratch": 0.0
+            },
+            "scratch": {
+              "crack": 0.0509,
+              "oxide": 0.0073,
+              "scratch": 0.9418
+            }
+          }
+        }
+      },
+      "0.5": {
+        "k3": {
+          "beta": 0.5,
+          "k": 3,
+          "support_mode": "same",
+          "defect_acc": 0.8994,
+          "defect_ci": [
+            0.8564,
+            0.9372
+          ],
+          "bg_acc": 0.7557,
+          "geo_acc": 0.5737,
+          "delta_bg": 0.1436,
+          "delta_bg_ci": [
+            0.0635,
+            0.231
+          ],
+          "pass_vs_bg": true,
+          "delta_hard": 0.1436,
+          "delta_hard_ci": [
+            0.0635,
+            0.231
+          ],
+          "pass_vs_hard": true,
+          "power_bg": {
+            "se_approx": 0.0427,
+            "need_point_for_ci_lower_gt0": 0.0838,
+            "mde80_paired": 0.1197,
+            "mde80_indep_two_methods": 0.1693,
+            "note": "配对比较同一批图像时用 mde80_paired；两套独立重跑用 mde80_indep"
+          },
+          "power_hard": {
+            "se_approx": 0.0427,
+            "need_point_for_ci_lower_gt0": 0.0838,
+            "mde80_paired": 0.1197,
+            "mde80_indep_two_methods": 0.1693,
+            "note": "配对比较同一批图像时用 mde80_paired；两套独立重跑用 mde80_indep"
+          },
+          "n_eval_images": 78,
+          "support_repeats_used": 20,
+          "confusion_rate": {
+            "crack": {
+              "crack": 0.8346,
+              "oxide": 0.0945,
+              "scratch": 0.0709
+            },
+            "oxide": {
+              "crack": 0.1048,
+              "oxide": 0.8952,
+              "scratch": 0.0
+            },
+            "scratch": {
+              "crack": 0.0174,
+              "oxide": 0.0435,
+              "scratch": 0.9391
+            }
+          }
+        },
+        "k5": {
+          "beta": 0.5,
+          "k": 5,
+          "support_mode": "same",
+          "defect_acc": 0.9514,
+          "defect_ci": [
+            0.9214,
+            0.978
+          ],
+          "bg_acc": 0.843,
+          "geo_acc": 0.5949,
+          "delta_bg": 0.1084,
+          "delta_bg_ci": [
+            0.0611,
+            0.1639
+          ],
+          "pass_vs_bg": true,
+          "delta_hard": 0.1084,
+          "delta_hard_ci": [
+            0.0611,
+            0.1639
+          ],
+          "pass_vs_hard": true,
+          "power_bg": {
+            "se_approx": 0.0262,
+            "need_point_for_ci_lower_gt0": 0.0514,
+            "mde80_paired": 0.0735,
+            "mde80_indep_two_methods": 0.1039,
+            "note": "配对比较同一批图像时用 mde80_paired；两套独立重跑用 mde80_indep"
+          },
+          "power_hard": {
+            "se_approx": 0.0262,
+            "need_point_for_ci_lower_gt0": 0.0514,
+            "mde80_paired": 0.0735,
+            "mde80_indep_two_methods": 0.1039,
+            "note": "配对比较同一批图像时用 mde80_paired；两套独立重跑用 mde80_indep"
+          },
+          "n_eval_images": 78,
+          "support_repeats_used": 20,
+          "confusion_rate": {
+            "crack": {
+              "crack": 0.9234,
+              "oxide": 0.0511,
+              "scratch": 0.0255
+            },
+            "oxide": {
+              "crack": 0.0444,
+              "oxide": 0.9556,
+              "scratch": 0.0
+            },
+            "scratch": {
+              "crack": 0.0122,
+              "oxide": 0.0081,
+              "scratch": 0.9797
+            }
+          }
+        }
+      }
+    }
+  },
+  "delivery": {
+    "CR7": {
+      "role": "test_denominator",
+      "n_images": 695,
+      "classes": [
+        "inclusion",
+        "macular",
+        "oil",
+        "pit",
+        "punch",
+        "scratch"
+      ],
+      "skipped": {
+        "no_mask": 0,
+        "box_frac": 0,
+        "class_drop": {},
+        "drop_classes": []
+      },
+      "locked_beta": 0.25,
+      "by_k": {
+        "3": {
+          "beta": 0.25,
+          "k": 3,
+          "support_mode": "same",
+          "defect_acc": 0.6555,
+          "defect_ci": [
+            0.6343,
+            0.6792
+          ],
+          "bg_acc": 0.5402,
+          "geo_acc": 0.2205,
+          "delta_bg": 0.1154,
+          "delta_bg_ci": [
+            0.0945,
+            0.1336
+          ],
+          "pass_vs_bg": true,
+          "delta_hard": 0.1154,
+          "delta_hard_ci": [
+            0.0945,
+            0.1336
+          ],
+          "pass_vs_hard": true,
+          "power_bg": {
+            "se_approx": 0.01,
+            "need_point_for_ci_lower_gt0": 0.0195,
+            "mde80_paired": 0.0279,
+            "mde80_indep_two_methods": 0.0395,
+            "note": "配对比较同一批图像时用 mde80_paired；两套独立重跑用 mde80_indep"
+          },
+          "power_hard": {
+            "se_approx": 0.01,
+            "need_point_for_ci_lower_gt0": 0.0195,
+            "mde80_paired": 0.0279,
+            "mde80_indep_two_methods": 0.0395,
+            "note": "配对比较同一批图像时用 mde80_paired；两套独立重跑用 mde80_indep"
+          },
+          "n_eval_images": 695,
+          "support_repeats_used": 20,
+          "confusion_rate": {
+            "inclusion": {
+              "inclusion": 0.3757,
+              "macular": 0.0401,
+              "oil": 0.0284,
+              "pit": 0.3777,
+              "punch": 0.0059,
+              "scratch": 0.1722
+            },
+            "macular": {
+              "inclusion": 0.0148,
+              "macular": 0.9478,
+              "oil": 0.0039,
+              "pit": 0.0108,
+              "punch": 0.0,
+              "scratch": 0.0226
+            },
+            "oil": {
+              "inclusion": 0.0971,
+              "macular": 0.0404,
+              "oil": 0.4983,
+              "pit": 0.1323,
+              "punch": 0.0258,
+              "scratch": 0.2062
+            },
+            "pit": {
+              "inclusion": 0.2573,
+              "macular": 0.0694,
+              "oil": 0.0772,
+              "pit": 0.3714,
+              "punch": 0.0011,
+              "scratch": 0.2237
+            },
+            "punch": {
+              "inclusion": 0.0105,
+              "macular": 0.0009,
+              "oil": 0.0026,
+              "pit": 0.0061,
+              "punch": 0.9763,
+              "scratch": 0.0035
+            },
+            "scratch": {
+              "inclusion": 0.0463,
+              "macular": 0.0083,
+              "oil": 0.0297,
+              "pit": 0.1865,
+              "punch": 0.0,
+              "scratch": 0.7292
+            }
+          }
+        },
+        "5": {
+          "beta": 0.25,
+          "k": 5,
+          "support_mode": "same",
+          "defect_acc": 0.688,
+          "defect_ci": [
+            0.666,
+            0.714
+          ],
+          "bg_acc": 0.5746,
+          "geo_acc": 0.2324,
+          "delta_bg": 0.1134,
+          "delta_bg_ci": [
+            0.0941,
+            0.1325
+          ],
+          "pass_vs_bg": true,
+          "delta_hard": 0.1134,
+          "delta_hard_ci": [
+            0.0941,
+            0.1325
+          ],
+          "pass_vs_hard": true,
+          "power_bg": {
+            "se_approx": 0.0098,
+            "need_point_for_ci_lower_gt0": 0.0192,
+            "mde80_paired": 0.0274,
+            "mde80_indep_two_methods": 0.0388,
+            "note": "配对比较同一批图像时用 mde80_paired；两套独立重跑用 mde80_indep"
+          },
+          "power_hard": {
+            "se_approx": 0.0098,
+            "need_point_for_ci_lower_gt0": 0.0192,
+            "mde80_paired": 0.0274,
+            "mde80_indep_two_methods": 0.0388,
+            "note": "配对比较同一批图像时用 mde80_paired；两套独立重跑用 mde80_indep"
+          },
+          "n_eval_images": 695,
+          "support_repeats_used": 20,
+          "confusion_rate": {
+            "inclusion": {
+              "inclusion": 0.4636,
+              "macular": 0.0253,
+              "oil": 0.0288,
+              "pit": 0.3462,
+              "punch": 0.0051,
+              "scratch": 0.1311
+            },
+            "macular": {
+              "inclusion": 0.0077,
+              "macular": 0.9571,
+              "oil": 0.0061,
+              "pit": 0.023,
+              "punch": 0.0,
+              "scratch": 0.0061
+            },
+            "oil": {
+              "inclusion": 0.1001,
+              "macular": 0.0301,
+              "oil": 0.5827,
+              "pit": 0.1175,
+              "punch": 0.0179,
+              "scratch": 0.1517
+            },
+            "pit": {
+              "inclusion": 0.2949,
+              "macular": 0.0432,
+              "oil": 0.0795,
+              "pit": 0.3937,
+              "punch": 0.0006,
+              "scratch": 0.1881
+            },
+            "punch": {
+              "inclusion": 0.0083,
+              "macular": 0.0,
+              "oil": 0.0021,
+              "pit": 0.0046,
+              "punch": 0.9794,
+              "scratch": 0.0057
+            },
+            "scratch": {
+              "inclusion": 0.0726,
+              "macular": 0.0053,
+              "oil": 0.0251,
+              "pit": 0.1527,
+              "punch": 0.0,
+              "scratch": 0.7443
+            }
+          }
+        }
+      },
+      "acceptance": {
+        "delta_bg_positive": true,
+        "delta_hard_pass": true,
+        "delta_hard": 0.1154,
+        "delta_hard_ci": [
+          0.0945,
+          0.1336
+        ],
+        "mde_hard": 0.0279
+      }
+    },
+    "GC10": {
+      "role": "test_denominator",
+      "n_images": 324,
+      "classes": [
+        "crease",
+        "crescent",
+        "inclusion",
+        "oil",
+        "punch",
+        "water",
+        "weld"
+      ],
+      "skipped": {
+        "no_mask": 1,
+        "box_frac": 0,
+        "class_drop": {
+          "pit": 6
+        },
+        "drop_classes": [
+          "pit"
+        ]
+      },
+      "locked_beta": 0.25,
+      "by_k": {
+        "3": {
+          "beta": 0.25,
+          "k": 3,
+          "support_mode": "same",
+          "defect_acc": 0.5883,
+          "defect_ci": [
+            0.553,
+            0.619
+          ],
+          "bg_acc": 0.4292,
+          "geo_acc": 0.3631,
+          "delta_bg": 0.1591,
+          "delta_bg_ci": [
+            0.1281,
+            0.1936
+          ],
+          "pass_vs_bg": true,
+          "delta_hard": 0.1591,
+          "delta_hard_ci": [
+            0.1281,
+            0.1936
+          ],
+          "pass_vs_hard": true,
+          "power_bg": {
+            "se_approx": 0.0167,
+            "need_point_for_ci_lower_gt0": 0.0328,
+            "mde80_paired": 0.0468,
+            "mde80_indep_two_methods": 0.0662,
+            "note": "配对比较同一批图像时用 mde80_paired；两套独立重跑用 mde80_indep"
+          },
+          "power_hard": {
+            "se_approx": 0.0167,
+            "need_point_for_ci_lower_gt0": 0.0328,
+            "mde80_paired": 0.0468,
+            "mde80_indep_two_methods": 0.0662,
+            "note": "配对比较同一批图像时用 mde80_paired；两套独立重跑用 mde80_indep"
+          },
+          "n_eval_images": 324,
+          "support_repeats_used": 20,
+          "confusion_rate": {
+            "crease": {
+              "crease": 0.6991,
+              "crescent": 0.0251,
+              "inclusion": 0.0455,
+              "oil": 0.0047,
+              "punch": 0.0627,
+              "water": 0.0313,
+              "weld": 0.1317
+            },
+            "crescent": {
+              "crease": 0.0,
+              "crescent": 0.8972,
+              "inclusion": 0.0194,
+              "oil": 0.0069,
+              "punch": 0.0125,
+              "water": 0.0139,
+              "weld": 0.05
+            },
+            "inclusion": {
+              "crease": 0.0605,
+              "crescent": 0.0028,
+              "inclusion": 0.5584,
+              "oil": 0.1041,
+              "punch": 0.0239,
+              "water": 0.2335,
+              "weld": 0.0169
+            },
+            "oil": {
+              "crease": 0.0029,
+              "crescent": 0.0116,
+              "inclusion": 0.2471,
+              "oil": 0.4491,
+              "punch": 0.1003,
+              "water": 0.1773,
+              "weld": 0.0116
+            },
+            "punch": {
+              "crease": 0.0502,
+              "crescent": 0.0122,
+              "inclusion": 0.0285,
+              "oil": 0.038,
+              "punch": 0.7137,
+              "water": 0.0081,
+              "weld": 0.1493
+            },
+            "water": {
+              "crease": 0.0296,
+              "crescent": 0.0,
+              "inclusion": 0.3333,
+              "oil": 0.1164,
+              "punch": 0.0212,
+              "water": 0.4942,
+              "weld": 0.0053
+            },
+            "weld": {
+              "crease": 0.0809,
+              "crescent": 0.1286,
+              "inclusion": 0.031,
+              "oil": 0.0089,
+              "punch": 0.3603,
+              "water": 0.01,
+              "weld": 0.3803
+            }
+          }
+        },
+        "5": {
+          "beta": 0.25,
+          "k": 5,
+          "support_mode": "same",
+          "defect_acc": 0.6544,
+          "defect_ci": [
+            0.6258,
+            0.6849
+          ],
+          "bg_acc": 0.472,
+          "geo_acc": 0.3734,
+          "delta_bg": 0.1824,
+          "delta_bg_ci": [
+            0.151,
+            0.2163
+          ],
+          "pass_vs_bg": true,
+          "delta_hard": 0.1824,
+          "delta_hard_ci": [
+            0.151,
+            0.2163
+          ],
+          "pass_vs_hard": true,
+          "power_bg": {
+            "se_approx": 0.0167,
+            "need_point_for_ci_lower_gt0": 0.0326,
+            "mde80_paired": 0.0467,
+            "mde80_indep_two_methods": 0.066,
+            "note": "配对比较同一批图像时用 mde80_paired；两套独立重跑用 mde80_indep"
+          },
+          "power_hard": {
+            "se_approx": 0.0167,
+            "need_point_for_ci_lower_gt0": 0.0326,
+            "mde80_paired": 0.0467,
+            "mde80_indep_two_methods": 0.066,
+            "note": "配对比较同一批图像时用 mde80_paired；两套独立重跑用 mde80_indep"
+          },
+          "n_eval_images": 324,
+          "support_repeats_used": 20,
+          "confusion_rate": {
+            "crease": {
+              "crease": 0.8206,
+              "crescent": 0.0206,
+              "inclusion": 0.0176,
+              "oil": 0.0029,
+              "punch": 0.0441,
+              "water": 0.0338,
+              "weld": 0.0603
+            },
+            "crescent": {
+              "crease": 0.0013,
+              "crescent": 0.9387,
+              "inclusion": 0.0163,
+              "oil": 0.0025,
+              "punch": 0.0088,
+              "water": 0.0175,
+              "weld": 0.015
+            },
+            "inclusion": {
+              "crease": 0.0855,
+              "crescent": 0.0013,
+              "inclusion": 0.6342,
+              "oil": 0.0934,
+              "punch": 0.0197,
+              "water": 0.1605,
+              "weld": 0.0053
+            },
+            "oil": {
+              "crease": 0.0028,
+              "crescent": 0.0153,
+              "inclusion": 0.2972,
+              "oil": 0.5403,
+              "punch": 0.0444,
+              "water": 0.0903,
+              "weld": 0.0097
+            },
+            "punch": {
+              "crease": 0.0641,
+              "crescent": 0.0128,
+              "inclusion": 0.0167,
+              "oil": 0.0244,
+              "punch": 0.6705,
+              "water": 0.0026,
+              "weld": 0.209
+            },
+            "water": {
+              "crease": 0.0509,
+              "crescent": 0.0,
+              "inclusion": 0.3038,
+              "oil": 0.1028,
+              "punch": 0.0075,
+              "water": 0.5302,
+              "weld": 0.0047
+            },
+            "weld": {
+              "crease": 0.0673,
+              "crescent": 0.1133,
+              "inclusion": 0.0337,
+              "oil": 0.0071,
+              "punch": 0.2531,
+              "water": 0.0061,
+              "weld": 0.5194
+            }
+          }
+        }
+      },
+      "acceptance": {
+        "delta_bg_positive": true,
+        "delta_hard_pass": true,
+        "delta_hard": 0.1591,
+        "delta_hard_ci": [
+          0.1281,
+          0.1936
+        ],
+        "mde_hard": 0.0468
+      }
+    },
+    "NEU": {
+      "role": "test_denominator",
+      "n_images": 231,
+      "classes": [
+        "crack",
+        "inclusion",
+        "oxide",
+        "patch",
+        "scratch"
+      ],
+      "skipped": {
+        "no_mask": 0,
+        "box_frac": 52,
+        "class_drop": {
+          "pit": 52
+        },
+        "drop_classes": [
+          "pit"
+        ]
+      },
+      "locked_beta": 0.25,
+      "by_k": {
+        "3": {
+          "beta": 0.25,
+          "k": 3,
+          "support_mode": "same",
+          "defect_acc": 0.9367,
+          "defect_ci": [
+            0.9163,
+            0.9537
+          ],
+          "bg_acc": 0.7662,
+          "geo_acc": 0.279,
+          "delta_bg": 0.1704,
+          "delta_bg_ci": [
+            0.1386,
+            0.2018
+          ],
+          "pass_vs_bg": true,
+          "delta_hard": 0.1704,
+          "delta_hard_ci": [
+            0.1386,
+            0.2018
+          ],
+          "pass_vs_hard": true,
+          "power_bg": {
+            "se_approx": 0.0161,
+            "need_point_for_ci_lower_gt0": 0.0316,
+            "mde80_paired": 0.0452,
+            "mde80_indep_two_methods": 0.0639,
+            "note": "配对比较同一批图像时用 mde80_paired；两套独立重跑用 mde80_indep"
+          },
+          "power_hard": {
+            "se_approx": 0.0161,
+            "need_point_for_ci_lower_gt0": 0.0316,
+            "mde80_paired": 0.0452,
+            "mde80_indep_two_methods": 0.0639,
+            "note": "配对比较同一批图像时用 mde80_paired；两套独立重跑用 mde80_indep"
+          },
+          "n_eval_images": 231,
+          "support_repeats_used": 20,
+          "confusion_rate": {
+            "crack": {
+              "crack": 0.9828,
+              "inclusion": 0.0025,
+              "oxide": 0.0025,
+              "patch": 0.0123,
+              "scratch": 0.0
+            },
+            "inclusion": {
+              "crack": 0.0505,
+              "inclusion": 0.9264,
+              "oxide": 0.0011,
+              "patch": 0.0095,
+              "scratch": 0.0126
+            },
+            "oxide": {
+              "crack": 0.0106,
+              "inclusion": 0.0,
+              "oxide": 0.973,
+              "patch": 0.0164,
+              "scratch": 0.0
+            },
+            "patch": {
+              "crack": 0.0377,
+              "inclusion": 0.0051,
+              "oxide": 0.0,
+              "patch": 0.9572,
+              "scratch": 0.0
+            },
+            "scratch": {
+              "crack": 0.0012,
+              "inclusion": 0.1078,
+              "oxide": 0.0,
+              "patch": 0.0208,
+              "scratch": 0.8701
+            }
+          }
+        },
+        "5": {
+          "beta": 0.25,
+          "k": 5,
+          "support_mode": "same",
+          "defect_acc": 0.9506,
+          "defect_ci": [
+            0.9313,
+            0.9695
+          ],
+          "bg_acc": 0.8229,
+          "geo_acc": 0.2704,
+          "delta_bg": 0.1277,
+          "delta_bg_ci": [
+            0.093,
+            0.1599
+          ],
+          "pass_vs_bg": true,
+          "delta_hard": 0.1277,
+          "delta_hard_ci": [
+            0.093,
+            0.1599
+          ],
+          "pass_vs_hard": true,
+          "power_bg": {
+            "se_approx": 0.0171,
+            "need_point_for_ci_lower_gt0": 0.0334,
+            "mde80_paired": 0.0478,
+            "mde80_indep_two_methods": 0.0676,
+            "note": "配对比较同一批图像时用 mde80_paired；两套独立重跑用 mde80_indep"
+          },
+          "power_hard": {
+            "se_approx": 0.0171,
+            "need_point_for_ci_lower_gt0": 0.0334,
+            "mde80_paired": 0.0478,
+            "mde80_indep_two_methods": 0.0676,
+            "note": "配对比较同一批图像时用 mde80_paired；两套独立重跑用 mde80_indep"
+          },
+          "n_eval_images": 231,
+          "support_repeats_used": 20,
+          "confusion_rate": {
+            "crack": {
+              "crack": 0.9957,
+              "inclusion": 0.0,
+              "oxide": 0.0022,
+              "patch": 0.0022,
+              "scratch": 0.0
+            },
+            "inclusion": {
+              "crack": 0.0213,
+              "inclusion": 0.9667,
+              "oxide": 0.0,
+              "patch": 0.0083,
+              "scratch": 0.0037
+            },
+            "oxide": {
+              "crack": 0.016,
+              "inclusion": 0.0,
+              "oxide": 0.974,
+              "patch": 0.01,
+              "scratch": 0.0
+            },
+            "patch": {
+              "crack": 0.0721,
+              "inclusion": 0.0,
+              "oxide": 0.0,
+              "patch": 0.9279,
+              "scratch": 0.0
+            },
+            "scratch": {
+              "crack": 0.0011,
+              "inclusion": 0.1067,
+              "oxide": 0.0,
+              "patch": 0.0,
+              "scratch": 0.8922
+            }
+          }
+        }
+      },
+      "acceptance": {
+        "delta_bg_positive": true,
+        "delta_hard_pass": true,
+        "delta_hard": 0.1704,
+        "delta_hard_ci": [
+          0.1386,
+          0.2018
+        ],
+        "mde_hard": 0.0452
+      }
+    }
+  },
+  "appendix_cross": {
+    "CR7": {
+      "shared": [
+        "inclusion",
+        "oil",
+        "punch",
+        "scratch"
+      ],
+      "k": 3,
+      "locked_beta": 0.25,
+      "beta": 0.25,
+      "support_mode": "cross",
+      "defect_acc": 0.3647,
+      "defect_ci": [
+        0.3397,
+        0.3903
+      ],
+      "bg_acc": 0.2675,
+      "geo_acc": 0.2858,
+      "delta_bg": 0.0972,
+      "delta_bg_ci": [
+        0.0633,
+        0.1276
+      ],
+      "pass_vs_bg": true,
+      "delta_hard": 0.0775,
+      "delta_hard_ci": [
+        0.0478,
+        0.1081
+      ],
+      "pass_vs_hard": true,
+      "power_bg": {
+        "se_approx": 0.0164,
+        "need_point_for_ci_lower_gt0": 0.0321,
+        "mde80_paired": 0.046,
+        "mde80_indep_two_methods": 0.065,
+        "note": "配对比较同一批图像时用 mde80_paired；两套独立重跑用 mde80_indep"
+      },
+      "power_hard": {
+        "se_approx": 0.0154,
+        "need_point_for_ci_lower_gt0": 0.0301,
+        "mde80_paired": 0.0431,
+        "mde80_indep_two_methods": 0.0609,
+        "note": "配对比较同一批图像时用 mde80_paired；两套独立重跑用 mde80_indep"
+      },
+      "n_eval_images": 467,
+      "support_repeats_used": 20,
+      "confusion_rate": {
+        "inclusion": {
+          "inclusion": 0.3,
+          "oil": 0.2746,
+          "punch": 0.3479,
+          "scratch": 0.0775
+        },
+        "oil": {
+          "inclusion": 0.2967,
+          "oil": 0.4183,
+          "punch": 0.1233,
+          "scratch": 0.1617
+        },
+        "punch": {
+          "inclusion": 0.0036,
+          "oil": 0.2496,
+          "punch": 0.7308,
+          "scratch": 0.0161
+        },
+        "scratch": {
+          "inclusion": 0.5513,
+          "oil": 0.1435,
+          "punch": 0.2839,
+          "scratch": 0.0213
+        }
+      }
+    },
+    "GC10": {
+      "shared": [
+        "inclusion",
+        "oil",
+        "punch"
+      ],
+      "k": 3,
+      "locked_beta": 0.25,
+      "beta": 0.25,
+      "support_mode": "cross",
+      "defect_acc": 0.4036,
+      "defect_ci": [
+        0.3605,
+        0.4505
+      ],
+      "bg_acc": 0.383,
+      "geo_acc": 0.379,
+      "delta_bg": 0.0206,
+      "delta_bg_ci": [
+        -0.0238,
+        0.0676
+      ],
+      "pass_vs_bg": false,
+      "delta_hard": 0.011,
+      "delta_hard_ci": [
+        -0.0301,
+        0.0548
+      ],
+      "pass_vs_hard": false,
+      "power_bg": {
+        "se_approx": 0.0233,
+        "need_point_for_ci_lower_gt0": 0.0457,
+        "mde80_paired": 0.0653,
+        "mde80_indep_two_methods": 0.0924,
+        "note": "配对比较同一批图像时用 mde80_paired；两套独立重跑用 mde80_indep"
+      },
+      "power_hard": {
+        "se_approx": 0.0217,
+        "need_point_for_ci_lower_gt0": 0.0425,
+        "mde80_paired": 0.0607,
+        "mde80_indep_two_methods": 0.0858,
+        "note": "配对比较同一批图像时用 mde80_paired；两套独立重跑用 mde80_indep"
+      },
+      "n_eval_images": 128,
+      "support_repeats_used": 20,
+      "confusion_rate": {
+        "inclusion": {
+          "inclusion": 0.4953,
+          "oil": 0.5047,
+          "punch": 0.0
+        },
+        "oil": {
+          "inclusion": 0.3524,
+          "oil": 0.5622,
+          "punch": 0.0854
+        },
+        "punch": {
+          "inclusion": 0.4477,
+          "oil": 0.3761,
+          "punch": 0.1761
+        }
+      }
+    },
+    "NEU": {
+      "shared": [
+        "crack",
+        "inclusion",
+        "oxide",
+        "scratch"
+      ],
+      "k": 3,
+      "locked_beta": 0.25,
+      "beta": 0.25,
+      "support_mode": "cross",
+      "defect_acc": 0.4199,
+      "defect_ci": [
+        0.391,
+        0.4521
+      ],
+      "bg_acc": 0.3317,
+      "geo_acc": 0.3107,
+      "delta_bg": 0.0882,
+      "delta_bg_ci": [
+        0.0325,
+        0.1425
+      ],
+      "pass_vs_bg": true,
+      "delta_hard": 0.0865,
+      "delta_hard_ci": [
+        0.0325,
+        0.1412
+      ],
+      "pass_vs_hard": true,
+      "power_bg": {
+        "se_approx": 0.0281,
+        "need_point_for_ci_lower_gt0": 0.055,
+        "mde80_paired": 0.0786,
+        "mde80_indep_two_methods": 0.1112,
+        "note": "配对比较同一批图像时用 mde80_paired；两套独立重跑用 mde80_indep"
+      },
+      "power_hard": {
+        "se_approx": 0.0277,
+        "need_point_for_ci_lower_gt0": 0.0543,
+        "mde80_paired": 0.0777,
+        "mde80_indep_two_methods": 0.1099,
+        "note": "配对比较同一批图像时用 mde80_paired；两套独立重跑用 mde80_indep"
+      },
+      "n_eval_images": 192,
+      "support_repeats_used": 20,
+      "confusion_rate": {
+        "crack": {
+          "crack": 0.5232,
+          "inclusion": 0.0625,
+          "oxide": 0.2357,
+          "scratch": 0.1786
+        },
+        "inclusion": {
+          "crack": 0.3,
+          "inclusion": 0.2653,
+          "oxide": 0.0246,
+          "scratch": 0.4102
+        },
+        "oxide": {
+          "crack": 0.2891,
+          "inclusion": 0.2645,
+          "oxide": 0.4091,
+          "scratch": 0.0373
+        },
+        "scratch": {
+          "crack": 0.206,
+          "inclusion": 0.207,
+          "oxide": 0.024,
+          "scratch": 0.563
+        }
+      }
+    }
+  },
+  "gate": {
+    "beta_no_reversal": true,
+    "denom_delta_bg_positive_count": 3,
+    "denom_delta_hard_pass_count": 3,
+    "need_hard_pass_at_least": 2,
+    "hard_pass_sources": {
+      "CR7": true,
+      "GC10": true,
+      "NEU": true
+    },
+    "neu_hard_ci_crosses_zero": false
+  }
+}

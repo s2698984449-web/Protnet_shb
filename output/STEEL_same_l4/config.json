@@ -1,10 +1,10 @@
 {
-  "exp_name": "STEEL_cross_l4",
+  "exp_name": "STEEL_same_l4",
   "train_dir": "D:/元强化学习/代码/data/steel_merged/train",
   "val_dir": "D:/元强化学习/代码/data/steel_merged/val",
   "test_dir": "D:/元强化学习/代码/data/steel_merged/test",
   "exclude_classes": [],
-  "cross_source": true,
+  "cross_source": false,
   "include_classes": [
     "crack",
     "crease",
@@ -81,6 +81,7 @@
   "use_mask_proto": true,
   "gauss_sigma_ratio": 0.15,
   "location_loss_weight": 0.5,
+  "source_proto_weight": 0.05,
   "restored_root": null,
   "image_size": 224,
   "n_way": 5,
@@ -111,5 +112,5 @@
   "freeze": {
     "layer4": false
   },
-  "config_path": "D:\\元强化学习\\代码\\config\\cspd.yaml"
+  "config_path": "D:\\元强化学习\\代码\\config\\cspd_same.yaml"
 }

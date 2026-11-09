@@ -1,10 +1,18 @@
-exp_name: STEEL_base
+exp_name: STEEL_same_l4
 train_dir: D:/元强化学习/代码/data/steel_merged/train
 val_dir: D:/元强化学习/代码/data/steel_merged/val
 test_dir: D:/元强化学习/代码/data/steel_merged/test
-include_classes: []
 exclude_classes: []
-cross_source: true
+cross_source: false
+include_classes:
+- crack
+- crease
+- inclusion
+- oil
+- oxide
+- pit
+- punch
+- scratch
 source_table:
   NEU:
     material: 1.0
@@ -62,6 +70,7 @@ mask_pattern: '{stem}.png'
 use_mask_proto: true
 gauss_sigma_ratio: 0.15
 location_loss_weight: 0.5
+source_proto_weight: 0.05
 restored_root: null
 image_size: 224
 n_way: 5
@@ -71,10 +80,11 @@ feat_dim: 128
 film_rho: 0.5
 policy_rho: 0.5
 topk_ratio: 0.1
-adapt_steps: 0
+adapt_steps: 1
 adapt_lr: 0.1
 pretrained_backbone: true
 freeze_backbone: true
+backbone_lr: 0.0001
 lr: 0.001
 weight_decay: 0.0001
 grad_clip: 1.0
@@ -89,17 +99,5 @@ min_delta: 0.0
 seed: 0
 device: cuda
 freeze:
-  backbone: true
-  proj: false
-  proj3: false
-  proj4: false
-  cond_encoder: true
-  part_encoder: true
-  film: true
-  policy: true
-  policy_trunk: true
-  g_head: true
-  alpha_head: true
-  gate_head: true
-  tau_head: true
-config_path: D:\元强化学习\代码\config\cspd_test.yaml
+  layer4: false
+config_path: D:\元强化学习\代码\config\cspd_same.yaml

@@ -1,0 +1,38 @@
+# 工业双区域目标域原型：铸坯选 β → 锁定 → CR7/GC10/NEU 交付表
+# score = (1-cos_core) + β*(1-cos_ring)；远背景不进分数。不训练。
+
+exp_name: STEEL_industrial_proto
+merged_dir: D:/元强化学习/代码/data/steel_merged
+mask_dir: D:/元强化学习/代码/data/steel_masks
+splits: [test]
+select_source: CAST
+select_k: 3
+check_k: 5
+primary_ks: [3, 5]
+beta_candidates: [0.25, 0.5]
+beta_prefer_when_close: 0.25
+beta_close_eps: 0.02
+support_repeats: 20
+bootstrap: 200
+n_clusters: 8
+image_size: 224
+seed: 0
+device: cuda
+context_dilate_px: 16
+run_cross_appendix: true
+out_dir: D:/元强化学习/代码/output/STEEL_industrial_proto
+
+denominator: [CR7, GC10, NEU]
+
+source_specs:
+  CAST:
+    classes: [crack, oxide, scratch]
+  CR7:
+    classes: [inclusion, macular, oil, pit, punch, scratch]
+  GC10:
+    classes: [crease, crescent, inclusion, oil, punch, water, weld]
+    drop_classes: [pit]
+  NEU:
+    classes: [crack, inclusion, oxide, patch, scratch]
+    drop_classes: [pit]
+    max_box_frac: 0.5
