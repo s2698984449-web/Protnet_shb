@@ -1,0 +1,218 @@
+# 类映射清单。生成目录之前以本文件为准。
+# manifest-2026-11-10b。兼容度按 doc/cspd/类等价评判标准.md 的 v1 暂定。
+# 评判人 R1，每类最多 20 张，种子 0。2026-11-11 起不安排第二人，这一轮就是可用表。
+# 不改 data/new_split。new_split_v3 已生成。不改旧 class_map。
+
+version: manifest-2026-11-10b
+status: provisional
+standard: doc/cspd/类等价评判标准.md
+standard_version: equiv-v1
+reviewer: R1
+review_n: 20
+review_seed: 0
+second_reviewer: cancelled
+generated_for: new_split_v3
+does_not_touch:
+  - data/new_split
+  - output/STEEL_curriculum_v2
+
+crop_protocol:
+  when: load
+  crop_to_mask: true
+  crop_margin: 0.35
+  crop_min_side: 96
+  crop_square: true
+  image_size: 224
+  resize_image: bilinear
+  resize_mask: nearest
+  locked: true
+  note: 数字写死后，看到任何结果都不再改。磁盘上的图不预先裁切。
+
+csu_status:
+  used_by: STEEL_curriculum_v2
+  splits_used:
+    train: "梯度与来源距离。划痕 29，点状夹杂 147，氧化皮 7"
+    val: "早停与困难对。划痕 10，点状夹杂 49，氧化皮 2"
+    test: "在测试池内。探针抽到过测试划痕，不是留出域"
+  quote_rule: 带 CSU 的 v2 数字不能当留出结果引用
+  archive_on_disk: false
+  roll_mark_images: 未入库，压缩包已不在 data/，本轮不能看辊印
+
+rules:
+  - 兼容度是成对关系，不是单个类的属性
+  - 名字一致且没看过图：related
+  - 文献或看图支持才升 exact
+  - 成因或外观已有证据不同：incompatible
+  - 同一来源的两个原始类不并成一个无差别语义类；只允许标成子型
+  - 暂拆项现在就是独立语义类。看图后若要合并，只改清单，不改原始图
+  - exact 才能进跨来源评估；related 只当成对迁移；incompatible 可作困难负类
+  - 严格可跨来源评估的，目前还没有锁定。NEU 夹杂对 GC10 夹杂是文献上的 exact 候选，掩码复核前不算数
+
+# 组划分已写入各类目录的 groups.json。GC10 用文件名批次号，其余来源用缩略图直方图，不编造卷号。
+group_id:
+  unit: 同一组进同一个 train/val/test
+  file: data/new_split_v3/<语义类>/<来源>/groups.json
+  gc10: 文件名 img_<类>_<批次>_<序号> 的批次
+  others: 32x32 灰度 8 档直方图，L1 距离小于 0.3
+  v2_kept: data/new_split
+
+classes:
+  - {source: NEU, original: scratches, semantic: scratch, subtype: bright_candidate, basis: 名称；SteelDefectX 归入亮划痕, confidence: name}
+  - {source: NEU, original: inclusion, semantic: inclusion, subtype: null, basis: 名称；与 GC10 有文献合并, confidence: literature}
+  - {source: NEU, original: patches, semantic: patch, subtype: null, basis: 暂拆，独立成类, confidence: held_out}
+  - {source: NEU, original: crazing, semantic: crazing, subtype: null, basis: 龟裂网络，不是裂纹, confidence: name_and_prior}
+  - {source: NEU, original: pitted_surface, semantic: pit_texture, subtype: null, basis: 掩码占比约 0.82，满画面纹理, confidence: mask_and_look}
+  - {source: NEU, original: rolled-in_scale, semantic: oxide_scale, subtype: rolled_in, basis: 名称，未看图升 exact, confidence: name}
+
+  - {source: XSDD, original: surface scratch, semantic: scratch, subtype: dark_candidate, basis: 名称；SteelDefectX 归入暗划痕, confidence: name}
+  - {source: XSDD, original: slag inclusion, semantic: slag_inclusion, subtype: null, basis: SteelDefectX 因外观单列, confidence: literature}
+  - {source: XSDD, original: oxide scale of plate system, semantic: oxide_scale, subtype: plate_system, basis: 同一来源两种氧化皮，只作子型, confidence: name}
+  - {source: XSDD, original: oxide scale of temperature system, semantic: oxide_scale, subtype: temperature_system, basis: 同一来源两种氧化皮，只作子型, confidence: name}
+  - {source: XSDD, original: red iron, semantic: red_iron, subtype: null, basis: 暂拆，独立成类, confidence: held_out}
+  - {source: XSDD, original: iron sheet ash, semantic: iron_ash, subtype: null, basis: 暂拆，独立成类, confidence: held_out}
+  - {source: XSDD, original: finishing roll printing, semantic: roll_print, subtype: null, basis: 名称，与 CSU 辊印未看图, confidence: name}
+
+  - {source: GC10, original: "1 punching", semantic: punch, subtype: null, basis: 名称, confidence: name}
+  - {source: GC10, original: "2 welding line", semantic: weld_line, subtype: null, basis: 单来源，工艺标记, confidence: name}
+  - {source: GC10, original: "3 crescent gap", semantic: crescent, subtype: null, basis: 单来源, confidence: name}
+  - {source: GC10, original: "4 water spot", semantic: water, subtype: null, basis: 单来源, confidence: name}
+  - {source: GC10, original: "5 oil spot", semantic: oil, subtype: null, basis: 名称, confidence: name}
+  - {source: GC10, original: "6 silk spot", semantic: silk_spot, subtype: null, basis: 单来源，旧表未映射, confidence: name}
+  - {source: GC10, original: "7 inclusion", semantic: inclusion, subtype: null, basis: 名称；与 NEU 有文献合并, confidence: literature}
+  - {source: GC10, original: "8 rolled pit / 8_yahen", semantic: rolled_pit, subtype: null, basis: XML 名轧痕，辊子周期性点状, confidence: name_and_mask}
+  - {source: GC10, original: "9 crease", semantic: fold_wrinkle, subtype: crease, basis: 与腰折同来源，只作子型, confidence: name}
+  - {source: GC10, original: "10 waist folding", semantic: fold_wrinkle, subtype: waist_folding, basis: 与折痕同来源，只作子型, confidence: name}
+
+  - {source: CR7, original: "0 inclusion", semantic: inclusion, subtype: null, basis: 名称，未看图, confidence: name}
+  - {source: CR7, original: "1 dents", semantic: dent, subtype: null, basis: 本地 README 与文件前缀。与同类 pits 不合并, confidence: readme}
+  - {source: CR7, original: "2 oil spots", semantic: oil, subtype: null, basis: 名称, confidence: name}
+  - {source: CR7, original: "3 pits", semantic: pit_local, subtype: null, basis: 局部浅坑。与 NEU 麻面不兼容, confidence: mask_and_look}
+  - {source: CR7, original: "4 punching", semantic: punch, subtype: null, basis: 名称, confidence: name}
+  - {source: CR7, original: "5 linear", semantic: linear, subtype: null, basis: 暂拆。范围比划痕宽, confidence: held_out}
+  - {source: CR7, original: "6 macular", semantic: macular, subtype: null, basis: 暂拆，独立成类, confidence: held_out}
+
+  - {source: PLATE, original: In, semantic: inclusion, subtype: null, basis: 名称。与 Foe 同来源，不合并, confidence: name}
+  - {source: PLATE, original: Foe, semantic: foreign_embed, subtype: null, basis: 压入异物，不是夹杂, confidence: name}
+  - {source: PLATE, original: Bs, semantic: oxide_scale, subtype: block, basis: 目录名 Bs。classes.txt 第二行写成 Ls，记为笔误，不另立一类, confidence: name}
+  - {source: PLATE, original: Ss, semantic: oxide_scale, subtype: strip, basis: 目录名，条状氧化皮, confidence: name}
+
+  - {source: CAST, original: "0 scratch", semantic: scratch, subtype: null, basis: classes.txt, confidence: readme}
+  - {source: CAST, original: "1 weld slag", semantic: weld_slag, subtype: null, basis: 单来源，不并进 GC10 焊缝, confidence: readme}
+  - {source: CAST, original: "2 cutting opening", semantic: cutting_opening, subtype: null, basis: 单来源, confidence: readme}
+  - {source: CAST, original: "3 water slag mark", semantic: water_slag_mark, subtype: null, basis: 单来源，不并进 GC10 水渍, confidence: readme}
+  - {source: CAST, original: "4 slag skin", semantic: slag_skin, subtype: null, basis: classes.txt。旧映射误收成 oxide, confidence: readme}
+  - {source: CAST, original: "5 longitudinal crack", semantic: crack_long, subtype: null, basis: classes.txt。不是 NEU 龟裂, confidence: readme}
+
+  - {source: PIPE, original: "0 warp", semantic: warp, subtype: null, basis: classes.txt 首行。整体形变, confidence: readme}
+  - {source: PIPE, original: "1 external fold", semantic: fold_wrinkle, subtype: external_fold, basis: classes.txt。与皱褶只作子型, confidence: readme}
+  - {source: PIPE, original: "2 wrinkle", semantic: fold_wrinkle, subtype: wrinkle, basis: classes.txt。与外折只作子型, confidence: readme}
+  - {source: PIPE, original: "3 scratch", semantic: short_gouge, subtype: null, basis: 看图是短弯沟，暂不与长划痕共用语义类, confidence: look_provisional}
+
+  - {source: CSU, original: scratches, semantic: scratch, subtype: null, basis: 文件夹名。已进 v2，框掩码不是像素分割, confidence: name}
+  - {source: CSU, original: inclusions, semantic: inclusion, subtype: null, basis: 文件夹名。已进 v2, confidence: name}
+  - {source: CSU, original: oxide scale, semantic: oxide_scale, subtype: null, basis: 文件夹名。12 张里多是细线或过曝条，P2 暂不当氧化皮正样本。已进 v2, confidence: look_provisional, p2_positive: false}
+  - {source: CSU, original: roll marks, semantic: roll_print, subtype: null, basis: 名称。图不在磁盘上, confidence: name}
+  - {source: CSU, original: elastic deformation, semantic: elastic_deform, subtype: null, basis: 单来源, confidence: name}
+  - {source: CSU, original: wave, semantic: wave, subtype: null, basis: 单来源, confidence: name}
+
+  - {source: S3D, original: suffix sc, semantic: scratch, subtype: null, basis: 文件名后缀。已进 v2。论文类名未再核对, confidence: filename}
+  - {source: S3D, original: suffix iron, semantic: oxide_scale, subtype: null, basis: 文件名后缀。已进 v2, confidence: filename}
+  - {source: S3D, original: suffix in, semantic: null, subtype: null, basis: 掩码是细线，不进夹杂, confidence: mask}
+  - {source: S3D, original: suffix wr, semantic: null, subtype: null, basis: 未映射, confidence: held_out}
+  - {source: S3D, original: suffix rust, semantic: null, subtype: null, basis: 未映射, confidence: held_out}
+
+roles:
+  exact:
+    - {semantic: punch, sources: [GC10, CR7], note: 目前唯一 exact。双来源，只进 P2 的 exact 栏}
+  related:
+    - {semantic: scratch, note: 亮线与暗线极性不同，名称对齐，未严格等价}
+    - {semantic: inclusion, note: 名称对齐，未严格等价}
+    - {semantic: oxide_scale, note: 名称对齐，未严格等价。CSU 氧化皮暂不进}
+    - {semantic: oil, note: 名称对齐，未严格等价}
+    - {semantic: fold_wrinkle, note: 名称对齐，未严格等价}
+    - {semantic: roll_print, note: XSDD 已看，CSU 辊印未看}
+  single_or_split:
+    - pit_texture
+    - pit_local
+    - rolled_pit
+    - dent
+    - linear
+    - patch
+    - macular
+    - crazing
+    - crack_long
+    - slag_skin
+    - slag_inclusion
+    - foreign_embed
+    - red_iron
+    - iron_ash
+    - short_gouge
+    - warp
+    - weld_line
+    - crescent
+    - water
+    - silk_spot
+    - elastic_deform
+    - wave
+
+# level 是暂定。整图掩码占比不作为本体大小的证据。
+pairs:
+  - {a: "NEU pitted_surface", b: "CR7 pits", level: incompatible, body: "满场麻面纹理对局部针尖点", imaging: "忽略", provisional: true}
+  - {a: "NEU pitted_surface", b: "GC10 rolled pit", level: incompatible, body: "满场纹理对局部椭圆压痕", imaging: "忽略", provisional: true}
+  - {a: "CR7 pits", b: "GC10 rolled pit", level: related, body: "都是局部压痕；一边是成列针尖，一边是更大的椭圆", imaging: "忽略尺度差", provisional: true}
+  - {a: "CR7 pits", b: "CR7 dents", level: same_source_distinguished, body: "同来源作者已分开", imaging: "忽略", provisional: true}
+  - {a: "CR7 dents", b: "GC10 rolled pit", level: related, body: "都有周期性压印；dent 是小矩形阵列，轧痕是椭圆", imaging: "忽略", provisional: true, merge: false}
+  - {a: "NEU inclusion", b: "GC10 inclusion", level: related, body: "竖向暗痕对小点，形态族部分一致", imaging: "整图占比 0.197 对 0.015 含视野差，不作为降级理由", provisional: true}
+  - {a: "NEU/GC10 inclusion", b: "CR7 inclusion, PLATE In, CSU inclusions", level: related, body: "名称对齐。PLATE In 是单条竖痕，CR7 与 GC10 更接近小点，CSU 是细线", imaging: "忽略", provisional: true}
+  - {a: "XSDD slag inclusion", b: "其他夹杂", level: incompatible, body: "发亮撕裂金属", imaging: "忽略", provisional: true}
+  - {a: "PLATE Foe", b: "PLATE In", level: same_source_distinguished, body: "圆坑对竖条，同来源已分开", imaging: "忽略", provisional: true}
+  - {a: "NEU scratches", b: "XSDD surface scratch", level: related, body: "都是线；极性一亮一暗", imaging: "忽略背景", provisional: true}
+  - {a: "CSU scratches", b: "XSDD surface scratch", level: related, body: "都是细暗线。按 v1 本体接近，因 XSDD 无掩码且只有 20 张，暂不升 exact", imaging: "尺度差不算本体差异", provisional: true, r2_priority: upgrade}
+  - {a: "CAST scratch", b: "NEU scratches", level: related, body: "都是亮竖线。旧判断用了铸坯粗糙背景，v1 下背景不算。暂不升 exact", imaging: "粗糙背景忽略", provisional: true, r2_priority: upgrade}
+  - {a: "PIPE scratch", b: "长划痕", level: incompatible, body: "短弯沟，不是长线", imaging: "忽略", provisional: true, semantic: short_gouge}
+  - {a: "CR7 linear", b: "暗划痕", level: related, body: "细暗竖线，可作子型。目录名仍是 linear", imaging: "忽略", provisional: true}
+  - {a: "NEU rolled-in scale", b: "XSDD temperature oxide", level: related, body: "都是满场细点。暂不升 exact", imaging: "忽略", provisional: true, r2_priority: upgrade}
+  - {a: "NEU rolled-in scale", b: "XSDD plate oxide", level: related, body: "满场细点对离散片", imaging: "忽略", provisional: true}
+  - {a: "NEU rolled-in scale", b: "PLATE Bs", level: related, body: "满场细点对块状黑斑", imaging: "忽略", provisional: true}
+  - {a: "NEU rolled-in scale", b: "PLATE Ss", level: related, body: "满场细点对弯钩", imaging: "忽略", provisional: true}
+  - {a: "PLATE Bs", b: "PLATE Ss", level: same_source_subtype, body: "块状对弯钩，同来源只作子型", imaging: "忽略", provisional: true}
+  - {a: "XSDD red iron", b: "oxide_scale", level: incompatible, body: "不规则污斑，保持独立类", imaging: "灰度图上看不到红色", provisional: true}
+  - {a: "XSDD iron ash", b: "oxide_scale", level: incompatible, body: "局部坑和拖尾，保持独立类", imaging: "忽略", provisional: true}
+  - {a: "CAST slag skin", b: "oxide_scale", level: incompatible, body: "渣皮", imaging: "忽略", provisional: true}
+  - {a: "NEU crazing", b: "CAST longitudinal crack", level: incompatible, body: "龟裂网络对纵向裂纹", imaging: "忽略", provisional: true}
+  - {a: "GC10 crease", b: "GC10 waist folding", level: same_source_subtype, body: "浅折对宽折带", imaging: "忽略", provisional: true}
+  - {a: "GC10 crease/waist", b: "PIPE external fold/wrinkle", level: related, body: "都是折；一边是浅折带，一边是管上厚棱", imaging: "粗糙管面忽略", provisional: true}
+  - {a: "PIPE warp", b: "折类", level: incompatible, body: "标注框内是短弯裂纹，不并进折类", imaging: "框很小，整管形变这次裁切没看到", provisional: true}
+  - {a: "GC10 oil", b: "CR7 oil", level: related, body: "圆滴对靠边竖向污痕", imaging: "忽略", provisional: true}
+  - {a: "GC10 punching", b: "CR7 punching", level: exact, body: "都是圆孔", imaging: "单孔对一列孔，忽略", provisional: true}
+  - {a: "NEU patches", b: "CR7 macular", level: related, body: "都是暗斑；一边边缘硬，一边发虚。不并成一个语义类", imaging: "发虚可能是对焦，留给复核", provisional: true, merge: false}
+  - {a: "XSDD roll printing", b: "CSU roll marks", level: unseen, body: "CSU 图不在磁盘", imaging: "未看", provisional: true}
+  - {a: "CSU oxide scale", b: "oxide_scale", level: incompatible, body: "12 张里多是细线或过曝条", imaging: "忽略", provisional: true, p2_positive: false}
+
+# 2026-11-10 看图。level 没改，下面是建议。种子 0，每类最多 20 张，按框裁切。XSDD 无掩码，看的是整图。
+look_2026_11_10:
+  method: "seed 0；有框则 crop_margin 0.35 后拼图；占比是框并集 / 整图"
+  missing: "CSU 辊印压缩包不在 data/，这一对没看"
+  suggest_exact:
+    - "GC10 punching × CR7 punching：两边都是圆孔。CR7 常是一列孔"
+  suggest_keep_related:
+    - "CR7 pits × GC10 rolled pit：CR7 是成列针尖点（占比 0.018，外接框高宽比 0.10），GC10 是更大的椭圆压痕（0.049，高宽比 2.05）"
+    - "NEU scratches × XSDD scratch：NEU 是粗亮线（0.177），XSDD 是细暗线。只作子型"
+    - "CSU scratches × 暗划痕：细暗竖线，不像 NEU 亮线"
+    - "CAST scratch × NEU scratch：都是亮竖线，但铸坯背景很粗"
+    - "GC10 oil × CR7 oil：GC10 是圆滴（0.028），CR7 多是靠边竖向污痕（0.124）"
+    - "GC10 crease/waist × PIPE fold/wrinkle：GC10 是平滑板上的浅折，PIPE 是粗糙管上的厚棱。不升"
+  suggest_downgrade:
+    - "NEU inclusion × GC10 inclusion：文献 exact 先降回 related。NEU 是成片竖向暗痕（0.197），GC10 是很小的点（0.015）"
+    - "PIPE scratch × 长划痕：PIPE 是短弯沟（0.010），不进 scratch 正样本"
+    - "CSU oxide scale × oxide_scale：12 张里多是细线或过曝条，先不当氧化皮正样本"
+    - "NEU patches × CR7 macular：不并。NEU 是高对比黑斑（0.303），CR7 是发虚竖斑（0.161）"
+    - "CR7 dents × GC10 rolled pit：不并。dent 是成排小矩形压印（0.186），不是坑"
+  suggest_keep_split:
+    - "PLATE Bs 是块状黑斑（0.086，高宽比 1.40）。Ss 是弯钩，不是直条（0.170）。classes.txt 的 Ls 仍记为笔误"
+    - "PLATE Foe 是圆坑（0.033），和 In 的竖条（0.063，高宽比 0.21）不是一类"
+    - "XSDD red iron 是不规则污斑；iron ash 是局部坑和拖尾。都不并进氧化皮"
+    - "XSDD 板系氧化皮是离散片，温度系是满场细点。NEU 轧入氧化皮（0.380）更接近温度系，而不是板系"
+    - "XSDD 渣夹杂是发亮的撕裂金属，和其他夹杂不兼容"
+    - "PIPE warp 的框很小（0.008），裁切里看到的是短弯裂纹，不是整管形变。仍不并进折类"
+    - "CR7 linear 是细竖线（占比 0.040，高宽比 0.05），可作暗划痕子型候选，目录先保持 linear"

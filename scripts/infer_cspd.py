@@ -1,6 +1,6 @@
 """运行:
-  python scripts/infer_cspd.py --config config/cspd.yaml --ckpt output/<exp_name>/last.pt
-  python scripts/infer_cspd.py --config config/cspd.yaml --ckpt output/<exp_name>/last.pt --tasks 20
+  python scripts/infer_cspd.py --config config/cspd/cspd.yaml --ckpt output/<exp_name>/last.pt
+  python scripts/infer_cspd.py --config config/cspd/cspd.yaml --ckpt output/<exp_name>/last.pt --tasks 20
 
 用配置里的 test_dir 做若干个 episode。结果写入 output/<exp_name>/infer.json。
 """
@@ -31,7 +31,7 @@ def setup_stdio():
 def main():
     setup_stdio()
     parser = argparse.ArgumentParser()
-    parser.add_argument('--config', default=str(ROOT / 'config' / 'cspd.yaml'))
+    parser.add_argument('--config', default=str(ROOT / 'config' / 'cspd' / 'cspd.yaml'))
     parser.add_argument('--ckpt', required=True)
     parser.add_argument('--tasks', type=int, default=None)
     parser.add_argument('--device', default=None)

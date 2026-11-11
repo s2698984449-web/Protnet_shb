@@ -9,8 +9,8 @@ ratios: [0.6, 0.2, 0.2]
 sources:
   - name: NEU
     kind: voc_flat
-    image_dir: D:/元强化学习/代码/data/steel_raw/NEU-DET/NEU-DET/IMAGES
-    box_dir: D:/元强化学习/代码/data/steel_raw/NEU-DET/NEU-DET/ANNOTATIONS
+    image_dir: D:/元强化学习/代码/data/data/steel_raw/NEU-DET/NEU-DET/IMAGES
+    box_dir: D:/元强化学习/代码/data/data/steel_raw/NEU-DET/NEU-DET/ANNOTATIONS
     class_map:
       scratches: scratch
       inclusion: inclusion
@@ -21,7 +21,7 @@ sources:
 
   - name: XSDD
     kind: folder
-    image_dir: D:/元强化学习/代码/data/steel_raw/X-SDD-A-New-benchmark/X-SDD/datas
+    image_dir: D:/元强化学习/代码/data/data/steel_raw/X-SDD-A-New-benchmark/X-SDD/datas
     class_map:
       surface scratch: scratch
       slag inclusion: inclusion
@@ -33,8 +33,8 @@ sources:
 
   - name: GC10
     kind: folder_voc
-    image_dir: D:/元强化学习/代码/data/GC10-DET
-    box_dir: D:/元强化学习/代码/data/GC10-DET/lable
+    image_dir: D:/元强化学习/代码/data/data/GC10-DET
+    box_dir: D:/元强化学习/代码/data/data/GC10-DET/lable
     skip_dirs: [lable, cls_8class]
     class_map:
       "1": punch
@@ -49,8 +49,8 @@ sources:
 
   - name: CR7
     kind: yolo_flat
-    image_dir: D:/元强化学习/代码/data/steel_raw/CR7-DET/CR7-DET/CR7-DET/image
-    box_dir: D:/元强化学习/代码/data/steel_raw/CR7-DET/CR7-DET/CR7-DET/label
+    image_dir: D:/元强化学习/代码/data/data/steel_raw/CR7-DET/CR7-DET/CR7-DET/image
+    box_dir: D:/元强化学习/代码/data/data/steel_raw/CR7-DET/CR7-DET/CR7-DET/label
     class_map:
       "0": inclusion
       "2": oil
@@ -61,8 +61,8 @@ sources:
 
   - name: PLATE
     kind: folder_yolo
-    image_dir: D:/元强化学习/代码/data/steel_raw/open_source_datasets/MHPSDS/images
-    box_dir: D:/元强化学习/代码/data/steel_raw/open_source_datasets/MHPSDS/labels
+    image_dir: D:/元强化学习/代码/data/data/steel_raw/open_source_datasets/MHPSDS/images
+    box_dir: D:/元强化学习/代码/data/data/steel_raw/open_source_datasets/MHPSDS/labels
     class_map:
       In: inclusion
       Foe: inclusion
@@ -71,8 +71,8 @@ sources:
 
   - name: CAST
     kind: yolo_flat
-    image_dir: D:/元强化学习/代码/data/steel_raw/open_source_datasets/casting_billet/casting_billet/images
-    box_dir: D:/元强化学习/代码/data/steel_raw/open_source_datasets/casting_billet/casting_billet/labels
+    image_dir: D:/元强化学习/代码/data/data/steel_raw/open_source_datasets/casting_billet/casting_billet/images
+    box_dir: D:/元强化学习/代码/data/data/steel_raw/open_source_datasets/casting_billet/casting_billet/labels
     class_map:
       "0": scratch
       "4": oxide
@@ -80,8 +80,8 @@ sources:
 
   - name: PIPE
     kind: yolo_flat
-    image_dir: D:/元强化学习/代码/data/steel_raw/open_source_datasets/steel_pipe/images
-    box_dir: D:/元强化学习/代码/data/steel_raw/open_source_datasets/steel_pipe/labels
+    image_dir: D:/元强化学习/代码/data/data/steel_raw/open_source_datasets/steel_pipe/images
+    box_dir: D:/元强化学习/代码/data/data/steel_raw/open_source_datasets/steel_pipe/labels
     class_map:
       "0": crease
       "1": crease

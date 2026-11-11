@@ -1,5 +1,5 @@
 """运行:
-  python scripts/load_data.py --config config/cspd.yaml
+  python scripts/load_data.py --config config/cspd/cspd.yaml
 
 按配置里的绝对路径检查类别文件夹，并把摘要写到 output/<exp_name>/data_summary.json。
 """
@@ -27,7 +27,7 @@ def setup_stdio():
 def main():
     setup_stdio()
     parser = argparse.ArgumentParser()
-    parser.add_argument('--config', default=str(ROOT / 'config' / 'cspd.yaml'))
+    parser.add_argument('--config', default=str(ROOT / 'config' / 'cspd' / 'cspd.yaml'))
     args = parser.parse_args()
     with open(args.config, 'r', encoding='utf-8') as handle:
         cfg = yaml.safe_load(handle)

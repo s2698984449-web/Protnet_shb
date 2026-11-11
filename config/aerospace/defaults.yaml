@@ -190,7 +190,7 @@ experiments:
     checkpoint: ./checkpoints/exp08_protonet_unfreeze/best.pt
     out_json: ./reports/final_eval_exp08_exclude_specimen22_damage.json
     meta_algorithm: protonet
-    exclude_sample_ids_from: data/aviation/domain_3/3_damage/exclude_qc_specimen22.txt
+    exclude_sample_ids_from: data/data/aviation/domain_3/3_damage/exclude_qc_specimen22.txt
 
   exp08_eval_qc_deleted:
     description: "exp08 eval after specimen 22 damage folders removed from disk"
@@ -206,7 +206,7 @@ experiments:
     stage: train
     extends: protonet_unfreeze_real3
     exp_name: exp09_protonet_greedy
-    data_dir_path: data/航天/processed_greedy
+    data_dir_path: data/data/航天/processed_greedy
     checkpoint_path: outputs/航天/checkpoints
 
   exp09_eval:
@@ -216,14 +216,14 @@ experiments:
     checkpoint: outputs/航天/checkpoints/exp09_protonet_greedy/best.pt
     out_json: ./reports/final_eval_exp09_protonet_greedy.json
     meta_algorithm: protonet
-    data_dir_path: data/航天/processed_greedy
+    data_dir_path: data/data/航天/processed_greedy
 
   exp08_diagnose:
     description: "Hard-task diagnosis for exp08 ProtoNet"
     stage: diagnose
     script: scripts/diagnose_hard_tasks.py
     checkpoint: ./checkpoints/exp08_protonet_unfreeze/best.pt
-    data_dir_path: data/航天/processed
+    data_dir_path: data/data/航天/processed
     dataset_name: aviation
     seeds: "42,43,44"
     eval_tasks: 100
@@ -238,7 +238,7 @@ experiments:
     extends: protonet_unfreeze_real3
     exp_name: exp10_protonet_cbam
     rgb_cbam: true
-    data_dir_path: data/航天/processed
+    data_dir_path: data/data/航天/processed
     checkpoint_path: outputs/航天/checkpoints
 
   exp10_eval:
@@ -249,7 +249,7 @@ experiments:
     out_json: ./reports/final_eval_exp10_protonet_cbam.json
     meta_algorithm: protonet
     rgb_cbam: true
-    data_dir_path: data/航天/processed
+    data_dir_path: data/data/航天/processed
 
   # --- Phase-0 backbone pretraining (P0 SupCon-CE for aerospace/航天) ---
   exp11_p0_smoke:

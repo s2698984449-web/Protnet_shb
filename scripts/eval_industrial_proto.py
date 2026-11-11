@@ -1,7 +1,7 @@
 """工业双区域目标域原型：铸坯选 β → 分母交付表。
 
 运行（MAML）:
-  D:\\miniconda3\\envs\\MAML\\python.exe scripts/eval_industrial_proto.py --config config/industrial_proto.yaml
+  D:\\miniconda3\\envs\\MAML\\python.exe scripts/eval_industrial_proto.py --config config/cspd/industrial_proto.yaml
 """
 
 import argparse
@@ -38,7 +38,7 @@ def show_row(tag, row):
 def main():
     setup_stdio()
     parser = argparse.ArgumentParser()
-    parser.add_argument('--config', default=str(ROOT / 'config' / 'industrial_proto.yaml'))
+    parser.add_argument('--config', default=str(ROOT / 'config' / 'cspd' / 'industrial_proto.yaml'))
     args = parser.parse_args()
     with open(args.config, 'r', encoding='utf-8') as handle:
         cfg = yaml.safe_load(handle)

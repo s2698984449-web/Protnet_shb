@@ -1,0 +1,133 @@
+# P1 用的新划分。只写 data/new_split_v3，不改 data/new_split，也不改 config/cspd/steel_sources.yaml。
+# 语义类名对齐 config/cspd/class_manifest.yaml。等价级别仍是临时的，这一步只为留出来源训练，不锁定 exact。
+# 同一来源的子型进同一个语义类：GC10 折痕/腰折、PIPE 外折/皱褶、PLATE Bs/Ss。
+# 看图认为本体不同的，分开建目录：XSDD 两种氧化皮、CSU 氧化皮（不当氧化皮正样本）。
+# GC10 用文件名里的批次号整组划分。其余来源没有核对过的卷号，用缩略图直方图，不编造卷号。
+
+out_dir: D:/元强化学习/代码/data/new_split_v3
+layout: class_source_split
+seed: 0
+ratios: [0.6, 0.2, 0.2]
+group:
+  mode: hist
+  threshold: 0.3
+
+sources:
+  - name: NEU
+    kind: voc_flat
+    image_dir: D:/元强化学习/代码/data/data/steel_raw/NEU-DET/NEU-DET/IMAGES
+    box_dir: D:/元强化学习/代码/data/data/steel_raw/NEU-DET/NEU-DET/ANNOTATIONS
+    class_map:
+      scratches: scratch
+      inclusion: inclusion
+      patches: patch
+      crazing: crazing
+      pitted_surface: pit_texture
+      rolled-in_scale: oxide_scale
+
+  - name: XSDD
+    kind: folder
+    image_dir: D:/元强化学习/代码/data/data/steel_raw/X-SDD-A-New-benchmark/X-SDD/datas
+    class_map:
+      surface scratch: scratch
+      slag inclusion: slag_inclusion
+      oxide scale of plate system: oxide_scale_plate
+      oxide scale of temperature system: oxide_scale_temp
+      red iron: red_iron
+      iron sheet ash: iron_ash
+      finishing roll printing: roll_print
+
+  - name: GC10
+    kind: folder_voc
+    image_dir: D:/元强化学习/代码/data/data/GC10-DET
+    box_dir: D:/元强化学习/代码/data/data/GC10-DET/lable
+    skip_dirs: [lable, cls_8class]
+    group:
+      mode: regex
+      pattern: 'img_\d+_(\d+)_\d+'
+    class_map:
+      "1": punch
+      "2": weld_line
+      "3": crescent
+      "4": water
+      "5": oil
+      "6": silk_spot
+      "7": inclusion
+      "8": rolled_pit
+      "9": fold_wrinkle
+      "10": fold_wrinkle
+
+  - name: CR7
+    kind: yolo_flat
+    image_dir: D:/元强化学习/代码/data/data/steel_raw/CR7-DET/CR7-DET/CR7-DET/image
+    box_dir: D:/元强化学习/代码/data/data/steel_raw/CR7-DET/CR7-DET/CR7-DET/label
+    class_map:
+      "0": inclusion
+      "1": dent
+      "2": oil
+      "3": pit_local
+      "4": punch
+      "5": linear
+      "6": macular
+
+  - name: PLATE
+    kind: folder_yolo
+    image_dir: D:/元强化学习/代码/data/data/steel_raw/open_source_datasets/MHPSDS/images
+    box_dir: D:/元强化学习/代码/data/data/steel_raw/open_source_datasets/MHPSDS/labels
+    class_map:
+      In: inclusion
+      Foe: foreign_embed
+      Bs: oxide_scale
+      Ss: oxide_scale
+
+  - name: CAST
+    kind: yolo_flat
+    image_dir: D:/元强化学习/代码/data/data/steel_raw/open_source_datasets/casting_billet/casting_billet/images
+    box_dir: D:/元强化学习/代码/data/data/steel_raw/open_source_datasets/casting_billet/casting_billet/labels
+    class_map:
+      "0": scratch
+      "1": weld_slag
+      "2": cutting_opening
+      "3": water_slag_mark
+      "4": slag_skin
+      "5": crack_long
+
+  - name: PIPE
+    kind: yolo_flat
+    image_dir: D:/元强化学习/代码/data/data/steel_raw/open_source_datasets/steel_pipe/images
+    box_dir: D:/元强化学习/代码/data/data/steel_raw/open_source_datasets/steel_pipe/labels
+    class_map:
+      "0": warp
+      "1": fold_wrinkle
+      "2": fold_wrinkle
+      "3": short_gouge
+
+  - name: CSU
+    kind: masked_folder
+    semantic: scratch
+    require_mask: true
+    image_dir: D:/元强化学习/代码/data/new_split/划痕/CSU
+
+  - name: CSU
+    kind: masked_folder
+    semantic: inclusion
+    require_mask: true
+    image_dir: D:/元强化学习/代码/data/new_split/点状夹杂/CSU
+
+  - name: CSU
+    kind: masked_folder
+    semantic: oxide_scale_csu
+    require_mask: true
+    image_dir: D:/元强化学习/代码/data/new_split/氧化皮/CSU
+
+  - name: S3D
+    kind: masked_folder
+    semantic: scratch
+    require_mask: true
+    image_dir: D:/元强化学习/代码/data/new_split/划痕/S3D
+
+  - name: S3D
+    kind: masked_folder
+    semantic: oxide_scale
+    require_mask: true
+    image_dir: D:/元强化学习/代码/data/new_split/氧化皮/S3D

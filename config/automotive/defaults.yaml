@@ -10,7 +10,7 @@
 defaults:
   python: auto
   track: automotive
-  data_dir_path: data/车/processed
+  data_dir_path: data/data/车/processed
   dataset_name: cmpl
   yolo_weights: outputs/车/weights/cmpl_yolo26_pretrained.pt
   ways: 2
@@ -68,7 +68,7 @@ experiments:
     stage: pretrain
     script: pretrain_backbone.py
     track: automotive
-    data_dir: data/车/processed
+    data_dir: data/data/车/processed
     yolo_weights: outputs/车/weights/yolo26n.pt
     epochs: 35
     batch_size: 16
@@ -92,7 +92,7 @@ experiments:
     stage: pretrain
     script: pretrain_backbone.py
     track: automotive
-    data_dir: data/车/processed
+    data_dir: data/data/车/processed
     yolo_weights: outputs/车/weights/yolo26n.pt
     pretrain_variant: v4
     loss_mode: supcon_ce
@@ -121,7 +121,7 @@ experiments:
     stage: pretrain
     script: pretrain_backbone.py
     track: automotive
-    data_dir: data/车/processed
+    data_dir: data/data/车/processed
     yolo_weights: outputs/车/weights/yolo26n.pt
     pretrain_variant: classsplit_neu
     loss_mode: ce
@@ -154,7 +154,7 @@ experiments:
     stage: pretrain
     script: pretrain_backbone.py
     track: automotive
-    data_dir: data/车/processed
+    data_dir: data/data/车/processed
     yolo_weights: outputs/车/weights/yolo26n.pt
     pretrain_variant: classsplit3
     loss_mode: ce
@@ -187,7 +187,7 @@ experiments:
     stage: pretrain
     script: pretrain_backbone.py
     track: automotive
-    data_dir: data/车/processed
+    data_dir: data/data/车/processed
     yolo_weights: outputs/车/weights/yolo26n.pt
     pretrain_variant: classsplit3_v2
     loss_mode: ce
@@ -220,7 +220,7 @@ experiments:
     stage: train
     extends: cmpl_protonet_unfreeze
     exp_name: cmpl_protonet_track2
-    data_dir_path: data/车/processed
+    data_dir_path: data/data/车/processed
     checkpoint_path: outputs/车/checkpoints
     yolo_weights: outputs/车/weights/cmpl_yolo26_pretrained.pt
     iters: 400
@@ -231,7 +231,7 @@ experiments:
     stage: train
     extends: cmpl_protonet_unfreeze
     exp_name: cmpl_protonet_classsplit3
-    data_dir_path: data/车/processed
+    data_dir_path: data/data/车/processed
     checkpoint_path: outputs/车/checkpoints
     yolo_weights: outputs/车/weights/defect_pretrain_yolov26n_128d.pt
     embed_dim: 128
@@ -272,7 +272,7 @@ experiments:
     script: pretrain_backbone.py
     track: automotive
     pretrain_variant: v5
-    data_dir: data/车/processed
+    data_dir: data/data/车/processed
     yolo_weights: outputs/车/weights/yolo26n.pt
     epochs: 2
     batch_size: 8
@@ -303,7 +303,7 @@ experiments:
     script: pretrain_backbone.py
     track: automotive
     pretrain_variant: v5
-    data_dir: data/车/processed
+    data_dir: data/data/车/processed
     yolo_weights: outputs/车/weights/yolo26n.pt
     epochs: 25
     batch_size: 8
@@ -355,7 +355,7 @@ experiments:
     stage: train
     extends: cmpl_protonet_unfreeze
     exp_name: cmpl_protonet_v5_meta
-    data_dir_path: data/车/processed
+    data_dir_path: data/data/车/processed
     checkpoint_path: outputs/车/checkpoints
     yolo_weights: outputs/车/weights/cmpl_yolo26_supcon_v5.pt
     embed_dim: 256
@@ -388,7 +388,7 @@ experiments:
     stage: train
     extends: cmpl_protonet_unfreeze
     exp_name: cmpl_protonet_v5b_meta
-    data_dir_path: data/车/processed
+    data_dir_path: data/data/车/processed
     checkpoint_path: outputs/车/checkpoints
     yolo_weights: outputs/车/weights/cmpl_yolo26_supcon_v5.pt
     embed_dim: 256
@@ -424,7 +424,7 @@ experiments:
     script: pretrain_backbone.py
     track: automotive
     pretrain_variant: v6
-    data_dir: data/车/processed
+    data_dir: data/data/车/processed
     yolo_weights: outputs/车/weights/yolo26n.pt
     epochs: 2
     batch_size: 8
@@ -455,7 +455,7 @@ experiments:
     script: pretrain_backbone.py
     track: automotive
     pretrain_variant: v6
-    data_dir: data/车/processed
+    data_dir: data/data/车/processed
     yolo_weights: outputs/车/weights/yolo26n.pt
     epochs: 25
     batch_size: 8
@@ -505,7 +505,7 @@ experiments:
     stage: train
     extends: cmpl_protonet_unfreeze
     exp_name: cmpl_protonet_v6_meta
-    data_dir_path: data/车/processed
+    data_dir_path: data/data/车/processed
     checkpoint_path: outputs/车/checkpoints
     yolo_weights: outputs/车/weights/cmpl_yolo26_supcon_v6.pt
     embed_dim: 256
@@ -545,7 +545,7 @@ experiments:
     script: pretrain_backbone.py
     track: automotive
     pretrain_variant: v7
-    data_dir: data/车/processed
+    data_dir: data/data/车/processed
     yolo_weights: outputs/车/weights/cmpl_yolo26_supcon_v6.pt
     epochs: 2
     batch_size: 8
@@ -581,7 +581,7 @@ experiments:
     script: pretrain_backbone.py
     track: automotive
     pretrain_variant: v7
-    data_dir: data/车/processed
+    data_dir: data/data/车/processed
     yolo_weights: outputs/车/weights/cmpl_yolo26_supcon_v6.pt
     epochs: 25
     batch_size: 8
@@ -625,7 +625,7 @@ experiments:
     script: pretrain_backbone.py
     track: automotive
     pretrain_variant: v8
-    data_dir: data/车/processed
+    data_dir: data/data/车/processed
     yolo_weights: outputs/车/weights/cmpl_yolo26_supcon_v7.pt
     epochs: 35
     batch_size: 4
@@ -687,7 +687,7 @@ experiments:
     script: pretrain_backbone.py
     track: automotive
     pretrain_variant: v9
-    data_dir: data/车/processed
+    data_dir: data/data/车/processed
     yolo_weights: outputs/车/weights/cmpl_yolo26_supcon_v8.pt
     # P2: drop minor_dent (single-class no-gradient) and syndcar (synthetic domain shift)
     active_tasks: "cardd,carparts"
@@ -768,7 +768,7 @@ experiments:
     stage: train
     extends: cmpl_protonet_unfreeze
     exp_name: cmpl_protonet_v7_meta
-    data_dir_path: data/车/processed
+    data_dir_path: data/data/车/processed
     checkpoint_path: outputs/车/checkpoints
     yolo_weights: outputs/车/weights/cmpl_yolo26_supcon_v7.pt
     embed_dim: 256
@@ -803,7 +803,7 @@ experiments:
     stage: train
     extends: cmpl_protonet_unfreeze
     exp_name: cmpl_protonet_v9_meta
-    data_dir_path: data/车/processed
+    data_dir_path: data/data/车/processed
     checkpoint_path: outputs/车/checkpoints
     yolo_weights: outputs/车/weights/cmpl_yolo26_supcon_v9.pt
     embed_dim: 256
@@ -819,7 +819,7 @@ experiments:
     stage: train
     extends: cmpl_protonet_unfreeze
     exp_name: cmpl_protonet_v9_meta_smoke
-    data_dir_path: data/车/processed
+    data_dir_path: data/data/车/processed
     checkpoint_path: outputs/车/checkpoints
     yolo_weights: outputs/车/weights/cmpl_yolo26_supcon_v9.pt
     embed_dim: 256
@@ -841,7 +841,7 @@ experiments:
     stage: train
     extends: cmpl_protonet_unfreeze
     exp_name: cmpl_protonet_v10_meta_smoke
-    data_dir_path: data/车/processed
+    data_dir_path: data/data/车/processed
     checkpoint_path: outputs/车/checkpoints
     yolo_weights: outputs/车/weights/cmpl_yolo26_supcon_v9.pt
     embed_dim: 256
@@ -857,7 +857,7 @@ experiments:
     stage: train
     extends: cmpl_protonet_unfreeze
     exp_name: cmpl_protonet_v10_meta
-    data_dir_path: data/车/processed
+    data_dir_path: data/data/车/processed
     checkpoint_path: outputs/车/checkpoints
     yolo_weights: outputs/车/weights/cmpl_yolo26_supcon_v9.pt
     embed_dim: 256
@@ -892,7 +892,7 @@ experiments:
     stage: train
     extends: cmpl_protonet_freeze
     exp_name: cmpl_protonet_v11_meta_smoke
-    data_dir_path: data/车/processed
+    data_dir_path: data/data/车/processed
     checkpoint_path: outputs/车/checkpoints
     yolo_weights: outputs/车/weights/cmpl_yolo26_supcon_v9.pt
     embed_dim: 256
@@ -908,7 +908,7 @@ experiments:
     stage: train
     extends: cmpl_protonet_freeze
     exp_name: cmpl_protonet_v11_meta
-    data_dir_path: data/车/processed
+    data_dir_path: data/data/车/processed
     checkpoint_path: outputs/车/checkpoints
     yolo_weights: outputs/车/weights/cmpl_yolo26_supcon_v9.pt
     embed_dim: 256
@@ -1020,7 +1020,7 @@ experiments:
     stage: train
     extends: cmpl_protonet_unfreeze
     exp_name: cmpl_protonet_cff_smoke
-    data_dir_path: data/车/processed
+    data_dir_path: data/data/车/processed
     checkpoint_path: outputs/车/checkpoints
     yolo_weights: outputs/车/weights/cmpl_yolo26_supcon_v9.pt
     embed_dim: 128
@@ -1047,7 +1047,7 @@ experiments:
     stage: train
     extends: cmpl_protonet_unfreeze
     exp_name: cmpl_protonet_cff
-    data_dir_path: data/车/processed
+    data_dir_path: data/data/车/processed
     checkpoint_path: outputs/车/checkpoints
     yolo_weights: outputs/车/weights/cmpl_yolo26_supcon_v9.pt
     embed_dim: 128
@@ -1074,7 +1074,7 @@ experiments:
     stage: train
     extends: cmpl_protonet_unfreeze
     exp_name: cmpl_protonet_v13_adaptive
-    data_dir_path: data/车/processed
+    data_dir_path: data/data/车/processed
     checkpoint_path: outputs/车/checkpoints
     yolo_weights: outputs/车/weights/cmpl_yolo26_supcon_v9.pt
     embed_dim: 128
@@ -1093,7 +1093,7 @@ experiments:
 
   # ========================================================================
   # NEU-CLS 6-class metal surface defect meta-learning experiments
-  #   - Data: data/NEU-CLS/processed/neu_cls/domain_{0,1,2}/
+  #   - Data: data/data/NEU-CLS/processed/neu_cls/domain_{0,1,2}/
   #   - 6 classes: Cr, In, Pa, PS, RS, Sc (300/class total → 200/50/50 per domain)
   #   - Phase 0 pretrain: neu_yolo26_supcon_pretrain.pt (训完前用 cmpl_v9 backbone 基线)
   #   - 域内分割模拟 R2-Net 跨域: domain_0=train, domain_2=test (同一数据集不同实例)
@@ -1105,7 +1105,7 @@ experiments:
     stage: train
     script: train.py
     track: automotive
-    data_dir_path: data/NEU-CLS/processed
+    data_dir_path: data/data/NEU-CLS/processed
     dataset_name: neu_cls
     checkpoint_path: outputs/车/checkpoints
     yolo_weights: outputs/车/weights/cmpl_yolo26_supcon_v9.pt
@@ -1138,7 +1138,7 @@ experiments:
     stage: train
     script: train.py
     track: automotive
-    data_dir_path: data/NEU-CLS/processed
+    data_dir_path: data/data/NEU-CLS/processed
     dataset_name: neu_cls
     checkpoint_path: outputs/车/checkpoints
     yolo_weights: outputs/车/weights/cmpl_yolo26_supcon_v9.pt
@@ -1171,7 +1171,7 @@ experiments:
     stage: train
     script: train.py
     track: automotive
-    data_dir_path: data/NEU-CLS/processed
+    data_dir_path: data/data/NEU-CLS/processed
     dataset_name: neu_cls
     checkpoint_path: outputs/车/checkpoints
     yolo_weights: outputs/车/weights/cmpl_yolo26_supcon_v9.pt
@@ -1204,7 +1204,7 @@ experiments:
     stage: train
     script: train.py
     track: automotive
-    data_dir_path: data/NEU-CLS/processed
+    data_dir_path: data/data/NEU-CLS/processed
     dataset_name: neu_cls
     checkpoint_path: outputs/车/checkpoints
     yolo_weights: outputs/车/weights/neu_yolo26_supcon_pretrain.pt
@@ -1245,7 +1245,7 @@ experiments:
     script: pretrain.py
     track: automotive
     pretrain_variant: neu
-    data_dir: data/NEU-CLS/processed
+    data_dir: data/data/NEU-CLS/processed
     yolo_weights: outputs/车/weights/yolo26n.pt
     epochs: 2
     batch_size: 8
@@ -1276,7 +1276,7 @@ experiments:
     script: pretrain.py
     track: automotive
     pretrain_variant: neu
-    data_dir: data/NEU-CLS/processed
+    data_dir: data/data/NEU-CLS/processed
     yolo_weights: outputs/车/weights/yolo26n.pt
     epochs: 25
     batch_size: 8

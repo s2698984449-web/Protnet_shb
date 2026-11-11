@@ -20,14 +20,16 @@ holdout_source 有值时，训练和验证去掉该来源；测试的查询只�
     restored_root           扩散/光照还原后的平行目录
 """
 
+import json
 import random
 from pathlib import Path
 
 import torch
 from PIL import Image
 from torchvision import transforms
+from torchvision.transforms import InterpolationMode
 
-from .annotate import load_mask, resolve_mask_path
+from .annotate import crop_around_mask, load_mask, resolve_mask_path
 from .condition_io import DEFAULT_SLOTS, ConditionBuilder
 
 
@@ -376,3 +378,384 @@ def describe_config(cfg, seed):
     if 'train_dir' not in report or 'test_dir' not in report:
         raise ValueError('配置至少要有 train_dir 和 test_dir 的绝对路径')
     return report
+
+
+def curriculum_rho(progress, schedule=None):
+    """progress ∈ [0,1]。默认 0–25%→0.3，25–75% 线性到 0.8，之后 0.8。"""
+    schedule = schedule or ((0.0, 0.3), (0.25, 0.3), (0.75, 0.8), (1.0, 0.8))
+    points = sorted((float(a), float(b)) for a, b in schedule)
+    if progress <= points[0][0]:
+        return points[0][1]
+    for (p0, r0), (p1, r1) in zip(points, points[1:]):
+        if progress <= p1:
+            if p1 <= p0:
+                return r1
+            t = (progress - p0) / (p1 - p0)
+            return r0 + t * (r1 - r0)
+    return points[-1][1]
+
+
+class CurriculumNewSplitEpisodes:
+    """data/new_split：细类/来源/split。查询来源均匀；跨来源时支持来自其他有掩码来源。"""
+
+    def __init__(self, cfg, split='train', seed=0):
+        root = Path(str(cfg.get('data_root') or '').strip())
+        if not root.is_absolute() or not root.is_dir():
+            raise ValueError('curriculum 需要绝对且存在的 data_root')
+        self.root = root
+        self.split = str(split)
+        self.image_size = int(cfg.get('image_size', 224))
+        self.n_way_cap = int(cfg.get('n_way', 5))
+        self.q_query = int(cfg.get('q_query', 8))
+        self.k_choices = list(cfg.get('k_choices') or [3, 5])
+        self.k_probs = list(cfg.get('k_probs') or [0.7, 0.3])
+        self.require_mask = bool(cfg.get('require_mask', True))
+        self.holdout = str(cfg.get('holdout_source') or '').strip()
+        self.query_only = str(cfg.get('query_only') or '').strip()
+        exclude_sources = set(cfg.get('exclude_sources') or [])
+        # holdout_eval=same 时，普通测试也不放留出来源；留出评估自己把 query_only 设成该来源。
+        if self.holdout and self.holdout != self.query_only:
+            if self.split != 'test' or str(cfg.get('holdout_eval') or '') == 'same':
+                exclude_sources.add(self.holdout)
+        self.exclude_cross = set(cfg.get('exclude_classes_cross') or [])
+        self.source_table = dict(cfg.get('source_table') or {})
+        self.cond = ConditionBuilder(
+            slots=cfg.get('cond_slots') or DEFAULT_SLOTS,
+            condition_file=cfg.get('condition_file') or '',
+            illumination_manifest=cfg.get('illumination_manifest') or '',
+            fallback_image_stats=bool(cfg.get('cond_fallback_image_stats', False)),
+            illuminance_offset_scale=float(cfg.get('illuminance_offset_scale', 80.0)),
+            source_slot=cfg.get('source_slot') or '',
+        )
+        if int(cfg.get('cond_dim', self.cond.dim)) != self.cond.dim:
+            raise ValueError('cond_dim 与 cond_slots 不一致')
+        self.crop_to_mask = bool(cfg.get('crop_to_mask', True))
+        self.crop_margin = float(cfg.get('crop_margin', 0.35))
+        self.crop_min_side = int(cfg.get('crop_min_side', 96))
+        self.crop_square = bool(cfg.get('crop_square', True))
+        self.resize = transforms.Resize(
+            (self.image_size, self.image_size),
+            interpolation=InterpolationMode.BILINEAR)
+        self.resize_mask = transforms.Resize(
+            (self.image_size, self.image_size),
+            interpolation=InterpolationMode.NEAREST)
+        self.normalize = transforms.Normalize(IMAGENET_MEAN, IMAGENET_STD)
+        self.rng = random.Random(seed)
+        self.holdout_pool = str(cfg.get('holdout_pool') or '')
+        raw_cross = cfg.get('cross_classes')
+        self.cross_classes = {str(name) for name in raw_cross} if raw_cross else None
+        self.group_of = {}
+        self.source_dist = {}
+        self.hard_pairs = []
+        self.by_class = {}
+        for class_dir in sorted(p for p in root.iterdir() if p.is_dir()):
+            name = class_dir.name
+            groups = {}
+            for source_dir in sorted(p for p in class_dir.iterdir() if p.is_dir()):
+                source = source_dir.name
+                if source in exclude_sources:
+                    continue
+                split_names = [self.split]
+                if (
+                    self.query_only
+                    and source == self.query_only
+                    and self.split == 'test'
+                    and self.holdout_pool == 'all'
+                ):
+                    split_names = ['train', 'val', 'test']
+                group_file = source_dir / 'groups.json'
+                group_map = {}
+                if group_file.is_file():
+                    group_map = json.loads(group_file.read_text(encoding='utf-8'))
+                items = []
+                for split_name in split_names:
+                    split_dir = source_dir / split_name
+                    if not split_dir.is_dir():
+                        continue
+                    for path in sorted(split_dir.iterdir()):
+                        if not path.is_file() or path.suffix.lower() not in IMAGE_SUFFIX:
+                            continue
+                        mask = split_dir / 'mask' / (path.stem + '.png')
+                        if self.require_mask and not mask.is_file():
+                            continue
+                        items.append((path, mask if mask.is_file() else None))
+                        if path.stem in group_map:
+                            self.group_of[(name, source, path.stem)] = str(group_map[path.stem])
+                if items:
+                    groups[source] = items
+            if groups:
+                self.by_class[name] = groups
+        self.classes = sorted(self.by_class)
+        self.sources = sorted({
+            src for groups in self.by_class.values() for src in groups
+        })
+        self.source_classes = {
+            src: [name for name in self.classes if src in self.by_class[name]]
+            for src in self.sources
+        }
+        # 跨来源池：至少还有一个其他来源、且不在 exclude_cross
+        self.cross_ok = {
+            name for name, groups in self.by_class.items()
+            if name not in self.exclude_cross and len(groups) >= 2
+        }
+        if not self.sources:
+            raise RuntimeError('{} 的 {} 没有可用来源'.format(root, self.split))
+
+    @property
+    def n_way(self):
+        return self.n_way_cap
+
+    def _load(self, path, mask_path, source_name):
+        img = Image.open(path).convert('RGB')
+        mask_img = None
+        if mask_path is not None and Path(mask_path).is_file():
+            mask_img = Image.open(mask_path).convert('L')
+        if self.crop_to_mask and mask_img is not None:
+            img, mask_img = crop_around_mask(
+                img, mask_img,
+                margin=self.crop_margin,
+                min_side=self.crop_min_side,
+                square=self.crop_square,
+            )
+        img = self.resize(img)
+        rgb_01 = transforms.ToTensor()(img)
+        x = self.normalize(rgb_01)
+        slots = self.source_table.get(source_name)
+        cond, cond_mask = self.cond.build(
+            path.relative_to(self.root).as_posix(), rgb_01,
+            source_value=None, source_slots=slots)
+        if mask_img is None:
+            mask = torch.zeros(1, self.image_size, self.image_size)
+            has_mask = False
+        else:
+            mask_img = self.resize_mask(mask_img)
+            mask = transforms.ToTensor()(mask_img)
+            if float(mask.max()) > 0:
+                mask = (mask > 0.5).float()
+            has_mask = True
+        return {
+            'x': x,
+            'y_cond': cond,
+            'y_cond_mask': cond_mask,
+            'mask': mask,
+            'has_mask': has_mask,
+            'path': str(path),
+        }
+
+    def _pick_k(self):
+        return self.rng.choices(self.k_choices, weights=self.k_probs, k=1)[0]
+
+    def _query_candidates(self, cross_source):
+        if cross_source:
+            allowed = self.cross_classes
+            candidates = [
+                src for src, names in self.source_classes.items()
+                if any(
+                    name in self.cross_ok
+                    and (allowed is None or name in allowed)
+                    and src in self.by_class[name]
+                    and any(other != src for other in self.by_class[name])
+                    for name in names
+                )
+            ]
+        else:
+            candidates = [src for src, names in self.source_classes.items() if names]
+        if self.query_only:
+            candidates = [src for src in candidates if src == self.query_only]
+        return candidates
+
+    def _pick_support_source(self, options, query_source, progress, stage_sources):
+        if (not stage_sources) or (not self.source_dist) or len(options) <= 1:
+            return self.rng.choice(options)
+        ranked = sorted(
+            options,
+            key=lambda src: self.source_dist.get((query_source, src), 1.0))
+        n = len(ranked)
+        width = max(1, (n + 2) // 3)
+        if progress < 0.25:
+            pool = ranked[:width]
+        elif progress < 0.75:
+            start = n // 3
+            pool = ranked[start:max(start + 1, (2 * n) // 3)] or ranked
+        else:
+            pool = ranked[-width:]
+        return self.rng.choice(pool)
+
+    def _split_by_group(self, pool, k, need_q, class_name, source):
+        """支持集和查询集尽量来自不同的组。组不够时返回 None，调用方再按图抽。"""
+        if not self.group_of:
+            return None
+        by_group = {}
+        for item in pool:
+            gid = self.group_of.get((class_name, source, item[0].stem))
+            if gid is None:
+                return None
+            by_group.setdefault(gid, []).append(item)
+        groups = list(by_group.values())
+        self.rng.shuffle(groups)
+        support = []
+        query = []
+        for group in groups:
+            if len(support) < k:
+                support.extend(group)
+            else:
+                query.extend(group)
+        if len(support) < k or len(query) < need_q:
+            return None
+        self.rng.shuffle(support)
+        self.rng.shuffle(query)
+        return support[:k], query[:need_q]
+
+    def _sample_source(self, query_source, cross_source, progress, stage_sources):
+        k = self._pick_k()
+        need_q = self.q_query
+        usable = []
+        support_of = {}
+        same_names = []
+        for name in self.source_classes[query_source]:
+            q_paths = self.by_class[name][query_source]
+            if len(q_paths) >= k + need_q:
+                same_names.append(name)
+        if cross_source:
+            allowed = self.cross_classes
+            for name in self.source_classes[query_source]:
+                if allowed is not None and name not in allowed:
+                    continue
+                if name not in self.cross_ok:
+                    continue
+                q_paths = self.by_class[name][query_source]
+                support_sources = [
+                    src for src, items in self.by_class[name].items()
+                    if src != query_source and len(items) >= k
+                ]
+                if support_sources and len(q_paths) >= need_q:
+                    usable.append(name)
+                    support_of[name] = support_sources
+            if not usable:
+                raise RuntimeError('来源 {} 没有可跨来源的类'.format(query_source))
+            # 其余类仍用同一来源的支持，避免把未确认的同名类当成跨来源正样本。
+            for name in same_names:
+                if name not in support_of:
+                    usable.append(name)
+        else:
+            usable = list(same_names)
+            if len(usable) < 2:
+                raise RuntimeError('来源 {} 可抽类不足'.format(query_source))
+        if len(usable) < 2:
+            raise RuntimeError('来源 {} 可抽类不足'.format(query_source))
+        n_way = min(self.n_way_cap, len(usable))
+        chosen = []
+        if stage_sources and progress >= 0.75 and not cross_source:
+            for left, right in self.hard_pairs:
+                if left in usable and right in usable:
+                    chosen = [left, right]
+                    break
+        if cross_source:
+            cross_first = [name for name in usable if name in support_of]
+            chosen = list(cross_first[:n_way])
+        rest = [name for name in usable if name not in chosen]
+        need = n_way - len(chosen)
+        if need > 0:
+            if len(rest) < need:
+                raise RuntimeError('来源 {} 可抽类不足'.format(query_source))
+            chosen.extend(self.rng.sample(rest, need))
+        buckets = {
+            'support_x': [], 'support_y': [], 'support_cond': [], 'support_cond_mask': [],
+            'support_mask': [], 'support_has_mask': [],
+            'query_x': [], 'query_y': [], 'query_cond': [], 'query_cond_mask': [],
+            'query_mask': [], 'query_has_mask': [],
+        }
+        for local_y, name in enumerate(chosen):
+            q_pool = list(self.by_class[name][query_source])
+            if name in support_of:
+                src_s = self._pick_support_source(
+                    support_of[name], query_source, progress, stage_sources)
+                support_items = self.rng.sample(self.by_class[name][src_s], k)
+                query_items = self.rng.sample(q_pool, need_q)
+            else:
+                split_pair = self._split_by_group(q_pool, k, need_q, name, query_source)
+                if split_pair is None:
+                    picked = self.rng.sample(q_pool, k + need_q)
+                    support_items = picked[:k]
+                    query_items = picked[k:]
+                else:
+                    support_items, query_items = split_pair
+            for path, mask in support_items:
+                src_name = path.parent.parent.name
+                item = self._load(path, mask, src_name)
+                buckets['support_x'].append(item['x'])
+                buckets['support_y'].append(local_y)
+                buckets['support_cond'].append(item['y_cond'])
+                buckets['support_cond_mask'].append(item['y_cond_mask'])
+                buckets['support_mask'].append(item['mask'])
+                buckets['support_has_mask'].append(item['has_mask'])
+            for path, mask in query_items:
+                item = self._load(path, mask, query_source)
+                buckets['query_x'].append(item['x'])
+                buckets['query_y'].append(local_y)
+                buckets['query_cond'].append(item['y_cond'])
+                buckets['query_cond_mask'].append(item['y_cond_mask'])
+                buckets['query_mask'].append(item['mask'])
+                buckets['query_has_mask'].append(item['has_mask'])
+        return {
+            'support_x': torch.stack(buckets['support_x'], 0),
+            'support_y': torch.tensor(buckets['support_y'], dtype=torch.long),
+            'support_cond': torch.stack(buckets['support_cond'], 0),
+            'support_cond_mask': torch.stack(buckets['support_cond_mask'], 0),
+            'support_mask': torch.stack(buckets['support_mask'], 0),
+            'support_has_mask': torch.tensor(buckets['support_has_mask'], dtype=torch.bool),
+            'query_x': torch.stack(buckets['query_x'], 0),
+            'query_y': torch.tensor(buckets['query_y'], dtype=torch.long),
+            'query_cond': torch.stack(buckets['query_cond'], 0),
+            'query_cond_mask': torch.stack(buckets['query_cond_mask'], 0),
+            'query_mask': torch.stack(buckets['query_mask'], 0),
+            'query_has_mask': torch.tensor(buckets['query_has_mask'], dtype=torch.bool),
+            'class_names': list(chosen),
+            'query_source': query_source,
+            'cross_source': bool(cross_source),
+            'n_way': n_way,
+            'k_shot': k,
+        }
+
+    def sample(
+            self, cross_source=None, progress=0.0, avoid_sources=None,
+            stage_sources=False, allow_fallback=True):
+        if cross_source is None:
+            cross_source = self.rng.random() < curriculum_rho(progress)
+        candidates = self._query_candidates(cross_source)
+        if avoid_sources:
+            preferred = [src for src in candidates if src not in set(avoid_sources)]
+            if preferred:
+                candidates = preferred
+        # 跨来源候选为空时（例如留出 CR7 后冲孔只剩一家），退回同产线。
+        if not candidates and cross_source and not self.query_only and allow_fallback:
+            return self.sample(
+                cross_source=False,
+                progress=progress,
+                avoid_sources=avoid_sources,
+                stage_sources=stage_sources,
+                allow_fallback=False,
+            )
+        if not candidates:
+            raise RuntimeError('没有可采样的查询来源 cross={}'.format(cross_source))
+        order = list(candidates)
+        self.rng.shuffle(order)
+        last_error = None
+        for query_source in order:
+            try:
+                return self._sample_source(query_source, cross_source, progress, stage_sources)
+            except RuntimeError as exc:
+                last_error = exc
+        if cross_source and not self.query_only and allow_fallback:
+            return self.sample(
+                cross_source=False,
+                progress=progress,
+                avoid_sources=avoid_sources,
+                stage_sources=stage_sources,
+                allow_fallback=False,
+            )
+        raise last_error or RuntimeError('来源不足')
+
+
+def make_curriculum(cfg, split, seed):
+    return CurriculumNewSplitEpisodes(cfg, split=split, seed=seed)

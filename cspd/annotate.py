@@ -10,10 +10,12 @@ mask_root 为空则不加载掩码。
 
 from pathlib import Path
 
+import numpy as np
 import torch
 import torch.nn.functional as F
 from PIL import Image
 from torchvision import transforms
+from torchvision.transforms import InterpolationMode
 
 
 def resolve_mask_path(image_path, split_root, mask_root, mask_pattern='{stem}_mask.png'):
@@ -47,11 +49,90 @@ def load_mask(path, size):
     if path is None or not Path(path).is_file():
         return None
     img = Image.open(path).convert('L')
-    img = transforms.Resize((int(size), int(size)))(img)
+    img = transforms.Resize(
+        (int(size), int(size)), interpolation=InterpolationMode.NEAREST)(img)
     mask = transforms.ToTensor()(img)
     if float(mask.max()) > 0:
         mask = (mask > 0.5).float()
     return mask
+
+
+def mask_bbox_xyxy(mask_l):
+    """PIL L 或 ndarray → (xmin, ymin, xmax, ymax)，xmax/ymax 为开区间。空掩码返回 None。"""
+    arr = np.asarray(mask_l)
+    if arr.ndim != 2:
+        raise ValueError('mask_bbox_xyxy 需要二维掩码')
+    ys, xs = np.where(arr > 0)
+    if xs.size == 0:
+        return None
+    return int(xs.min()), int(ys.min()), int(xs.max()) + 1, int(ys.max()) + 1
+
+
+def crop_around_mask(image_rgb, mask_l, margin=0.35, min_side=96, square=True):
+    """按掩码外接框扩边裁切。返回裁后的 RGB 与 L。空掩码则原样返回。
+
+    margin: 相对 max(框宽, 框高) 的单侧扩边比例。
+    min_side: 裁切边长下限（原图像素），避免细缺陷裁得太紧。
+    square: 用正方形窗，减轻随后 Resize 到方形时的各向异性拉伸。
+    """
+    if image_rgb.size != mask_l.size:
+        mask_l = mask_l.resize(image_rgb.size, resample=Image.NEAREST)
+    box = mask_bbox_xyxy(mask_l)
+    if box is None:
+        return image_rgb, mask_l
+    xmin, ymin, xmax, ymax = box
+    bw = max(1, xmax - xmin)
+    bh = max(1, ymax - ymin)
+    cx = 0.5 * (xmin + xmax)
+    cy = 0.5 * (ymin + ymax)
+    base = max(bw, bh) if square else None
+    pad = float(margin) * max(bw, bh)
+    if square:
+        side = max(float(min_side), base + 2.0 * pad)
+        x0 = int(round(cx - 0.5 * side))
+        y0 = int(round(cy - 0.5 * side))
+        x1 = int(round(x0 + side))
+        y1 = int(round(y0 + side))
+    else:
+        x0 = int(round(xmin - pad))
+        y0 = int(round(ymin - pad))
+        x1 = int(round(xmax + pad))
+        y1 = int(round(ymax + pad))
+        if (x1 - x0) < int(min_side):
+            extra = int(min_side) - (x1 - x0)
+            x0 -= extra // 2
+            x1 += extra - extra // 2
+        if (y1 - y0) < int(min_side):
+            extra = int(min_side) - (y1 - y0)
+            y0 -= extra // 2
+            y1 += extra - extra // 2
+    w, h = image_rgb.size
+    # 越界时平移窗口，尽量保持边长
+    if x1 - x0 > w:
+        x0, x1 = 0, w
+    else:
+        if x0 < 0:
+            x1 -= x0
+            x0 = 0
+        if x1 > w:
+            x0 -= (x1 - w)
+            x1 = w
+            x0 = max(0, x0)
+    if y1 - y0 > h:
+        y0, y1 = 0, h
+    else:
+        if y0 < 0:
+            y1 -= y0
+            y0 = 0
+        if y1 > h:
+            y0 -= (y1 - h)
+            y1 = h
+            y0 = max(0, y0)
+    x0 = max(0, min(w - 1, x0))
+    y0 = max(0, min(h - 1, y0))
+    x1 = max(x0 + 1, min(w, x1))
+    y1 = max(y0 + 1, min(h, y1))
+    return image_rgb.crop((x0, y0, x1, y1)), mask_l.crop((x0, y0, x1, y1))
 
 
 def gaussian_weight_from_mask(mask, sigma_ratio=0.15):

@@ -9,7 +9,7 @@ import torch
 import torch.nn.functional as F
 import yaml
 
-from .model import ConditionStrategyDetector, location_loss
+from .model import ConditionStrategyDetector, DualRegionBetaDetector, location_loss
 
 
 def set_seed(seed):
@@ -69,6 +69,22 @@ def episode_loss(pred, episode, location_loss_weight=0.0, source_proto_weight=0.
 
 
 def build_model(cfg):
+    if str(cfg.get('train_mode') or '').strip() == 'curriculum':
+        model = DualRegionBetaDetector(
+            feat_dim=int(cfg.get('feat_dim', 128)),
+            cond_dim=int(cfg.get('cond_dim', 6)),
+            dilate_px=int(cfg.get('context_dilate_px', 16)),
+            pretrained_backbone=bool(cfg.get('pretrained_backbone', True)),
+            freeze_backbone=bool(cfg.get('freeze_backbone', True)),
+            use_policy=bool(cfg.get('use_policy', True)),
+            fixed_beta=float(cfg.get('fixed_beta', 0.25)),
+            beta_center=float(cfg.get('beta_center', 0.25)),
+            beta_scale=float(cfg.get('beta_scale', 0.25)),
+        )
+        if bool(cfg.get('freeze_policy', False)):
+            for param in model.policy.parameters():
+                param.requires_grad = False
+        return model
     model = ConditionStrategyDetector(
         feat_dim=cfg['feat_dim'],
         cond_dim=cfg['cond_dim'],
@@ -127,9 +143,15 @@ def apply_freeze(model, freeze):
 
 def output_dir(cfg, project_root):
     name = str(cfg.get('exp_name', '')).strip()
+    group = str(cfg.get('output_group') or '').strip()
     if not name or Path(name).name != name or name in {'.', '..'}:
-        raise ValueError('exp_name 必须是一级目录名，输出写到 output/<exp_name>')
-    out = Path(project_root) / 'output' / name
+        raise ValueError('exp_name 必须是一级目录名')
+    if group and (Path(group).name != group or group in {'.', '..'}):
+        raise ValueError('output_group 必须是一级目录名，例如 v3')
+    out = Path(project_root) / 'output' / 'cspd'
+    if group:
+        out = out / group
+    out = out / name
     out.mkdir(parents=True, exist_ok=True)
     return out
 
@@ -175,8 +197,10 @@ def evaluate(model, sampler, device, tasks, location_loss_weight=0.0, source_pro
     loc_hits = 0
     loc_total = 0
     for _ in range(tasks):
-        episode = move_episode(sampler.sample(), device)
-        pred = forward_episode(model, episode, sampler.n_way)
+        raw = sampler.sample()
+        episode = move_episode(raw, device)
+        ways = int(episode.get('n_way', sampler.n_way))
+        pred = forward_episode(model, episode, ways)
         loss, cls, loc, align = episode_loss(
             pred, episode, location_loss_weight, source_proto_weight)
         hits = (pred['logits'].argmax(dim=-1) == episode['query_y']).sum().item()

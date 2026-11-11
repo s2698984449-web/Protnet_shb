@@ -51,3 +51,28 @@ class PolicyNet(nn.Module):
         gate = 1.0 + self.rho * torch.tanh(self.gate_head(h))
         tau = torch.exp(self.tau_head(h).clamp(-2.0, 2.0)).view(-1)
         return g, alpha, gate, tau
+
+
+class EpisodeBetaPolicy(nn.Module):
+    """课程学习初版：整集一个 β。最后一层零初始化 → β 从 0.25 起步。"""
+
+    def __init__(self, state_dim, hidden=(64, 32), beta_center=0.25, beta_scale=0.25):
+        super().__init__()
+        self.beta_center = float(beta_center)
+        self.beta_scale = float(beta_scale)
+        layers = []
+        dim = int(state_dim)
+        for width in hidden:
+            layers.extend([nn.Linear(dim, int(width)), nn.ReLU()])
+            dim = int(width)
+        self.trunk = nn.Sequential(*layers)
+        self.head = nn.Linear(dim, 1)
+        nn.init.zeros_(self.head.weight)
+        nn.init.zeros_(self.head.bias)
+
+    def forward(self, state):
+        if state.dim() == 1:
+            state = state.unsqueeze(0)
+        u = self.head(self.trunk(state)).view(-1)
+        beta = self.beta_center + self.beta_scale * torch.tanh(u)
+        return beta.view(-1)

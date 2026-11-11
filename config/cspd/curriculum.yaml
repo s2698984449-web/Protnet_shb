@@ -1,0 +1,76 @@
+# 课程学习 v2。数据：data/new_split。XSDD 无掩码排除。纵向裂纹不进跨来源。
+# CSU、S3D 已按细类并入。学习 β 没有超过固定 β，本配置锁 β=0.25。
+# 输出 output/STEEL_curriculum_v2/。验证分同来源和跨来源；早停看 cross_loss。
+
+exp_name: STEEL_curriculum_v2
+train_mode: curriculum
+data_root: D:/元强化学习/代码/data/new_split
+
+holdout_source: CAST
+exclude_sources: [XSDD]
+exclude_classes_cross: [纵向裂纹]
+require_mask: true
+
+include_classes: []
+source_table:
+  NEU:   {material: 1.0, surface: 1.0,  illuminance: 0.477, camera: 0.0}
+  GC10:  {material: 1.0, surface: 0.0,  illuminance: 0.328, light_mode: 1.0, camera: 0.0}
+  CR7:   {material: 1.0, surface: 0.25, illuminance: 0.440, camera: 0.0}
+  PLATE: {material: 1.0, surface: 0.8,  illuminance: 0.275, camera: 0.0}
+  CAST:  {material: 1.0, surface: 0.55, illuminance: 0.398, camera: 0.0}
+  PIPE:  {material: 1.0, surface: 0.4,  illuminance: 0.371, camera: 0.0}
+  CSU:   {material: 1.0, surface: 0.15, illuminance: 0.350, camera: 0.0}
+  S3D:   {material: 1.0, surface: 0.65, illuminance: 0.360, camera: 0.0}
+
+cond_slots: [material, surface, illuminance, light_mode, exposure, camera]
+cond_dim: 6
+condition_file:
+illumination_manifest:
+cond_fallback_image_stats: false
+illuminance_offset_scale: 80.0
+
+image_size: 224
+# 有掩码时先按缺陷框扩边裁切，再缩到 image_size。避免 CSU 大图整图缩小后细划痕只剩几个像素。
+crop_to_mask: true
+crop_margin: 0.35
+crop_min_side: 96
+crop_square: true
+n_way: 5
+k_choices: [3, 5]
+k_probs: [0.7, 0.3]
+q_query: 8
+feat_dim: 128
+context_dilate_px: 16
+
+use_policy: false
+freeze_policy: true
+fixed_beta: 0.25
+beta_center: 0.25
+beta_scale: 0.25
+policy_unfreeze_frac: 0.25
+
+pretrained_backbone: true
+freeze_backbone: true
+lr: 0.0003
+policy_lr_ratio: 0.3
+weight_decay: 0.0001
+grad_clip: 1.0
+
+meta_batch: 4
+grad_accum: 2
+iters: 200
+eval_every: 5
+eval_tasks: 20
+early_stop: true
+early_start: 50
+patience: 10
+monitor: cross_loss
+min_delta: 0.0
+seed: 0
+device: cuda
+
+rho_schedule:
+  - [0.0, 0.3]
+  - [0.25, 0.3]
+  - [0.75, 0.8]
+  - [1.0, 0.8]

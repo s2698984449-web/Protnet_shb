@@ -23,7 +23,7 @@ from .annotate import (
 from .backbone import SpatialResNet18
 from .condition import FiLM, MLPEncoder
 from .condition_io import apply_cond_mask
-from .policy import PolicyNet
+from .policy import EpisodeBetaPolicy, PolicyNet
 
 
 def _conv1x1(x, weight, bias):
@@ -353,4 +353,171 @@ class ConditionStrategyDetector(nn.Module):
             'channel_gate': gate,
             'distance_tau': tau,
             'source_proto': align,
+        }
+
+
+def _masked_mean(feat, mask):
+    """feat (N,C,H,W), mask (N,H,W) bool/float → (N,C)。空掩码退回全局均值。"""
+    w = mask.float().unsqueeze(1)
+    denom = w.sum(dim=(2, 3)).clamp_min(1.0)
+    filled = (feat * w).sum(dim=(2, 3)) / denom
+    empty = mask.flatten(1).sum(dim=1) < 0.5
+    if bool(empty.any()):
+        gap = feat.mean(dim=(2, 3))
+        filled = torch.where(empty.view(-1, 1), gap, filled)
+    return filled
+
+
+def _unit_rows(x):
+    return x / x.norm(dim=-1, keepdim=True).clamp_min(1e-6)
+
+
+class DualRegionBetaDetector(nn.Module):
+    """课程学习：冻结骨干 + layer3 投影 + episode 级 β + core/ring cosine。"""
+
+    def __init__(
+            self,
+            feat_dim=128,
+            cond_dim=6,
+            dilate_px=16,
+            pretrained_backbone=True,
+            freeze_backbone=True,
+            use_policy=True,
+            fixed_beta=0.25,
+            beta_center=0.25,
+            beta_scale=0.25,
+    ):
+        super().__init__()
+        self.feat_dim = int(feat_dim)
+        self.cond_dim = int(cond_dim)
+        self.dilate_px = int(dilate_px)
+        self.use_policy = bool(use_policy)
+        self.fixed_beta = float(fixed_beta)
+        self.backbone = SpatialResNet18(
+            pretrained=pretrained_backbone, freeze=freeze_backbone)
+        self.proj3 = nn.Conv2d(256, self.feat_dim, kernel_size=1)
+        # 低维统计：6 标量 + 工况均值 + 工况 mask
+        self.policy = EpisodeBetaPolicy(
+            state_dim=6 + 2 * self.cond_dim,
+            beta_center=beta_center,
+            beta_scale=beta_scale,
+        )
+
+    def train(self, mode=True):
+        super().train(mode)
+        if self.backbone.frozen:
+            self.backbone.eval()
+        return self
+
+    def _maps(self, x):
+        layer3, _ = self.backbone(x)
+        return self.proj3(layer3)
+
+    def _core_ring(self, feat, masks):
+        """core 为掩码落到特征图的格子；ring 先在输入分辨率按 dilate_px 像素膨胀，再落到特征图，与工业 encode_core_context 一致。
+        空核时用膨胀区作为 core，不再退回整图均值。
+        """
+        n, _, h, w = feat.shape
+        del n
+        mask_f = masks.float()
+        if mask_f.dim() == 3:
+            mask_f = mask_f.unsqueeze(1)
+        core_m = F.interpolate(mask_f, size=(h, w), mode='nearest').squeeze(1) >= 0.5
+        if self.dilate_px > 0:
+            k = 2 * int(self.dilate_px) + 1
+            dil_hi = F.max_pool2d(
+                mask_f, kernel_size=k, stride=1, padding=int(self.dilate_px))
+            dil_m = F.interpolate(dil_hi, size=(h, w), mode='nearest').squeeze(1) >= 0.5
+        else:
+            dil_m = core_m
+        ring_m = dil_m & (~core_m)
+        has_core = core_m.flatten(1).any(dim=1).view(-1, 1, 1)
+        core_m = torch.where(has_core, core_m, dil_m)
+        has_ring = ring_m.flatten(1).any(dim=1).view(-1, 1, 1)
+        ring_m = torch.where(has_ring, ring_m, dil_m)
+        return _masked_mean(feat, core_m), _masked_mean(feat, ring_m)
+
+    def support_stats(self, core, ring, y, ways, cond, cond_mask):
+        device = core.device
+        stats = []
+        stats.append(core.var(dim=0).mean().reshape(1))
+        stats.append(ring.var(dim=0).mean().reshape(1))
+        stats.append((_unit_rows(core) * _unit_rows(ring)).sum(dim=-1).mean().reshape(1))
+        intra = []
+        protos = []
+        for c in range(ways):
+            sel = y == c
+            if not bool(sel.any()):
+                continue
+            shots = core[sel]
+            protos.append(shots.mean(dim=0))
+            if shots.shape[0] > 1:
+                intra.append(shots.std(dim=0, unbiased=False).mean())
+        if intra:
+            stats.append(torch.stack(intra).mean().reshape(1))
+        else:
+            stats.append(core.new_zeros(1))
+        if len(protos) >= 2:
+            p = torch.stack(protos)
+            p = _unit_rows(p)
+            sim = p @ p.t()
+            eye = torch.eye(sim.shape[0], device=device, dtype=torch.bool)
+            stats.append(((1.0 - sim)[~eye]).mean().reshape(1))
+        else:
+            stats.append(core.new_zeros(1))
+        stats.append(torch.tensor([float(core.shape[0])], device=device))
+        stats.append(cond.mean(dim=0))
+        stats.append(cond_mask.mean(dim=0))
+        return torch.cat(stats, dim=0)
+
+    def forward(
+            self,
+            support_x,
+            support_y,
+            query_x,
+            support_cond,
+            query_cond,
+            query_y,
+            ways,
+            support_cond_mask=None,
+            query_cond_mask=None,
+            support_mask=None,
+            query_mask=None,
+            support_has_mask=None,
+            query_has_mask=None,
+            **_unused,
+    ):
+        del query_cond, query_cond_mask, support_has_mask, query_has_mask, query_y, _unused
+        if support_cond_mask is None:
+            support_cond_mask = torch.ones_like(support_cond)
+        if support_mask is None or query_mask is None:
+            raise RuntimeError('DualRegionBetaDetector 需要支持集和查询集掩码')
+        s_feat = self._maps(support_x)
+        q_feat = self._maps(query_x)
+        s_core, s_ring = self._core_ring(s_feat, support_mask)
+        q_core, q_ring = self._core_ring(q_feat, query_mask)
+        if self.use_policy:
+            state = self.support_stats(
+                s_core, s_ring, support_y, ways, support_cond, support_cond_mask)
+            beta = self.policy(state)[0]
+        else:
+            beta = s_core.new_tensor(self.fixed_beta)
+        logits = []
+        for c in range(ways):
+            sel = support_y == c
+            p_core = _unit_rows(s_core[sel].mean(dim=0, keepdim=True))
+            p_ring = _unit_rows(s_ring[sel].mean(dim=0, keepdim=True))
+            s_c = (_unit_rows(q_core) * p_core).sum(dim=-1)
+            s_r = (_unit_rows(q_ring) * p_ring).sum(dim=-1)
+            logits.append(s_c + beta * s_r)
+        logits = torch.stack(logits, dim=-1)
+        return {
+            'logits': logits,
+            'beta': beta.detach() if not self.training else beta,
+            'gate_g': beta.detach().expand(ways),
+            'scale_alpha': logits.new_zeros(ways, 2),
+            'source_proto': logits.new_zeros(()),
+            'peak_yx': logits.new_zeros(logits.shape[0], 2),
+            'gt_yx': logits.new_zeros(logits.shape[0], 2),
+            'gt_valid': torch.zeros(logits.shape[0], dtype=torch.bool, device=logits.device),
         }

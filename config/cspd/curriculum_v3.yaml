@@ -1,0 +1,79 @@
+# v3。训练改回「同一条产线内部比较」。
+# ρ 固定 0.20。跨来源只允许冲孔：该类支持来自另一产线，其余类仍用查询产线自己的支持。
+# 留出 CR7 或 GC10 时，冲孔只剩一个来源，跨来源抽不到，episode 退回同来源。
+# β 固定 0.25，策略不学习。迭代 100，与全关的 v1 同一预算。不早停。
+# 输出 output/cspd/v3/<留出来源>/。队列只跑 NEU、CR7、GC10 各种子 0。
+
+exp_name: NEU
+output_group: v3
+train_mode: curriculum
+data_root: D:/元强化学习/代码/data/new_split_v3
+
+holdout_source: NEU
+holdout_eval: same
+holdout_pool: all
+exclude_sources: [XSDD]
+exclude_classes_cross: []
+cross_classes: [punch]
+require_mask: true
+
+include_classes: []
+source_table:
+  NEU:   {material: 1.0, surface: 1.0,  illuminance: 0.477, camera: 0.0}
+  GC10:  {material: 1.0, surface: 0.0,  illuminance: 0.328, light_mode: 1.0, camera: 0.0}
+  CR7:   {material: 1.0, surface: 0.25, illuminance: 0.440, camera: 0.0}
+  PLATE: {material: 1.0, surface: 0.8,  illuminance: 0.275, camera: 0.0}
+  CAST:  {material: 1.0, surface: 0.55, illuminance: 0.398, camera: 0.0}
+  PIPE:  {material: 1.0, surface: 0.4,  illuminance: 0.371, camera: 0.0}
+  CSU:   {material: 1.0, surface: 0.15, illuminance: 0.350, camera: 0.0}
+  S3D:   {material: 1.0, surface: 0.65, illuminance: 0.360, camera: 0.0}
+
+cond_slots: [material, surface, illuminance, light_mode, exposure, camera]
+cond_dim: 6
+condition_file:
+illumination_manifest:
+cond_fallback_image_stats: false
+illuminance_offset_scale: 80.0
+
+image_size: 224
+crop_to_mask: true
+crop_margin: 0.35
+crop_min_side: 96
+crop_square: true
+n_way: 5
+k_choices: [3, 5]
+k_probs: [0.7, 0.3]
+q_query: 8
+feat_dim: 128
+context_dilate_px: 16
+
+use_policy: false
+freeze_policy: true
+fixed_beta: 0.25
+beta_center: 0.25
+beta_scale: 0.25
+policy_unfreeze_frac: 0.25
+
+pretrained_backbone: true
+freeze_backbone: true
+lr: 0.0003
+policy_lr_ratio: 0.3
+weight_decay: 0.0001
+grad_clip: 1.0
+
+meta_batch: 4
+grad_accum: 2
+iters: 100
+eval_every: 5
+eval_tasks: 20
+early_stop: false
+early_start: 50
+patience: 10
+monitor: loss
+min_delta: 0.0
+seed: 0
+device: cuda
+
+rho_schedule:
+  - [0.0, 0.2]
+  - [1.0, 0.2]
