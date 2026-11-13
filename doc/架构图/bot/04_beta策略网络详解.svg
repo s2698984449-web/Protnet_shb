@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="2700" height="1140" viewBox="0 0 2700 1140" role="img">
+<title>β 策略网络详解</title>
+<rect width="100%" height="100%" fill="#FFFFFF"/>
+<rect x="80.0" y="200.0" width="1280.0" height="311.0" rx="22" ry="22" fill="#FCFCFD" stroke="#9CA3AF" stroke-width="1.8"/>
+<rect x="100.0" y="244.0" width="590.0" height="243.0" rx="18" ry="18" fill="#FAFAFA" stroke="#D1D5DB" stroke-width="2.0"/>
+<rect x="714.0" y="244.0" width="590.0" height="216.0" rx="18" ry="18" fill="#EFF6FF" stroke="#1D4ED8" stroke-width="2.6"/>
+<rect x="1400.0" y="261.0" width="540.0" height="189.0" rx="18" ry="18" fill="#FAFAFA" stroke="#D1D5DB" stroke-width="2.0"/>
+<rect x="2020.0" y="261.0" width="600.0" height="189.0" rx="18" ry="18" fill="#ECFDF5" stroke="#047857" stroke-width="2.6"/>
+<rect x="80.0" y="581.0" width="820.0" height="189.0" rx="18" ry="18" fill="#ECFDF5" stroke="#047857" stroke-width="2.6"/>
+<rect x="950.0" y="581.0" width="820.0" height="189.0" rx="18" ry="18" fill="#FAFAFA" stroke="#D1D5DB" stroke-width="2.0"/>
+<rect x="1820.0" y="581.0" width="820.0" height="189.0" rx="18" ry="18" fill="#F3F4F6" stroke="#6B7280" stroke-width="2.6" stroke-dasharray="9 7"/>
+<rect x="80.0" y="831.0" width="820.0" height="189.0" rx="18" ry="18" fill="#F3F4F6" stroke="#6B7280" stroke-width="2.6" stroke-dasharray="9 7"/>
+<rect x="950.0" y="831.0" width="820.0" height="189.0" rx="18" ry="18" fill="#F3F4F6" stroke="#6B7280" stroke-width="2.6" stroke-dasharray="9 7"/>
+<rect x="1820.0" y="831.0" width="820.0" height="189.0" rx="18" ry="18" fill="#F3F4F6" stroke="#6B7280" stroke-width="2.6" stroke-dasharray="9 7"/>
+<line x1="1360.0" y1="355.5" x2="1387.0" y2="355.5" stroke="#111827" stroke-width="2.8" stroke-linecap="round"/>
+<polygon points="1400.0,355.5 1389.9,361.9 1389.9,349.1" fill="#111827" stroke="none"/>
+<line x1="1940.0" y1="355.5" x2="2007.0" y2="355.5" stroke="#047857" stroke-width="2.8" stroke-linecap="round"/>
+<polygon points="2020.0,355.5 2009.9,361.9 2009.9,349.1" fill="#047857" stroke="none"/>
+<rect x="1000.0" y="46.0" width="22" height="16" rx="4" fill="#EFF6FF" stroke="#1D4ED8" stroke-width="2"/>
+<text x="1030.0" y="60.0" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="15">数据与给定掩码</text>
+<rect x="1169.0" y="46.0" width="22" height="16" rx="4" fill="#F3F4F6" stroke="#6B7280" stroke-width="2"/>
+<text x="1199.0" y="60.0" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="15">冻结</text>
+<rect x="1263.0" y="46.0" width="22" height="16" rx="4" fill="#ECFDF5" stroke="#047857" stroke-width="2"/>
+<text x="1293.0" y="60.0" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="15">可训练 / 更新</text>
+<rect x="1416.0" y="46.0" width="22" height="16" rx="4" fill="#FFF7ED" stroke="#C2410C" stroke-width="2" stroke-dasharray="7 5"/>
+<text x="1446.0" y="60.0" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="15">验证反馈</text>
+<rect x="1540.0" y="46.0" width="22" height="16" rx="4" fill="#F3F4F6" stroke="#6B7280" stroke-width="2" stroke-dasharray="7 5"/>
+<text x="1570.0" y="60.0" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="15">未启用 / 预留</text>
+<text x="80" y="62" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="38" font-weight="700">β 策略网络详解</text>
+<text x="80" y="108" fill="#4B5563" font-family="Microsoft YaHei, sans-serif" font-size="20">EpisodeBetaPolicy 输出整集一个 β；当前 B 训练关闭该路径，使用固定 β=0.25</text>
+<text x="80.0" y="175.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="20" font-weight="700">① 输入状态 support_stats（只看支持集，不看查询图、查询标签或 query_cond）</text>
+<text x="102.0" y="222.0" text-anchor="start" fill="#4B5563" font-family="Microsoft YaHei, sans-serif" font-size="16" font-weight="700">状态维度 = 6 + 2 × cond_dim，默认 cond_dim=6 → 18 维，整集一行</text>
+<text x="124.0" y="272.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="21" font-weight="700">6 个标量统计</text>
+<text x="124.0" y="308.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">1  core 方差：样本维方差，再对通道取均值</text>
+<text x="124.0" y="335.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">2  ring 方差：同上</text>
+<text x="124.0" y="362.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">3  逐样本 unit(core)·unit(ring) 再平均</text>
+<text x="124.0" y="389.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">4  类内 core 标准差（多样本类）再平均；否则 0</text>
+<text x="124.0" y="416.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">5  类 core 原型 L2 后，成对 (1−cos) 再平均；不足两类为 0</text>
+<text x="124.0" y="443.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">6  support 张数，即整集样本数</text>
+<text x="738.0" y="272.0" text-anchor="start" fill="#1D4ED8" font-family="Microsoft YaHei, sans-serif" font-size="21" font-weight="700">工况统计（仅支持集）</text>
+<text x="738.0" y="308.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">7  support_cond 按样本取均值（6 维）</text>
+<text x="738.0" y="335.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">8  support_cond_mask 按样本取均值（6 维）</text>
+<text x="738.0" y="362.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">此处不调用 apply_cond_mask，也不按类聚合</text>
+<text x="738.0" y="389.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">缺测比例由 mask 均值单独告诉策略</text>
+<text x="738.0" y="416.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">query_cond 即使开启策略也不会进入状态</text>
+<text x="1424.0" y="289.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="21" font-weight="700">② 网络结构</text>
+<text x="1424.0" y="325.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">Linear(18, 64) → ReLU</text>
+<text x="1424.0" y="352.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">Linear(64, 32) → ReLU</text>
+<text x="1424.0" y="379.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">Linear(32, 1)，末层零初始化</text>
+<text x="1424.0" y="406.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">起步时 u=0，因此 β 从 0.25 开始</text>
+<text x="2044.0" y="289.0" text-anchor="start" fill="#047857" font-family="Microsoft YaHei, sans-serif" font-size="21" font-weight="700">③ 输出与作用</text>
+<text x="2044.0" y="325.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">β = 0.25 + 0.25 · tanh(u)</text>
+<text x="2044.0" y="352.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">值域 [0, 0.5]，整集共用一个 β</text>
+<text x="2044.0" y="379.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">不是每类一个，也不是分类分数</text>
+<text x="2044.0" y="406.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">logit = cos(core) + β · cos(ring)</text>
+<text x="80.0" y="553.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="20" font-weight="700">④ 梯度、启用条件，以及当前训练状态</text>
+<text x="104.0" y="609.0" text-anchor="start" fill="#047857" font-family="Microsoft YaHei, sans-serif" font-size="21" font-weight="700">梯度路径（仅当策略被调用）</text>
+<text x="104.0" y="645.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">查询分类 CE 经 logits 传到 β，再传到策略参数</text>
+<text x="104.0" y="672.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">state 未经 detach，梯度也可回到 core/ring 与 proj3</text>
+<text x="104.0" y="699.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">返回字典里的 beta 在 eval 时 detach，不影响打分图</text>
+<text x="104.0" y="726.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">参数 requires_grad=False 时权重不更新，但未截断对特征的反传</text>
+<text x="974.0" y="609.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="21" font-weight="700">何时启用（实现已具备）</text>
+<text x="974.0" y="645.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">模块在 DualRegionBetaDetector 中始终构建</text>
+<text x="974.0" y="672.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">forward 仅在 use_policy=true 时调用策略</text>
+<text x="974.0" y="699.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">否则 β = fixed_beta，策略不参与前向</text>
+<text x="974.0" y="726.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">若开启：可先冻结，再按配置的进度比例解冻；策略学习率有单独倍率</text>
+<text x="1844.0" y="609.0" text-anchor="start" fill="#6B7280" font-family="Microsoft YaHei, sans-serif" font-size="21" font-weight="700">当前 B 训练（关闭）</text>
+<text x="1844.0" y="645.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">use_policy=false，freeze_policy=true</text>
+<text x="1844.0" y="672.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">打分使用固定 β=0.25</text>
+<text x="1844.0" y="699.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">策略不参与前向，也不更新</text>
+<text x="1844.0" y="726.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">这是训练开关，不是结构消失；不要把旧实验步数画成本体条件</text>
+<text x="80.0" y="803.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="20" font-weight="700">⑤ 另一套已实现的 PolicyNet（只属于 ConditionStrategyDetector，不是本版 β 网络）</text>
+<text x="104.0" y="859.0" text-anchor="start" fill="#6B7280" font-family="Microsoft YaHei, sans-serif" font-size="21" font-weight="700">每类状态（查询不进入）</text>
+<text x="104.0" y="895.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">z_part 128：全体 support 特征的零件码</text>
+<text x="104.0" y="922.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">该类外观 128 + 该类工况 D</text>
+<text x="104.0" y="949.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">离散度 1 + 原图与 FiLM 特征差 1</text>
+<text x="104.0" y="976.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">默认约 258 维，一行一类</text>
+<text x="974.0" y="859.0" text-anchor="start" fill="#6B7280" font-family="Microsoft YaHei, sans-serif" font-size="21" font-weight="700">结构与初值</text>
+<text x="974.0" y="895.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">Linear(state, 128) → GELU</text>
+<text x="974.0" y="922.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">Linear(128, 128) → GELU，再分四个头</text>
+<text x="974.0" y="949.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">各头零初始化</text>
+<text x="974.0" y="976.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">本版 curriculum 检测器不创建该网络</text>
+<text x="1844.0" y="859.0" text-anchor="start" fill="#6B7280" font-family="Microsoft YaHei, sans-serif" font-size="21" font-weight="700">每类输出（不是整集 β）</text>
+<text x="1844.0" y="895.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">g=sigmoid，起步 0.5，信工况调制的比例</text>
+<text x="1844.0" y="922.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">alpha=softmax，细/粗两尺度，起步均分</text>
+<text x="1844.0" y="949.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">gate=1+ρ·tanh，通道系数，起步 1</text>
+<text x="1844.0" y="976.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">tau=exp(clamp(u,−2,2))，距离温度，起步 1</text>
+<text x="80" y="1104.0" fill="#4B5563" font-family="Microsoft YaHei, sans-serif" font-size="15">对应 cspd/policy.py 的 EpisodeBetaPolicy / PolicyNet，以及 cspd/model.py 的 support_stats 与 forward。图中只陈述实现与开关，不陈述精度收益。</text>
+<text x="2620.0" y="1112.0" text-anchor="end" fill="#6B7280" font-family="Microsoft YaHei, sans-serif" font-size="15">bot · cspd</text>
+</svg>

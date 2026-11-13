@@ -1,0 +1,4759 @@
+{
+  "run_id": "hp_abc_20261111",
+  "data_root": "D:\\元强化学习\\代码\\data\\new_split_v3",
+  "notes": [
+    "Usable in code only checks image count >= k+q, then n_way=min(5,len(usable)).",
+    "strict_groups then fail-closes the whole source attempt if any chosen class cannot be group-split.",
+    "sample() does not retry another class combination of the same source.",
+    "Val attempt counters on the sampler are cumulative across 20 evals x (same+cross).",
+    "Holdout isolation was not relaxed in this diagnosis."
+  ],
+  "cr7_val_classes": [
+    {
+      "class": "dent",
+      "source": "CR7",
+      "split": "val",
+      "images": 100,
+      "raw_files": 100,
+      "missing_mask": 0,
+      "missing_gid": 0,
+      "n_groups": 2,
+      "group_sizes": [
+        98,
+        2
+      ],
+      "has_groups_json": true,
+      "count_usable": {
+        "3": true,
+        "5": true
+      },
+      "group_feasible": {
+        "3": false,
+        "5": false
+      },
+      "official_dp_agrees": {
+        "3": true,
+        "5": true
+      },
+      "infeasible_reason": {
+        "3": "no_group_subset_with_sum_in_[3,92] sizes=[98, 2]",
+        "5": "no_group_subset_with_sum_in_[5,92] sizes=[98, 2]"
+      }
+    },
+    {
+      "class": "inclusion",
+      "source": "CR7",
+      "split": "val",
+      "images": 58,
+      "raw_files": 58,
+      "missing_mask": 0,
+      "missing_gid": 0,
+      "n_groups": 7,
+      "group_sizes": [
+        24,
+        22,
+        7,
+        2,
+        1,
+        1,
+        1
+      ],
+      "has_groups_json": true,
+      "count_usable": {
+        "3": true,
+        "5": true
+      },
+      "group_feasible": {
+        "3": true,
+        "5": true
+      },
+      "official_dp_agrees": {
+        "3": true,
+        "5": true
+      },
+      "infeasible_reason": {
+        "3": null,
+        "5": null
+      }
+    },
+    {
+      "class": "linear",
+      "source": "CR7",
+      "split": "val",
+      "images": 83,
+      "raw_files": 83,
+      "missing_mask": 0,
+      "missing_gid": 0,
+      "n_groups": 1,
+      "group_sizes": [
+        83
+      ],
+      "has_groups_json": true,
+      "count_usable": {
+        "3": true,
+        "5": true
+      },
+      "group_feasible": {
+        "3": false,
+        "5": false
+      },
+      "official_dp_agrees": {
+        "3": true,
+        "5": true
+      },
+      "infeasible_reason": {
+        "3": "single_group_cannot_split (n_groups=1, n=83)",
+        "5": "single_group_cannot_split (n_groups=1, n=83)"
+      }
+    },
+    {
+      "class": "macular",
+      "source": "CR7",
+      "split": "val",
+      "images": 91,
+      "raw_files": 91,
+      "missing_mask": 0,
+      "missing_gid": 0,
+      "n_groups": 1,
+      "group_sizes": [
+        91
+      ],
+      "has_groups_json": true,
+      "count_usable": {
+        "3": true,
+        "5": true
+      },
+      "group_feasible": {
+        "3": false,
+        "5": false
+      },
+      "official_dp_agrees": {
+        "3": true,
+        "5": true
+      },
+      "infeasible_reason": {
+        "3": "single_group_cannot_split (n_groups=1, n=91)",
+        "5": "single_group_cannot_split (n_groups=1, n=91)"
+      }
+    },
+    {
+      "class": "oil",
+      "source": "CR7",
+      "split": "val",
+      "images": 114,
+      "raw_files": 114,
+      "missing_mask": 0,
+      "missing_gid": 0,
+      "n_groups": 12,
+      "group_sizes": [
+        63,
+        25,
+        8,
+        4,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        1,
+        1
+      ],
+      "has_groups_json": true,
+      "count_usable": {
+        "3": true,
+        "5": true
+      },
+      "group_feasible": {
+        "3": true,
+        "5": true
+      },
+      "official_dp_agrees": {
+        "3": true,
+        "5": true
+      },
+      "infeasible_reason": {
+        "3": null,
+        "5": null
+      }
+    },
+    {
+      "class": "pit_local",
+      "source": "CR7",
+      "split": "val",
+      "images": 93,
+      "raw_files": 93,
+      "missing_mask": 0,
+      "missing_gid": 0,
+      "n_groups": 6,
+      "group_sizes": [
+        22,
+        22,
+        21,
+        19,
+        8,
+        1
+      ],
+      "has_groups_json": true,
+      "count_usable": {
+        "3": true,
+        "5": true
+      },
+      "group_feasible": {
+        "3": true,
+        "5": true
+      },
+      "official_dp_agrees": {
+        "3": true,
+        "5": true
+      },
+      "infeasible_reason": {
+        "3": null,
+        "5": null
+      }
+    },
+    {
+      "class": "punch",
+      "source": "CR7",
+      "split": "val",
+      "images": 124,
+      "raw_files": 124,
+      "missing_mask": 0,
+      "missing_gid": 0,
+      "n_groups": 6,
+      "group_sizes": [
+        37,
+        33,
+        29,
+        16,
+        5,
+        4
+      ],
+      "has_groups_json": true,
+      "count_usable": {
+        "3": true,
+        "5": true
+      },
+      "group_feasible": {
+        "3": true,
+        "5": true
+      },
+      "official_dp_agrees": {
+        "3": true,
+        "5": true
+      },
+      "infeasible_reason": {
+        "3": null,
+        "5": null
+      }
+    }
+  ],
+  "cr7_train_classes": [
+    {
+      "class": "dent",
+      "source": "CR7",
+      "split": "train",
+      "images": 369,
+      "raw_files": 369,
+      "missing_mask": 0,
+      "missing_gid": 0,
+      "n_groups": 9,
+      "group_sizes": [
+        241,
+        58,
+        27,
+        22,
+        12,
+        5,
+        2,
+        1,
+        1
+      ],
+      "has_groups_json": true,
+      "count_usable": {
+        "3": true,
+        "5": true
+      },
+      "group_feasible": {
+        "3": true,
+        "5": true
+      },
+      "official_dp_agrees": {
+        "3": true,
+        "5": true
+      },
+      "infeasible_reason": {
+        "3": null,
+        "5": null
+      }
+    },
+    {
+      "class": "inclusion",
+      "source": "CR7",
+      "split": "train",
+      "images": 333,
+      "raw_files": 333,
+      "missing_mask": 0,
+      "missing_gid": 0,
+      "n_groups": 20,
+      "group_sizes": [
+        70,
+        61,
+        46,
+        37,
+        34,
+        27,
+        15,
+        9,
+        7,
+        6,
+        5,
+        5,
+        3,
+        2,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "has_groups_json": true,
+      "count_usable": {
+        "3": true,
+        "5": true
+      },
+      "group_feasible": {
+        "3": true,
+        "5": true
+      },
+      "official_dp_agrees": {
+        "3": true,
+        "5": true
+      },
+      "infeasible_reason": {
+        "3": null,
+        "5": null
+      }
+    },
+    {
+      "class": "linear",
+      "source": "CR7",
+      "split": "train",
+      "images": 425,
+      "raw_files": 425,
+      "missing_mask": 0,
+      "missing_gid": 0,
+      "n_groups": 11,
+      "group_sizes": [
+        255,
+        118,
+        21,
+        17,
+        6,
+        2,
+        2,
+        1,
+        1,
+        1,
+        1
+      ],
+      "has_groups_json": true,
+      "count_usable": {
+        "3": true,
+        "5": true
+      },
+      "group_feasible": {
+        "3": true,
+        "5": true
+      },
+      "official_dp_agrees": {
+        "3": true,
+        "5": true
+      },
+      "infeasible_reason": {
+        "3": null,
+        "5": null
+      }
+    },
+    {
+      "class": "macular",
+      "source": "CR7",
+      "split": "train",
+      "images": 424,
+      "raw_files": 424,
+      "missing_mask": 0,
+      "missing_gid": 0,
+      "n_groups": 16,
+      "group_sizes": [
+        113,
+        71,
+        56,
+        54,
+        38,
+        23,
+        18,
+        16,
+        9,
+        9,
+        5,
+        5,
+        3,
+        2,
+        1,
+        1
+      ],
+      "has_groups_json": true,
+      "count_usable": {
+        "3": true,
+        "5": true
+      },
+      "group_feasible": {
+        "3": true,
+        "5": true
+      },
+      "official_dp_agrees": {
+        "3": true,
+        "5": true
+      },
+      "infeasible_reason": {
+        "3": null,
+        "5": null
+      }
+    },
+    {
+      "class": "oil",
+      "source": "CR7",
+      "split": "train",
+      "images": 361,
+      "raw_files": 361,
+      "missing_mask": 0,
+      "missing_gid": 0,
+      "n_groups": 21,
+      "group_sizes": [
+        98,
+        66,
+        38,
+        24,
+        22,
+        20,
+        19,
+        16,
+        16,
+        10,
+        8,
+        5,
+        5,
+        3,
+        2,
+        2,
+        2,
+        2,
+        1,
+        1,
+        1
+      ],
+      "has_groups_json": true,
+      "count_usable": {
+        "3": true,
+        "5": true
+      },
+      "group_feasible": {
+        "3": true,
+        "5": true
+      },
+      "official_dp_agrees": {
+        "3": true,
+        "5": true
+      },
+      "infeasible_reason": {
+        "3": null,
+        "5": null
+      }
+    },
+    {
+      "class": "pit_local",
+      "source": "CR7",
+      "split": "train",
+      "images": 350,
+      "raw_files": 350,
+      "missing_mask": 0,
+      "missing_gid": 0,
+      "n_groups": 9,
+      "group_sizes": [
+        254,
+        49,
+        13,
+        12,
+        9,
+        6,
+        5,
+        1,
+        1
+      ],
+      "has_groups_json": true,
+      "count_usable": {
+        "3": true,
+        "5": true
+      },
+      "group_feasible": {
+        "3": true,
+        "5": true
+      },
+      "official_dp_agrees": {
+        "3": true,
+        "5": true
+      },
+      "infeasible_reason": {
+        "3": null,
+        "5": null
+      }
+    },
+    {
+      "class": "punch",
+      "source": "CR7",
+      "split": "train",
+      "images": 332,
+      "raw_files": 332,
+      "missing_mask": 0,
+      "missing_gid": 0,
+      "n_groups": 12,
+      "group_sizes": [
+        79,
+        65,
+        57,
+        44,
+        27,
+        19,
+        11,
+        9,
+        9,
+        6,
+        3,
+        3
+      ],
+      "has_groups_json": true,
+      "count_usable": {
+        "3": true,
+        "5": true
+      },
+      "group_feasible": {
+        "3": true,
+        "5": true
+      },
+      "official_dp_agrees": {
+        "3": true,
+        "5": true
+      },
+      "infeasible_reason": {
+        "3": null,
+        "5": null
+      }
+    }
+  ],
+  "cr7_combination_math": {
+    "3": {
+      "count_usable": [
+        "dent",
+        "inclusion",
+        "linear",
+        "macular",
+        "oil",
+        "pit_local",
+        "punch"
+      ],
+      "group_feasible": [
+        "inclusion",
+        "oil",
+        "pit_local",
+        "punch"
+      ],
+      "count_usable_but_group_infeasible": [
+        "dent",
+        "linear",
+        "macular"
+      ],
+      "n_way_as_code": 5,
+      "n_count_usable": 7,
+      "n_group_feasible": 4,
+      "n_five_way_subsets_all_group_feasible": 0,
+      "n_code_nway_subsets_all_group_feasible": 0,
+      "any_code_nway_solution": false,
+      "any_smaller_nway_from_group_feasible": true,
+      "smaller_nway": 4,
+      "verdict": "no_code_nway_solution_but_smaller_nway_exists"
+    },
+    "5": {
+      "count_usable": [
+        "dent",
+        "inclusion",
+        "linear",
+        "macular",
+        "oil",
+        "pit_local",
+        "punch"
+      ],
+      "group_feasible": [
+        "inclusion",
+        "oil",
+        "pit_local",
+        "punch"
+      ],
+      "count_usable_but_group_infeasible": [
+        "dent",
+        "linear",
+        "macular"
+      ],
+      "n_way_as_code": 5,
+      "n_count_usable": 7,
+      "n_group_feasible": 4,
+      "n_five_way_subsets_all_group_feasible": 0,
+      "n_code_nway_subsets_all_group_feasible": 0,
+      "any_code_nway_solution": false,
+      "any_smaller_nway_from_group_feasible": true,
+      "smaller_nway": 4,
+      "verdict": "no_code_nway_solution_but_smaller_nway_exists"
+    }
+  },
+  "pair_coverage_train": {
+    "CAST": {
+      "classes": [
+        "crack_long",
+        "cutting_opening",
+        "scratch",
+        "slag_skin",
+        "water_slag_mark",
+        "weld_slag"
+      ],
+      "n_classes": 6,
+      "saturated_at_nway5": false,
+      "target_pairs_present": {
+        "CR7:oil-inclusion": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "CR7:linear-pit_local": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "CR7:pit_local-inclusion": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "GC10:oil-inclusion": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "GC10:oil-water": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "GC10:punch-weld_line": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "NEU:inclusion-pit_texture": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        }
+      },
+      "oil_punch_present": {
+        "oil": false,
+        "punch": false
+      }
+    },
+    "CR7": {
+      "classes": [
+        "dent",
+        "inclusion",
+        "linear",
+        "macular",
+        "oil",
+        "pit_local",
+        "punch"
+      ],
+      "n_classes": 7,
+      "saturated_at_nway5": false,
+      "target_pairs_present": {
+        "CR7:oil-inclusion": {
+          "both_present": true,
+          "count_usable_k3": true,
+          "count_usable_k5": true,
+          "group_feasible_val_if_same_split": null
+        },
+        "CR7:linear-pit_local": {
+          "both_present": true,
+          "count_usable_k3": true,
+          "count_usable_k5": true,
+          "group_feasible_val_if_same_split": null
+        },
+        "CR7:pit_local-inclusion": {
+          "both_present": true,
+          "count_usable_k3": true,
+          "count_usable_k5": true,
+          "group_feasible_val_if_same_split": null
+        },
+        "GC10:oil-inclusion": {
+          "both_present": true,
+          "count_usable_k3": true,
+          "count_usable_k5": true,
+          "group_feasible_val_if_same_split": null
+        },
+        "GC10:oil-water": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "GC10:punch-weld_line": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "NEU:inclusion-pit_texture": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        }
+      },
+      "oil_punch_present": {
+        "oil": true,
+        "punch": true
+      }
+    },
+    "CSU": {
+      "classes": [
+        "inclusion",
+        "oxide_scale_csu",
+        "scratch"
+      ],
+      "n_classes": 3,
+      "saturated_at_nway5": true,
+      "target_pairs_present": {
+        "CR7:oil-inclusion": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "CR7:linear-pit_local": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "CR7:pit_local-inclusion": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "GC10:oil-inclusion": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "GC10:oil-water": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "GC10:punch-weld_line": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "NEU:inclusion-pit_texture": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        }
+      },
+      "oil_punch_present": {
+        "oil": false,
+        "punch": false
+      }
+    },
+    "GC10": {
+      "classes": [
+        "crescent",
+        "fold_wrinkle",
+        "inclusion",
+        "oil",
+        "punch",
+        "rolled_pit",
+        "silk_spot",
+        "water",
+        "weld_line"
+      ],
+      "n_classes": 9,
+      "saturated_at_nway5": false,
+      "target_pairs_present": {
+        "CR7:oil-inclusion": {
+          "both_present": true,
+          "count_usable_k3": true,
+          "count_usable_k5": true,
+          "group_feasible_val_if_same_split": null
+        },
+        "CR7:linear-pit_local": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "CR7:pit_local-inclusion": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "GC10:oil-inclusion": {
+          "both_present": true,
+          "count_usable_k3": true,
+          "count_usable_k5": true,
+          "group_feasible_val_if_same_split": null
+        },
+        "GC10:oil-water": {
+          "both_present": true,
+          "count_usable_k3": true,
+          "count_usable_k5": true,
+          "group_feasible_val_if_same_split": null
+        },
+        "GC10:punch-weld_line": {
+          "both_present": true,
+          "count_usable_k3": true,
+          "count_usable_k5": true,
+          "group_feasible_val_if_same_split": null
+        },
+        "NEU:inclusion-pit_texture": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        }
+      },
+      "oil_punch_present": {
+        "oil": true,
+        "punch": true
+      }
+    },
+    "NEU": {
+      "classes": [
+        "crazing",
+        "inclusion",
+        "oxide_scale",
+        "patch",
+        "pit_texture",
+        "scratch"
+      ],
+      "n_classes": 6,
+      "saturated_at_nway5": false,
+      "target_pairs_present": {
+        "CR7:oil-inclusion": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "CR7:linear-pit_local": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "CR7:pit_local-inclusion": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "GC10:oil-inclusion": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "GC10:oil-water": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "GC10:punch-weld_line": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "NEU:inclusion-pit_texture": {
+          "both_present": true,
+          "count_usable_k3": true,
+          "count_usable_k5": true,
+          "group_feasible_val_if_same_split": null
+        }
+      },
+      "oil_punch_present": {
+        "oil": false,
+        "punch": false
+      }
+    },
+    "PIPE": {
+      "classes": [
+        "fold_wrinkle",
+        "short_gouge",
+        "warp"
+      ],
+      "n_classes": 3,
+      "saturated_at_nway5": true,
+      "target_pairs_present": {
+        "CR7:oil-inclusion": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "CR7:linear-pit_local": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "CR7:pit_local-inclusion": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "GC10:oil-inclusion": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "GC10:oil-water": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "GC10:punch-weld_line": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "NEU:inclusion-pit_texture": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        }
+      },
+      "oil_punch_present": {
+        "oil": false,
+        "punch": false
+      }
+    },
+    "PLATE": {
+      "classes": [
+        "foreign_embed",
+        "inclusion",
+        "oxide_scale"
+      ],
+      "n_classes": 3,
+      "saturated_at_nway5": true,
+      "target_pairs_present": {
+        "CR7:oil-inclusion": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "CR7:linear-pit_local": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "CR7:pit_local-inclusion": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "GC10:oil-inclusion": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "GC10:oil-water": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "GC10:punch-weld_line": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "NEU:inclusion-pit_texture": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        }
+      },
+      "oil_punch_present": {
+        "oil": false,
+        "punch": false
+      }
+    },
+    "S3D": {
+      "classes": [
+        "oxide_scale",
+        "scratch"
+      ],
+      "n_classes": 2,
+      "saturated_at_nway5": true,
+      "target_pairs_present": {
+        "CR7:oil-inclusion": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "CR7:linear-pit_local": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "CR7:pit_local-inclusion": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "GC10:oil-inclusion": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "GC10:oil-water": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "GC10:punch-weld_line": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "NEU:inclusion-pit_texture": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        }
+      },
+      "oil_punch_present": {
+        "oil": false,
+        "punch": false
+      }
+    },
+    "XSDD": {
+      "classes": [
+        "iron_ash",
+        "oxide_scale_plate",
+        "oxide_scale_temp",
+        "red_iron",
+        "roll_print",
+        "scratch",
+        "slag_inclusion"
+      ],
+      "n_classes": 7,
+      "saturated_at_nway5": false,
+      "target_pairs_present": {
+        "CR7:oil-inclusion": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "CR7:linear-pit_local": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "CR7:pit_local-inclusion": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "GC10:oil-inclusion": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "GC10:oil-water": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "GC10:punch-weld_line": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "NEU:inclusion-pit_texture": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        }
+      },
+      "oil_punch_present": {
+        "oil": false,
+        "punch": false
+      }
+    }
+  },
+  "pair_coverage_val": {
+    "CAST": {
+      "classes": [
+        "crack_long",
+        "cutting_opening",
+        "scratch",
+        "slag_skin",
+        "water_slag_mark",
+        "weld_slag"
+      ],
+      "n_classes": 6,
+      "saturated_at_nway5": false,
+      "target_pairs_present": {
+        "CR7:oil-inclusion": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "CR7:linear-pit_local": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "CR7:pit_local-inclusion": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "GC10:oil-inclusion": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "GC10:oil-water": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "GC10:punch-weld_line": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "NEU:inclusion-pit_texture": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        }
+      },
+      "oil_punch_present": {
+        "oil": false,
+        "punch": false
+      }
+    },
+    "CR7": {
+      "classes": [
+        "dent",
+        "inclusion",
+        "linear",
+        "macular",
+        "oil",
+        "pit_local",
+        "punch"
+      ],
+      "n_classes": 7,
+      "saturated_at_nway5": false,
+      "target_pairs_present": {
+        "CR7:oil-inclusion": {
+          "both_present": true,
+          "count_usable_k3": true,
+          "count_usable_k5": true,
+          "group_feasible_val_if_same_split": null
+        },
+        "CR7:linear-pit_local": {
+          "both_present": true,
+          "count_usable_k3": true,
+          "count_usable_k5": true,
+          "group_feasible_val_if_same_split": null
+        },
+        "CR7:pit_local-inclusion": {
+          "both_present": true,
+          "count_usable_k3": true,
+          "count_usable_k5": true,
+          "group_feasible_val_if_same_split": null
+        },
+        "GC10:oil-inclusion": {
+          "both_present": true,
+          "count_usable_k3": true,
+          "count_usable_k5": true,
+          "group_feasible_val_if_same_split": null
+        },
+        "GC10:oil-water": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "GC10:punch-weld_line": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "NEU:inclusion-pit_texture": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        }
+      },
+      "oil_punch_present": {
+        "oil": true,
+        "punch": true
+      }
+    },
+    "CSU": {
+      "classes": [
+        "inclusion",
+        "oxide_scale_csu",
+        "scratch"
+      ],
+      "n_classes": 3,
+      "saturated_at_nway5": true,
+      "target_pairs_present": {
+        "CR7:oil-inclusion": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "CR7:linear-pit_local": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "CR7:pit_local-inclusion": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "GC10:oil-inclusion": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "GC10:oil-water": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "GC10:punch-weld_line": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "NEU:inclusion-pit_texture": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        }
+      },
+      "oil_punch_present": {
+        "oil": false,
+        "punch": false
+      }
+    },
+    "GC10": {
+      "classes": [
+        "crescent",
+        "fold_wrinkle",
+        "inclusion",
+        "oil",
+        "punch",
+        "rolled_pit",
+        "silk_spot",
+        "water",
+        "weld_line"
+      ],
+      "n_classes": 9,
+      "saturated_at_nway5": false,
+      "target_pairs_present": {
+        "CR7:oil-inclusion": {
+          "both_present": true,
+          "count_usable_k3": true,
+          "count_usable_k5": true,
+          "group_feasible_val_if_same_split": null
+        },
+        "CR7:linear-pit_local": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "CR7:pit_local-inclusion": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "GC10:oil-inclusion": {
+          "both_present": true,
+          "count_usable_k3": true,
+          "count_usable_k5": true,
+          "group_feasible_val_if_same_split": null
+        },
+        "GC10:oil-water": {
+          "both_present": true,
+          "count_usable_k3": true,
+          "count_usable_k5": true,
+          "group_feasible_val_if_same_split": null
+        },
+        "GC10:punch-weld_line": {
+          "both_present": true,
+          "count_usable_k3": true,
+          "count_usable_k5": true,
+          "group_feasible_val_if_same_split": null
+        },
+        "NEU:inclusion-pit_texture": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        }
+      },
+      "oil_punch_present": {
+        "oil": true,
+        "punch": true
+      }
+    },
+    "NEU": {
+      "classes": [
+        "crazing",
+        "inclusion",
+        "oxide_scale",
+        "patch",
+        "pit_texture",
+        "scratch"
+      ],
+      "n_classes": 6,
+      "saturated_at_nway5": false,
+      "target_pairs_present": {
+        "CR7:oil-inclusion": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "CR7:linear-pit_local": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "CR7:pit_local-inclusion": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "GC10:oil-inclusion": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "GC10:oil-water": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "GC10:punch-weld_line": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "NEU:inclusion-pit_texture": {
+          "both_present": true,
+          "count_usable_k3": true,
+          "count_usable_k5": true,
+          "group_feasible_val_if_same_split": null
+        }
+      },
+      "oil_punch_present": {
+        "oil": false,
+        "punch": false
+      }
+    },
+    "PIPE": {
+      "classes": [
+        "fold_wrinkle",
+        "short_gouge",
+        "warp"
+      ],
+      "n_classes": 3,
+      "saturated_at_nway5": true,
+      "target_pairs_present": {
+        "CR7:oil-inclusion": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "CR7:linear-pit_local": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "CR7:pit_local-inclusion": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "GC10:oil-inclusion": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "GC10:oil-water": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "GC10:punch-weld_line": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "NEU:inclusion-pit_texture": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        }
+      },
+      "oil_punch_present": {
+        "oil": false,
+        "punch": false
+      }
+    },
+    "PLATE": {
+      "classes": [
+        "foreign_embed",
+        "inclusion",
+        "oxide_scale"
+      ],
+      "n_classes": 3,
+      "saturated_at_nway5": true,
+      "target_pairs_present": {
+        "CR7:oil-inclusion": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "CR7:linear-pit_local": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "CR7:pit_local-inclusion": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "GC10:oil-inclusion": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "GC10:oil-water": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "GC10:punch-weld_line": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "NEU:inclusion-pit_texture": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        }
+      },
+      "oil_punch_present": {
+        "oil": false,
+        "punch": false
+      }
+    },
+    "S3D": {
+      "classes": [
+        "oxide_scale",
+        "scratch"
+      ],
+      "n_classes": 2,
+      "saturated_at_nway5": true,
+      "target_pairs_present": {
+        "CR7:oil-inclusion": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "CR7:linear-pit_local": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "CR7:pit_local-inclusion": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "GC10:oil-inclusion": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "GC10:oil-water": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "GC10:punch-weld_line": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "NEU:inclusion-pit_texture": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        }
+      },
+      "oil_punch_present": {
+        "oil": false,
+        "punch": false
+      }
+    },
+    "XSDD": {
+      "classes": [
+        "iron_ash",
+        "oxide_scale_plate",
+        "oxide_scale_temp",
+        "red_iron",
+        "roll_print",
+        "scratch",
+        "slag_inclusion"
+      ],
+      "n_classes": 7,
+      "saturated_at_nway5": false,
+      "target_pairs_present": {
+        "CR7:oil-inclusion": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "CR7:linear-pit_local": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "CR7:pit_local-inclusion": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "GC10:oil-inclusion": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "GC10:oil-water": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "GC10:punch-weld_line": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        },
+        "NEU:inclusion-pit_texture": {
+          "both_present": false,
+          "count_usable_k3": false,
+          "count_usable_k5": false,
+          "group_feasible_val_if_same_split": null
+        }
+      },
+      "oil_punch_present": {
+        "oil": false,
+        "punch": false
+      }
+    }
+  },
+  "other_val_group_infeasible": [
+    {
+      "class": "oxide_scale_csu",
+      "source": "CSU",
+      "split": "val",
+      "images": 2,
+      "raw_files": 2,
+      "missing_mask": 0,
+      "missing_gid": 0,
+      "n_groups": 1,
+      "group_sizes": [
+        2
+      ],
+      "has_groups_json": true,
+      "count_usable": {
+        "3": false,
+        "5": false
+      },
+      "group_feasible": {
+        "3": false,
+        "5": false
+      },
+      "official_dp_agrees": {
+        "3": true,
+        "5": true
+      },
+      "infeasible_reason": {
+        "3": "too_few_images (need >= 11, have 2)",
+        "5": "too_few_images (need >= 13, have 2)"
+      }
+    },
+    {
+      "class": "rolled_pit",
+      "source": "GC10",
+      "split": "val",
+      "images": 5,
+      "raw_files": 5,
+      "missing_mask": 0,
+      "missing_gid": 0,
+      "n_groups": 5,
+      "group_sizes": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "has_groups_json": true,
+      "count_usable": {
+        "3": false,
+        "5": false
+      },
+      "group_feasible": {
+        "3": false,
+        "5": false
+      },
+      "official_dp_agrees": {
+        "3": true,
+        "5": true
+      },
+      "infeasible_reason": {
+        "3": "too_few_images (need >= 11, have 5)",
+        "5": "too_few_images (need >= 13, have 5)"
+      }
+    },
+    {
+      "class": "scratch",
+      "source": "CSU",
+      "split": "val",
+      "images": 9,
+      "raw_files": 9,
+      "missing_mask": 0,
+      "missing_gid": 0,
+      "n_groups": 3,
+      "group_sizes": [
+        5,
+        2,
+        2
+      ],
+      "has_groups_json": true,
+      "count_usable": {
+        "3": false,
+        "5": false
+      },
+      "group_feasible": {
+        "3": false,
+        "5": false
+      },
+      "official_dp_agrees": {
+        "3": true,
+        "5": true
+      },
+      "infeasible_reason": {
+        "3": "too_few_images (need >= 11, have 9)",
+        "5": "too_few_images (need >= 13, have 9)"
+      }
+    }
+  ],
+  "jobs": {
+    "B_NEU_s0": {
+      "holdout": "NEU",
+      "config_path": "D:\\元强化学习\\代码\\output\\cspd\\hp_abc_20261111\\B_NEU_s0\\config.json",
+      "logged_val": {
+        "n_snapshots": 20,
+        "first_iter": 5,
+        "last_iter": 100,
+        "last_source_attempts": {
+          "CSU": 136,
+          "GC10": 156,
+          "CAST": 153,
+          "PLATE": 123,
+          "S3D": 168,
+          "PIPE": 145,
+          "CR7": 128
+        },
+        "last_source_successes": {
+          "GC10": 156,
+          "CAST": 153,
+          "S3D": 168,
+          "PLATE": 94,
+          "PIPE": 145,
+          "CSU": 64
+        },
+        "last_group_failures": {
+          "PLATE:oxide_scale": 29,
+          "CR7:linear": 31,
+          "CR7:macular": 49,
+          "CR7:dent": 48
+        },
+        "first_source_attempts": {
+          "CSU": 2,
+          "GC10": 4,
+          "CAST": 3,
+          "PLATE": 6,
+          "S3D": 3,
+          "PIPE": 6,
+          "CR7": 2
+        },
+        "counts_are_cumulative": true
+      },
+      "hard_injection": {
+        "n_train_rows": 100,
+        "n_val_rows": 20,
+        "probability_levels": {
+          "0.0": 10,
+          "0.25": 40,
+          "0.35": 50
+        },
+        "max_probability": 0.35,
+        "used_0_40": false,
+        "first_request_iter": 12,
+        "first_changed_iter": 19,
+        "holdout_in_train_episodes": 0,
+        "per_source": {
+          "PIPE": {
+            "episodes": 58,
+            "saturated": 58,
+            "requested": 19,
+            "applied": 19
+          },
+          "GC10": {
+            "episodes": 55,
+            "requested": 16,
+            "applied": 13,
+            "changed": 8,
+            "fallback": 3
+          },
+          "CSU": {
+            "episodes": 60,
+            "saturated": 60,
+            "requested": 15,
+            "fallback": 15
+          },
+          "CR7": {
+            "episodes": 61,
+            "requested": 20,
+            "fallback": 20
+          },
+          "PLATE": {
+            "episodes": 55,
+            "saturated": 55,
+            "requested": 19,
+            "applied": 19
+          },
+          "S3D": {
+            "episodes": 57,
+            "saturated": 57,
+            "requested": 13,
+            "fallback": 9,
+            "applied": 4
+          },
+          "CAST": {
+            "episodes": 54,
+            "requested": 16,
+            "applied": 16,
+            "changed": 7
+          }
+        },
+        "changed_pairs": {
+          "GC10": {
+            "punch | weld_line": 2,
+            "inclusion | silk_spot": 2,
+            "silk_spot | water": 1,
+            "fold_wrinkle | silk_spot": 1,
+            "fold_wrinkle | weld_line": 1,
+            "inclusion | water": 1
+          },
+          "CAST": {
+            "slag_skin | weld_slag": 4,
+            "slag_skin | water_slag_mark": 2,
+            "water_slag_mark | weld_slag": 1
+          }
+        },
+        "applied_unchanged_pairs": {
+          "CAST": {
+            "slag_skin | water_slag_mark": 4,
+            "slag_skin | weld_slag": 3,
+            "water_slag_mark | weld_slag": 2
+          },
+          "PLATE": {
+            "foreign_embed | oxide_scale": 19
+          },
+          "PIPE": {
+            "short_gouge | warp": 8,
+            "fold_wrinkle | warp": 6,
+            "fold_wrinkle | short_gouge": 5
+          },
+          "GC10": {
+            "inclusion | water": 2,
+            "inclusion | silk_spot": 2,
+            "oil | punch": 1
+          },
+          "S3D": {
+            "oxide_scale | scratch": 4
+          }
+        },
+        "requests_by_source": {
+          "CAST": 16,
+          "CR7": 20,
+          "S3D": 13,
+          "PLATE": 19,
+          "CSU": 15,
+          "GC10": 16,
+          "PIPE": 19
+        },
+        "fallback_by_source": {
+          "CR7": 20,
+          "S3D": 9,
+          "CSU": 15,
+          "GC10": 3
+        },
+        "buffer_sources_ever_active": [
+          "CAST",
+          "GC10",
+          "PIPE",
+          "PLATE",
+          "S3D"
+        ],
+        "buffer_last_active": {
+          "iter": 100,
+          "active": {
+            "CAST": [
+              [
+                "slag_skin",
+                "weld_slag"
+              ],
+              [
+                "slag_skin",
+                "water_slag_mark"
+              ],
+              [
+                "water_slag_mark",
+                "weld_slag"
+              ]
+            ],
+            "CR7": [],
+            "CSU": [],
+            "GC10": [
+              [
+                "inclusion",
+                "silk_spot"
+              ]
+            ],
+            "PIPE": [
+              [
+                "short_gouge",
+                "warp"
+              ],
+              [
+                "fold_wrinkle",
+                "short_gouge"
+              ],
+              [
+                "fold_wrinkle",
+                "warp"
+              ]
+            ],
+            "PLATE": [],
+            "S3D": [
+              [
+                "oxide_scale",
+                "scratch"
+              ]
+            ]
+          }
+        },
+        "n_buffer_snapshots": 20
+      },
+      "training_sources": [
+        "CAST",
+        "CR7",
+        "CSU",
+        "GC10",
+        "PIPE",
+        "PLATE",
+        "S3D"
+      ],
+      "target_pair_hosts_among_training_sources": {
+        "CR7": {
+          "oil-inclusion": {
+            "training_sources_with_both_classes": [
+              "CR7",
+              "GC10"
+            ],
+            "available_on_any_training_source": true
+          },
+          "linear-pit_local": {
+            "training_sources_with_both_classes": [
+              "CR7"
+            ],
+            "available_on_any_training_source": true
+          },
+          "pit_local-inclusion": {
+            "training_sources_with_both_classes": [
+              "CR7"
+            ],
+            "available_on_any_training_source": true
+          }
+        },
+        "GC10": {
+          "oil-inclusion": {
+            "training_sources_with_both_classes": [
+              "CR7",
+              "GC10"
+            ],
+            "available_on_any_training_source": true
+          },
+          "oil-water": {
+            "training_sources_with_both_classes": [
+              "GC10"
+            ],
+            "available_on_any_training_source": true
+          },
+          "punch-weld_line": {
+            "training_sources_with_both_classes": [
+              "GC10"
+            ],
+            "available_on_any_training_source": true
+          }
+        },
+        "NEU": {
+          "inclusion-pit_texture": {
+            "training_sources_with_both_classes": [],
+            "available_on_any_training_source": false
+          }
+        }
+      },
+      "replay": {
+        "fold": "B_NEU_s0",
+        "val_seed": 2,
+        "n_evals": 20,
+        "tasks_per_mode": 20,
+        "final_source_attempts": {
+          "CSU": 136,
+          "GC10": 158,
+          "CAST": 154,
+          "PLATE": 126,
+          "S3D": 176,
+          "PIPE": 151,
+          "CR7": 133
+        },
+        "final_source_successes": {
+          "GC10": 158,
+          "CAST": 154,
+          "S3D": 176,
+          "PLATE": 97,
+          "PIPE": 151,
+          "CSU": 64
+        },
+        "final_group_failures": {
+          "PLATE:oxide_scale": 29,
+          "CR7:linear": 32,
+          "CR7:macular": 49,
+          "CR7:dent": 52
+        },
+        "after_last_same_source_attempts": {
+          "CSU": 136,
+          "GC10": 156,
+          "CAST": 153,
+          "PLATE": 123,
+          "S3D": 168,
+          "PIPE": 145,
+          "CR7": 128
+        },
+        "after_last_same_source_successes": {
+          "GC10": 156,
+          "CAST": 153,
+          "S3D": 168,
+          "PLATE": 94,
+          "PIPE": 145,
+          "CSU": 64
+        },
+        "after_last_same_group_failures": {
+          "PLATE:oxide_scale": 29,
+          "CR7:linear": 31,
+          "CR7:macular": 49,
+          "CR7:dent": 48
+        },
+        "cr7_tries": [
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 0,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 0,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 0,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 0,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 0,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 0,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 0,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 1,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 1,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 1,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 1,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 1,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 1,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 2,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 2,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 2,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 2,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 2,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 2,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 3,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 3,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 3,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 3,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 3,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 3,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 3,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 3,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 3,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 4,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 4,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 4,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 4,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 4,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 4,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 5,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 5,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 5,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 5,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 5,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 5,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 6,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 6,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 6,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 6,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 6,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 6,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 7,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 7,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 7,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 7,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 7,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 7,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 8,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 8,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 8,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 8,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 8,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 8,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 8,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 8,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 8,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 9,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 9,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 9,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 9,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 9,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 9,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 10,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 10,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 10,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 10,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 10,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 11,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 11,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 11,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 11,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 11,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 11,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 11,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 11,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 12,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 12,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 12,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 12,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 12,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 12,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 12,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 13,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 13,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 13,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 13,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 13,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 14,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 14,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 14,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 14,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 14,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 14,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 14,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 14,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 14,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 14,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 15,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 15,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 15,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 15,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 16,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 16,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 16,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 16,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 16,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 17,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 17,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 17,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 17,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 17,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 18,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 18,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 18,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 18,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 18,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 18,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 19,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 19,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 19,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 19,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 19,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 19,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 19,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 19,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 19,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 19,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 19,
+            "eval_cross": true
+          }
+        ],
+        "cr7_try_ok": 0,
+        "cr7_try_fail": 133,
+        "cr7_fail_errors": {
+          "strict groups unavailable: CR7:linear": 32,
+          "strict groups unavailable: CR7:macular": 49,
+          "strict groups unavailable: CR7:dent": 52
+        },
+        "n_events": 800,
+        "n_ok": 800,
+        "n_fail_all_sources": 0,
+        "cr7_successes": []
+      },
+      "replay_matches_log_attempts": true
+    },
+    "B_CR7_s0": {
+      "holdout": "CR7",
+      "config_path": "D:\\元强化学习\\代码\\output\\cspd\\hp_abc_20261111\\B_CR7_s0\\config.json",
+      "logged_val": {
+        "n_snapshots": 20,
+        "first_iter": 5,
+        "last_iter": 100,
+        "last_source_attempts": {
+          "GC10": 133,
+          "PIPE": 142,
+          "PLATE": 138,
+          "CAST": 131,
+          "NEU": 115,
+          "S3D": 118,
+          "CSU": 99
+        },
+        "last_source_successes": {
+          "GC10": 133,
+          "PIPE": 142,
+          "PLATE": 118,
+          "CAST": 131,
+          "NEU": 97,
+          "S3D": 118,
+          "CSU": 41
+        },
+        "last_group_failures": {
+          "PLATE:oxide_scale": 20,
+          "NEU:scratch": 18
+        },
+        "first_source_attempts": {
+          "GC10": 6,
+          "PIPE": 6,
+          "PLATE": 2,
+          "CAST": 2,
+          "NEU": 4
+        },
+        "counts_are_cumulative": false
+      },
+      "hard_injection": {
+        "n_train_rows": 100,
+        "n_val_rows": 20,
+        "probability_levels": {
+          "0.0": 10,
+          "0.25": 40,
+          "0.35": 50
+        },
+        "max_probability": 0.35,
+        "used_0_40": false,
+        "first_request_iter": 12,
+        "first_changed_iter": 25,
+        "holdout_in_train_episodes": 0,
+        "per_source": {
+          "PIPE": {
+            "episodes": 64,
+            "saturated": 64,
+            "requested": 22,
+            "applied": 22
+          },
+          "NEU": {
+            "episodes": 56,
+            "requested": 15,
+            "fallback": 15
+          },
+          "CSU": {
+            "episodes": 55,
+            "saturated": 55,
+            "requested": 18,
+            "fallback": 18
+          },
+          "S3D": {
+            "episodes": 58,
+            "saturated": 58,
+            "requested": 14,
+            "fallback": 12,
+            "applied": 2
+          },
+          "CAST": {
+            "episodes": 62,
+            "requested": 27,
+            "fallback": 5,
+            "applied": 22,
+            "changed": 9
+          },
+          "PLATE": {
+            "episodes": 55,
+            "saturated": 55,
+            "requested": 15,
+            "applied": 13,
+            "fallback": 2
+          },
+          "GC10": {
+            "episodes": 50,
+            "requested": 11,
+            "fallback": 4,
+            "applied": 7,
+            "changed": 5
+          }
+        },
+        "changed_pairs": {
+          "GC10": {
+            "punch | weld_line": 2,
+            "inclusion | silk_spot": 2,
+            "inclusion | oil": 1
+          },
+          "CAST": {
+            "slag_skin | water_slag_mark": 6,
+            "crack_long | weld_slag": 2,
+            "slag_skin | weld_slag": 1
+          }
+        },
+        "applied_unchanged_pairs": {
+          "PIPE": {
+            "short_gouge | warp": 10,
+            "fold_wrinkle | warp": 8,
+            "fold_wrinkle | short_gouge": 4
+          },
+          "PLATE": {
+            "foreign_embed | oxide_scale": 13
+          },
+          "CAST": {
+            "slag_skin | water_slag_mark": 6,
+            "slag_skin | weld_slag": 6,
+            "crack_long | scratch": 1
+          },
+          "GC10": {
+            "inclusion | water": 1,
+            "inclusion | oil": 1
+          },
+          "S3D": {
+            "oxide_scale | scratch": 2
+          }
+        },
+        "requests_by_source": {
+          "CAST": 27,
+          "NEU": 15,
+          "S3D": 14,
+          "PIPE": 22,
+          "GC10": 11,
+          "PLATE": 15,
+          "CSU": 18
+        },
+        "fallback_by_source": {
+          "CAST": 5,
+          "NEU": 15,
+          "S3D": 12,
+          "GC10": 4,
+          "CSU": 18,
+          "PLATE": 2
+        },
+        "buffer_sources_ever_active": [
+          "CAST",
+          "GC10",
+          "PIPE",
+          "PLATE",
+          "S3D"
+        ],
+        "buffer_last_active": {
+          "iter": 100,
+          "active": {
+            "CAST": [
+              [
+                "slag_skin",
+                "water_slag_mark"
+              ]
+            ],
+            "CSU": [],
+            "GC10": [
+              [
+                "inclusion",
+                "water"
+              ]
+            ],
+            "NEU": [],
+            "PIPE": [
+              [
+                "fold_wrinkle",
+                "warp"
+              ]
+            ],
+            "PLATE": [
+              [
+                "foreign_embed",
+                "oxide_scale"
+              ],
+              [
+                "inclusion",
+                "oxide_scale"
+              ]
+            ],
+            "S3D": []
+          }
+        },
+        "n_buffer_snapshots": 20
+      },
+      "training_sources": [
+        "CAST",
+        "CSU",
+        "GC10",
+        "NEU",
+        "PIPE",
+        "PLATE",
+        "S3D"
+      ],
+      "target_pair_hosts_among_training_sources": {
+        "CR7": {
+          "oil-inclusion": {
+            "training_sources_with_both_classes": [
+              "GC10"
+            ],
+            "available_on_any_training_source": true
+          },
+          "linear-pit_local": {
+            "training_sources_with_both_classes": [],
+            "available_on_any_training_source": false
+          },
+          "pit_local-inclusion": {
+            "training_sources_with_both_classes": [],
+            "available_on_any_training_source": false
+          }
+        },
+        "GC10": {
+          "oil-inclusion": {
+            "training_sources_with_both_classes": [
+              "GC10"
+            ],
+            "available_on_any_training_source": true
+          },
+          "oil-water": {
+            "training_sources_with_both_classes": [
+              "GC10"
+            ],
+            "available_on_any_training_source": true
+          },
+          "punch-weld_line": {
+            "training_sources_with_both_classes": [
+              "GC10"
+            ],
+            "available_on_any_training_source": true
+          }
+        },
+        "NEU": {
+          "inclusion-pit_texture": {
+            "training_sources_with_both_classes": [
+              "NEU"
+            ],
+            "available_on_any_training_source": true
+          }
+        }
+      },
+      "replay": null,
+      "replay_matches_log_attempts": null
+    },
+    "B_GC10_s0": {
+      "holdout": "GC10",
+      "config_path": "D:\\元强化学习\\代码\\output\\cspd\\hp_abc_20261111\\B_GC10_s0\\config.json",
+      "logged_val": {
+        "n_snapshots": 20,
+        "first_iter": 5,
+        "last_iter": 100,
+        "last_source_attempts": {
+          "CSU": 161,
+          "NEU": 154,
+          "CR7": 120,
+          "S3D": 184,
+          "PLATE": 140,
+          "CAST": 177,
+          "PIPE": 83
+        },
+        "last_source_successes": {
+          "NEU": 140,
+          "S3D": 184,
+          "CAST": 177,
+          "PIPE": 83,
+          "PLATE": 119,
+          "CSU": 77
+        },
+        "last_group_failures": {
+          "CR7:dent": 37,
+          "PLATE:oxide_scale": 21,
+          "CR7:linear": 42,
+          "CR7:macular": 41,
+          "NEU:scratch": 14
+        },
+        "first_source_attempts": {
+          "CSU": 2,
+          "NEU": 6,
+          "CR7": 4,
+          "S3D": 5,
+          "PLATE": 3,
+          "CAST": 3,
+          "PIPE": 4
+        },
+        "counts_are_cumulative": true
+      },
+      "hard_injection": {
+        "n_train_rows": 100,
+        "n_val_rows": 20,
+        "probability_levels": {
+          "0.0": 10,
+          "0.25": 40,
+          "0.35": 50
+        },
+        "max_probability": 0.35,
+        "used_0_40": false,
+        "first_request_iter": 12,
+        "first_changed_iter": 27,
+        "holdout_in_train_episodes": 0,
+        "per_source": {
+          "PIPE": {
+            "episodes": 57,
+            "saturated": 57,
+            "requested": 20,
+            "applied": 17,
+            "fallback": 3
+          },
+          "NEU": {
+            "episodes": 59,
+            "requested": 16,
+            "fallback": 14,
+            "applied": 2
+          },
+          "CR7": {
+            "episodes": 57,
+            "requested": 11,
+            "fallback": 11
+          },
+          "S3D": {
+            "episodes": 64,
+            "saturated": 64,
+            "requested": 26,
+            "fallback": 19,
+            "applied": 7
+          },
+          "CSU": {
+            "episodes": 58,
+            "saturated": 58,
+            "requested": 18,
+            "fallback": 18
+          },
+          "PLATE": {
+            "episodes": 51,
+            "saturated": 51,
+            "requested": 14,
+            "applied": 14
+          },
+          "CAST": {
+            "episodes": 54,
+            "requested": 15,
+            "applied": 15,
+            "changed": 6
+          }
+        },
+        "changed_pairs": {
+          "CAST": {
+            "slag_skin | weld_slag": 4,
+            "slag_skin | water_slag_mark": 2
+          }
+        },
+        "applied_unchanged_pairs": {
+          "PIPE": {
+            "fold_wrinkle | warp": 8,
+            "short_gouge | warp": 6,
+            "fold_wrinkle | short_gouge": 3
+          },
+          "CAST": {
+            "slag_skin | weld_slag": 4,
+            "slag_skin | water_slag_mark": 2,
+            "water_slag_mark | weld_slag": 1,
+            "crack_long | slag_skin": 1,
+            "crack_long | weld_slag": 1
+          },
+          "PLATE": {
+            "foreign_embed | oxide_scale": 14
+          },
+          "NEU": {
+            "oxide_scale | pit_texture": 1,
+            "inclusion | pit_texture": 1
+          },
+          "S3D": {
+            "oxide_scale | scratch": 7
+          }
+        },
+        "requests_by_source": {
+          "S3D": 26,
+          "PIPE": 20,
+          "CAST": 15,
+          "CR7": 11,
+          "PLATE": 14,
+          "CSU": 18,
+          "NEU": 16
+        },
+        "fallback_by_source": {
+          "S3D": 19,
+          "CR7": 11,
+          "CSU": 18,
+          "NEU": 14,
+          "PIPE": 3
+        },
+        "buffer_sources_ever_active": [
+          "CAST",
+          "NEU",
+          "PIPE",
+          "PLATE",
+          "S3D"
+        ],
+        "buffer_last_active": {
+          "iter": 100,
+          "active": {
+            "CAST": [
+              [
+                "slag_skin",
+                "weld_slag"
+              ],
+              [
+                "slag_skin",
+                "water_slag_mark"
+              ]
+            ],
+            "CR7": [],
+            "CSU": [],
+            "NEU": [],
+            "PIPE": [
+              [
+                "short_gouge",
+                "warp"
+              ]
+            ],
+            "PLATE": [
+              [
+                "foreign_embed",
+                "oxide_scale"
+              ],
+              [
+                "inclusion",
+                "oxide_scale"
+              ]
+            ],
+            "S3D": []
+          }
+        },
+        "n_buffer_snapshots": 20
+      },
+      "training_sources": [
+        "CAST",
+        "CR7",
+        "CSU",
+        "NEU",
+        "PIPE",
+        "PLATE",
+        "S3D"
+      ],
+      "target_pair_hosts_among_training_sources": {
+        "CR7": {
+          "oil-inclusion": {
+            "training_sources_with_both_classes": [
+              "CR7"
+            ],
+            "available_on_any_training_source": true
+          },
+          "linear-pit_local": {
+            "training_sources_with_both_classes": [
+              "CR7"
+            ],
+            "available_on_any_training_source": true
+          },
+          "pit_local-inclusion": {
+            "training_sources_with_both_classes": [
+              "CR7"
+            ],
+            "available_on_any_training_source": true
+          }
+        },
+        "GC10": {
+          "oil-inclusion": {
+            "training_sources_with_both_classes": [
+              "CR7"
+            ],
+            "available_on_any_training_source": true
+          },
+          "oil-water": {
+            "training_sources_with_both_classes": [],
+            "available_on_any_training_source": false
+          },
+          "punch-weld_line": {
+            "training_sources_with_both_classes": [],
+            "available_on_any_training_source": false
+          }
+        },
+        "NEU": {
+          "inclusion-pit_texture": {
+            "training_sources_with_both_classes": [
+              "NEU"
+            ],
+            "available_on_any_training_source": true
+          }
+        }
+      },
+      "replay": {
+        "fold": "B_GC10_s0",
+        "val_seed": 2,
+        "n_evals": 20,
+        "tasks_per_mode": 20,
+        "final_source_attempts": {
+          "CSU": 166,
+          "NEU": 160,
+          "CR7": 126,
+          "S3D": 185,
+          "PLATE": 144,
+          "CAST": 181,
+          "PIPE": 83
+        },
+        "final_source_successes": {
+          "NEU": 146,
+          "S3D": 185,
+          "CAST": 181,
+          "PIPE": 83,
+          "PLATE": 123,
+          "CSU": 82
+        },
+        "final_group_failures": {
+          "CR7:dent": 39,
+          "PLATE:oxide_scale": 21,
+          "CR7:linear": 45,
+          "CR7:macular": 42,
+          "NEU:scratch": 14
+        },
+        "after_last_same_source_attempts": {
+          "CSU": 161,
+          "NEU": 154,
+          "CR7": 120,
+          "S3D": 184,
+          "PLATE": 140,
+          "CAST": 177,
+          "PIPE": 83
+        },
+        "after_last_same_source_successes": {
+          "NEU": 140,
+          "S3D": 184,
+          "CAST": 177,
+          "PIPE": 83,
+          "PLATE": 119,
+          "CSU": 77
+        },
+        "after_last_same_group_failures": {
+          "CR7:dent": 37,
+          "PLATE:oxide_scale": 21,
+          "CR7:linear": 42,
+          "CR7:macular": 41,
+          "NEU:scratch": 14
+        },
+        "cr7_tries": [
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 0,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 0,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 0,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 0,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 0,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 0,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 0,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 1,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 1,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 1,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 1,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 2,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 3,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 3,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 3,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 3,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 3,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 3,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 3,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 3,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 4,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 4,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 4,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 4,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 5,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 5,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 5,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 5,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 5,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 5,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 5,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 5,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 5,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 6,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 6,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 6,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 6,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 6,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 6,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 6,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 7,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 7,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 7,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 7,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 7,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 7,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 7,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 7,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 8,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 8,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 8,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 8,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 9,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 9,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 9,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 10,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 10,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 10,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 10,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 11,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 11,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 11,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 11,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 11,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 11,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 12,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 12,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 12,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 12,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 12,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 12,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 12,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 12,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 12,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 13,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 13,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 13,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 13,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 13,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 13,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 13,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 13,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 14,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 14,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 14,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 14,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 14,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 14,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 14,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 15,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 15,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 15,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 15,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 16,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 16,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 16,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 16,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 16,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 16,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 16,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 16,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 17,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 17,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 17,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 17,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 17,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 17,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 17,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 18,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 18,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 18,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 18,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 18,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 18,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 19,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 19,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 19,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 19,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 19,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": false,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 19,
+            "eval_cross": false
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 19,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 19,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 19,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:dent",
+            "eval_index": 19,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:linear",
+            "eval_index": 19,
+            "eval_cross": true
+          },
+          {
+            "query_source": "CR7",
+            "cross_source": true,
+            "ok": false,
+            "error": "strict groups unavailable: CR7:macular",
+            "eval_index": 19,
+            "eval_cross": true
+          }
+        ],
+        "cr7_try_ok": 0,
+        "cr7_try_fail": 126,
+        "cr7_fail_errors": {
+          "strict groups unavailable: CR7:dent": 39,
+          "strict groups unavailable: CR7:linear": 45,
+          "strict groups unavailable: CR7:macular": 42
+        },
+        "n_events": 800,
+        "n_ok": 800,
+        "n_fail_all_sources": 0,
+        "cr7_successes": []
+      },
+      "replay_matches_log_attempts": true
+    }
+  }
+}

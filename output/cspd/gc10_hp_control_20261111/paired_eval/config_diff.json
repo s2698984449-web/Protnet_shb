@@ -1,0 +1,43 @@
+{
+  "left": "A_yaml",
+  "right": "B_config_json",
+  "allowed_differences": [
+    {
+      "key": "config_path",
+      "equal": false,
+      "allowed_unique": true,
+      "A_yaml": "<missing>",
+      "B_config_json": "D:\\元强化学习\\代码\\config\\cspd\\queues\\hp_b_samplerfix_20261111_v2\\B_GC10_s0.yaml"
+    },
+    {
+      "key": "exp_name",
+      "equal": false,
+      "allowed_unique": true,
+      "A_yaml": "A_GC10_s0",
+      "B_config_json": "B_GC10_s0"
+    },
+    {
+      "key": "experiment_variant",
+      "equal": false,
+      "allowed_unique": true,
+      "A_yaml": "A",
+      "B_config_json": "B"
+    },
+    {
+      "key": "output_group",
+      "equal": false,
+      "allowed_unique": true,
+      "A_yaml": "gc10_hp_control_20261111",
+      "B_config_json": "hp_b_samplerfix_20261111_v2"
+    },
+    {
+      "key": "same_hard_pairs",
+      "equal": false,
+      "allowed_unique": true,
+      "A_yaml": false,
+      "B_config_json": true
+    }
+  ],
+  "unexpected_differences": [],
+  "ok": true
+}

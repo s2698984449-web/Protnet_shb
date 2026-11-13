@@ -1,0 +1,3635 @@
+{
+  "run_id": "hp_abc_20261111",
+  "jobs": {
+    "B_CR7_s0": {
+      "status": "evaluated",
+      "holdout_source": "CR7",
+      "seed": 0,
+      "iters": 100,
+      "feature_layer": 3,
+      "strict_groups": true,
+      "same_hard_pairs": true,
+      "hard_pair_protocol": true,
+      "use_policy": false,
+      "fixed_beta": 0.25,
+      "eval_tasks": 20,
+      "acceptance_neu_mde": null,
+      "holdout": {
+        "acc": 0.72875,
+        "loss": 1.2376692354679109,
+        "query_count": 800,
+        "skipped": 0,
+        "hits": 583,
+        "per_class": {
+          "oil": {
+            "hit": 51,
+            "query": 112,
+            "recall": 0.45535714285714285
+          },
+          "inclusion": {
+            "hit": 84,
+            "query": 120,
+            "recall": 0.7
+          },
+          "linear": {
+            "hit": 98,
+            "query": 144,
+            "recall": 0.6805555555555556
+          },
+          "macular": {
+            "hit": 95,
+            "query": 112,
+            "recall": 0.8482142857142857
+          },
+          "punch": {
+            "hit": 112,
+            "query": 112,
+            "recall": 1.0
+          },
+          "dent": {
+            "hit": 79,
+            "query": 96,
+            "recall": 0.8229166666666666
+          },
+          "pit_local": {
+            "hit": 64,
+            "query": 104,
+            "recall": 0.6153846153846154
+          }
+        },
+        "confusion_top": [
+          [
+            "inclusion -> pit_local",
+            29
+          ],
+          [
+            "oil -> inclusion",
+            22
+          ],
+          [
+            "oil -> pit_local",
+            19
+          ],
+          [
+            "pit_local -> inclusion",
+            17
+          ],
+          [
+            "linear -> pit_local",
+            14
+          ],
+          [
+            "linear -> macular",
+            13
+          ],
+          [
+            "oil -> linear",
+            11
+          ],
+          [
+            "pit_local -> linear",
+            9
+          ],
+          [
+            "pit_local -> dent",
+            9
+          ],
+          [
+            "linear -> inclusion",
+            8
+          ],
+          [
+            "linear -> oil",
+            8
+          ],
+          [
+            "macular -> inclusion",
+            8
+          ]
+        ],
+        "total_errors": 217,
+        "group_failures": {},
+        "source_attempts": {
+          "CR7": 20
+        },
+        "source_successes": {
+          "CR7": 20
+        }
+      },
+      "test_same": {
+        "acc": 0.8209459459459459,
+        "loss": 0.7597583748400212,
+        "query_count": 592,
+        "skipped": 0,
+        "by_source": {
+          "NEU": {
+            "acc": 1.0,
+            "hit": 40,
+            "query": 40,
+            "episodes": 1,
+            "per_class": {
+              "patch": {
+                "hit": 8,
+                "query": 8,
+                "recall": 1.0
+              },
+              "scratch": {
+                "hit": 8,
+                "query": 8,
+                "recall": 1.0
+              },
+              "inclusion": {
+                "hit": 8,
+                "query": 8,
+                "recall": 1.0
+              },
+              "crazing": {
+                "hit": 8,
+                "query": 8,
+                "recall": 1.0
+              },
+              "pit_texture": {
+                "hit": 8,
+                "query": 8,
+                "recall": 1.0
+              }
+            },
+            "confusion_top": []
+          },
+          "GC10": {
+            "acc": 0.65,
+            "hit": 104,
+            "query": 160,
+            "episodes": 4,
+            "per_class": {
+              "oil": {
+                "hit": 6,
+                "query": 16,
+                "recall": 0.375
+              },
+              "punch": {
+                "hit": 14,
+                "query": 24,
+                "recall": 0.5833333333333334
+              },
+              "weld_line": {
+                "hit": 16,
+                "query": 16,
+                "recall": 1.0
+              },
+              "silk_spot": {
+                "hit": 11,
+                "query": 16,
+                "recall": 0.6875
+              },
+              "inclusion": {
+                "hit": 13,
+                "query": 32,
+                "recall": 0.40625
+              },
+              "crescent": {
+                "hit": 24,
+                "query": 24,
+                "recall": 1.0
+              },
+              "fold_wrinkle": {
+                "hit": 8,
+                "query": 16,
+                "recall": 0.5
+              },
+              "water": {
+                "hit": 12,
+                "query": 16,
+                "recall": 0.75
+              }
+            },
+            "confusion_top": [
+              [
+                "oil -> inclusion",
+                10
+              ],
+              [
+                "inclusion -> water",
+                6
+              ],
+              [
+                "fold_wrinkle -> weld_line",
+                6
+              ],
+              [
+                "silk_spot -> inclusion",
+                5
+              ],
+              [
+                "inclusion -> silk_spot",
+                5
+              ],
+              [
+                "punch -> crescent",
+                5
+              ],
+              [
+                "inclusion -> oil",
+                4
+              ],
+              [
+                "inclusion -> fold_wrinkle",
+                4
+              ]
+            ]
+          },
+          "PLATE": {
+            "acc": 0.875,
+            "hit": 28,
+            "query": 32,
+            "episodes": 2,
+            "per_class": {
+              "foreign_embed": {
+                "hit": 16,
+                "query": 16,
+                "recall": 1.0
+              },
+              "oxide_scale": {
+                "hit": 12,
+                "query": 16,
+                "recall": 0.75
+              }
+            },
+            "confusion_top": [
+              [
+                "oxide_scale -> foreign_embed",
+                4
+              ]
+            ]
+          },
+          "PIPE": {
+            "acc": 0.8333333333333334,
+            "hit": 80,
+            "query": 96,
+            "episodes": 4,
+            "per_class": {
+              "fold_wrinkle": {
+                "hit": 32,
+                "query": 32,
+                "recall": 1.0
+              },
+              "warp": {
+                "hit": 23,
+                "query": 32,
+                "recall": 0.71875
+              },
+              "short_gouge": {
+                "hit": 25,
+                "query": 32,
+                "recall": 0.78125
+              }
+            },
+            "confusion_top": [
+              [
+                "short_gouge -> warp",
+                7
+              ],
+              [
+                "warp -> short_gouge",
+                5
+              ],
+              [
+                "warp -> fold_wrinkle",
+                4
+              ]
+            ]
+          },
+          "CAST": {
+            "acc": 0.86,
+            "hit": 172,
+            "query": 200,
+            "episodes": 5,
+            "per_class": {
+              "crack_long": {
+                "hit": 25,
+                "query": 32,
+                "recall": 0.78125
+              },
+              "cutting_opening": {
+                "hit": 32,
+                "query": 32,
+                "recall": 1.0
+              },
+              "slag_skin": {
+                "hit": 29,
+                "query": 40,
+                "recall": 0.725
+              },
+              "weld_slag": {
+                "hit": 24,
+                "query": 32,
+                "recall": 0.75
+              },
+              "scratch": {
+                "hit": 40,
+                "query": 40,
+                "recall": 1.0
+              },
+              "water_slag_mark": {
+                "hit": 22,
+                "query": 24,
+                "recall": 0.9166666666666666
+              }
+            },
+            "confusion_top": [
+              [
+                "slag_skin -> weld_slag",
+                6
+              ],
+              [
+                "weld_slag -> crack_long",
+                5
+              ],
+              [
+                "crack_long -> weld_slag",
+                5
+              ],
+              [
+                "slag_skin -> water_slag_mark",
+                3
+              ],
+              [
+                "slag_skin -> crack_long",
+                2
+              ],
+              [
+                "weld_slag -> slag_skin",
+                2
+              ],
+              [
+                "water_slag_mark -> slag_skin",
+                2
+              ],
+              [
+                "crack_long -> scratch",
+                1
+              ]
+            ]
+          },
+          "S3D": {
+            "acc": 0.96875,
+            "hit": 62,
+            "query": 64,
+            "episodes": 4,
+            "per_class": {
+              "scratch": {
+                "hit": 32,
+                "query": 32,
+                "recall": 1.0
+              },
+              "oxide_scale": {
+                "hit": 30,
+                "query": 32,
+                "recall": 0.9375
+              }
+            },
+            "confusion_top": [
+              [
+                "oxide_scale -> scratch",
+                2
+              ]
+            ]
+          }
+        }
+      },
+      "test_cross": {
+        "acc": 0.7742537313432836,
+        "loss": 0.8161991879343986,
+        "query_count": 536,
+        "skipped": 0
+      },
+      "validation": {
+        "n": 20,
+        "series": [
+          {
+            "iter": 5,
+            "acc": 0.7574404761904762,
+            "loss": 1.2412090092897414,
+            "query_count": 672,
+            "sources_succeeded": [
+              "CAST",
+              "GC10",
+              "NEU",
+              "PIPE",
+              "PLATE"
+            ],
+            "n_group_fail": 0
+          },
+          {
+            "iter": 10,
+            "acc": 0.785472972972973,
+            "loss": 0.9309826776385307,
+            "query_count": 592,
+            "sources_succeeded": [
+              "CAST",
+              "CSU",
+              "GC10",
+              "NEU",
+              "PIPE",
+              "PLATE",
+              "S3D"
+            ],
+            "n_group_fail": 7
+          },
+          {
+            "iter": 15,
+            "acc": 0.7839285714285714,
+            "loss": 0.8040420994162559,
+            "query_count": 560,
+            "sources_succeeded": [
+              "CAST",
+              "CSU",
+              "GC10",
+              "NEU",
+              "PIPE",
+              "PLATE",
+              "S3D"
+            ],
+            "n_group_fail": 13
+          },
+          {
+            "iter": 20,
+            "acc": 0.8358433734939759,
+            "loss": 0.9830589629709721,
+            "query_count": 664,
+            "sources_succeeded": [
+              "CAST",
+              "CSU",
+              "GC10",
+              "NEU",
+              "PIPE",
+              "PLATE",
+              "S3D"
+            ],
+            "n_group_fail": 13
+          },
+          {
+            "iter": 25,
+            "acc": 0.8609154929577465,
+            "loss": 0.7927515298128128,
+            "query_count": 568,
+            "sources_succeeded": [
+              "CAST",
+              "CSU",
+              "GC10",
+              "NEU",
+              "PIPE",
+              "PLATE",
+              "S3D"
+            ],
+            "n_group_fail": 13
+          },
+          {
+            "iter": 30,
+            "acc": 0.8107142857142857,
+            "loss": 0.8163833722472191,
+            "query_count": 560,
+            "sources_succeeded": [
+              "CAST",
+              "CSU",
+              "GC10",
+              "NEU",
+              "PIPE",
+              "PLATE",
+              "S3D"
+            ],
+            "n_group_fail": 13
+          },
+          {
+            "iter": 35,
+            "acc": 0.8141891891891891,
+            "loss": 0.8225185833871365,
+            "query_count": 592,
+            "sources_succeeded": [
+              "CAST",
+              "CSU",
+              "GC10",
+              "NEU",
+              "PIPE",
+              "PLATE",
+              "S3D"
+            ],
+            "n_group_fail": 15
+          },
+          {
+            "iter": 40,
+            "acc": 0.7978395061728395,
+            "loss": 0.9106096044182778,
+            "query_count": 648,
+            "sources_succeeded": [
+              "CAST",
+              "CSU",
+              "GC10",
+              "NEU",
+              "PIPE",
+              "PLATE",
+              "S3D"
+            ],
+            "n_group_fail": 16
+          },
+          {
+            "iter": 45,
+            "acc": 0.8068181818181818,
+            "loss": 0.8816798388957977,
+            "query_count": 616,
+            "sources_succeeded": [
+              "CAST",
+              "CSU",
+              "GC10",
+              "NEU",
+              "PIPE",
+              "PLATE",
+              "S3D"
+            ],
+            "n_group_fail": 17
+          },
+          {
+            "iter": 50,
+            "acc": 0.8514492753623188,
+            "loss": 0.7158796176314354,
+            "query_count": 552,
+            "sources_succeeded": [
+              "CAST",
+              "CSU",
+              "GC10",
+              "NEU",
+              "PIPE",
+              "PLATE",
+              "S3D"
+            ],
+            "n_group_fail": 17
+          },
+          {
+            "iter": 55,
+            "acc": 0.894927536231884,
+            "loss": 0.6932492531836033,
+            "query_count": 552,
+            "sources_succeeded": [
+              "CAST",
+              "CSU",
+              "GC10",
+              "NEU",
+              "PIPE",
+              "PLATE",
+              "S3D"
+            ],
+            "n_group_fail": 21
+          },
+          {
+            "iter": 60,
+            "acc": 0.8731617647058824,
+            "loss": 0.7622271463274956,
+            "query_count": 544,
+            "sources_succeeded": [
+              "CAST",
+              "CSU",
+              "GC10",
+              "NEU",
+              "PIPE",
+              "PLATE",
+              "S3D"
+            ],
+            "n_group_fail": 25
+          },
+          {
+            "iter": 65,
+            "acc": 0.7823529411764706,
+            "loss": 0.9228180147707462,
+            "query_count": 680,
+            "sources_succeeded": [
+              "CAST",
+              "CSU",
+              "GC10",
+              "NEU",
+              "PIPE",
+              "PLATE",
+              "S3D"
+            ],
+            "n_group_fail": 26
+          },
+          {
+            "iter": 70,
+            "acc": 0.8125,
+            "loss": 0.8218675181269646,
+            "query_count": 624,
+            "sources_succeeded": [
+              "CAST",
+              "CSU",
+              "GC10",
+              "NEU",
+              "PIPE",
+              "PLATE",
+              "S3D"
+            ],
+            "n_group_fail": 29
+          },
+          {
+            "iter": 75,
+            "acc": 0.7685185185185185,
+            "loss": 0.8782649002969265,
+            "query_count": 648,
+            "sources_succeeded": [
+              "CAST",
+              "CSU",
+              "GC10",
+              "NEU",
+              "PIPE",
+              "PLATE",
+              "S3D"
+            ],
+            "n_group_fail": 31
+          },
+          {
+            "iter": 80,
+            "acc": 0.8788461538461538,
+            "loss": 0.618028336763382,
+            "query_count": 520,
+            "sources_succeeded": [
+              "CAST",
+              "CSU",
+              "GC10",
+              "NEU",
+              "PIPE",
+              "PLATE",
+              "S3D"
+            ],
+            "n_group_fail": 32
+          },
+          {
+            "iter": 85,
+            "acc": 0.844551282051282,
+            "loss": 0.7865879334509372,
+            "query_count": 624,
+            "sources_succeeded": [
+              "CAST",
+              "CSU",
+              "GC10",
+              "NEU",
+              "PIPE",
+              "PLATE",
+              "S3D"
+            ],
+            "n_group_fail": 35
+          },
+          {
+            "iter": 90,
+            "acc": 0.8633333333333333,
+            "loss": 0.7863938763737679,
+            "query_count": 600,
+            "sources_succeeded": [
+              "CAST",
+              "CSU",
+              "GC10",
+              "NEU",
+              "PIPE",
+              "PLATE",
+              "S3D"
+            ],
+            "n_group_fail": 36
+          },
+          {
+            "iter": 95,
+            "acc": 0.8214285714285714,
+            "loss": 0.6777011446654797,
+            "query_count": 560,
+            "sources_succeeded": [
+              "CAST",
+              "CSU",
+              "GC10",
+              "NEU",
+              "PIPE",
+              "PLATE",
+              "S3D"
+            ],
+            "n_group_fail": 37
+          },
+          {
+            "iter": 100,
+            "acc": 0.8225308641975309,
+            "loss": 0.864708298444748,
+            "query_count": 648,
+            "sources_succeeded": [
+              "CAST",
+              "CSU",
+              "GC10",
+              "NEU",
+              "PIPE",
+              "PLATE",
+              "S3D"
+            ],
+            "n_group_fail": 38
+          }
+        ],
+        "first_acc": 0.7574404761904762,
+        "last_acc": 0.8225308641975309,
+        "min_acc": 0.7574404761904762,
+        "max_acc": 0.894927536231884,
+        "group_failures_sum": {
+          "PLATE:oxide_scale": 256,
+          "NEU:scratch": 178
+        },
+        "source_attempts_sum": {
+          "GC10": 1304,
+          "PIPE": 1522,
+          "PLATE": 1427,
+          "CAST": 1386,
+          "NEU": 1204,
+          "S3D": 1171,
+          "CSU": 981
+        },
+        "source_successes_sum": {
+          "GC10": 1304,
+          "PIPE": 1522,
+          "PLATE": 1171,
+          "CAST": 1386,
+          "NEU": 1026,
+          "S3D": 1171,
+          "CSU": 420
+        }
+      },
+      "hard_pairs": {
+        "jsonl_lines": 120,
+        "totals": {
+          "episodes": 400,
+          "saturated": 232,
+          "requested": 122,
+          "applied": 66,
+          "fallback": 56,
+          "changed": 14
+        },
+        "rates": {
+          "request_rate": 0.305,
+          "applied_rate": 0.165,
+          "changed_rate": 0.035,
+          "fallback_given_request": 0.45901639344262296,
+          "changed_given_request": 0.11475409836065574,
+          "changed_given_applied": 0.21212121212121213
+        },
+        "by_source": {
+          "CAST": {
+            "episodes": 62,
+            "requested": 27,
+            "fallback": 5,
+            "applied": 22,
+            "changed": 9
+          },
+          "CSU": {
+            "episodes": 55,
+            "saturated": 55,
+            "requested": 18,
+            "fallback": 18
+          },
+          "GC10": {
+            "episodes": 50,
+            "requested": 11,
+            "fallback": 4,
+            "applied": 7,
+            "changed": 5
+          },
+          "NEU": {
+            "episodes": 56,
+            "requested": 15,
+            "fallback": 15
+          },
+          "PIPE": {
+            "episodes": 64,
+            "saturated": 64,
+            "requested": 22,
+            "applied": 22
+          },
+          "PLATE": {
+            "episodes": 55,
+            "saturated": 55,
+            "requested": 15,
+            "applied": 13,
+            "fallback": 2
+          },
+          "S3D": {
+            "episodes": 58,
+            "saturated": 58,
+            "requested": 14,
+            "fallback": 12,
+            "applied": 2
+          }
+        },
+        "prob_levels": [
+          0.0,
+          0.25,
+          0.35
+        ],
+        "max_prob": 0.35,
+        "first_nonzero_prob": {
+          "iter": 11,
+          "probability": 0.25,
+          "n_ep": 4
+        },
+        "first_request": {
+          "iter": 12,
+          "source": "CAST",
+          "pair": null,
+          "usable": 6,
+          "n_way": 5,
+          "fallback": true,
+          "applied": false,
+          "changed": false
+        },
+        "first_applied": {
+          "iter": 16,
+          "source": "PIPE",
+          "pair": [
+            "short_gouge",
+            "warp"
+          ]
+        },
+        "first_changed": {
+          "iter": 25,
+          "source": "GC10",
+          "pair": [
+            "punch",
+            "weld_line"
+          ]
+        },
+        "pair_applied": {
+          "PLATE|foreign_embed|oxide_scale": 13,
+          "CAST|slag_skin|water_slag_mark": 12,
+          "PIPE|short_gouge|warp": 10,
+          "PIPE|fold_wrinkle|warp": 8,
+          "CAST|slag_skin|weld_slag": 7,
+          "PIPE|fold_wrinkle|short_gouge": 4,
+          "GC10|punch|weld_line": 2,
+          "GC10|inclusion|oil": 2,
+          "GC10|inclusion|silk_spot": 2,
+          "CAST|crack_long|weld_slag": 2,
+          "S3D|oxide_scale|scratch": 2,
+          "GC10|inclusion|water": 1,
+          "CAST|crack_long|scratch": 1
+        },
+        "pair_changed": {
+          "CAST|slag_skin|water_slag_mark": 6,
+          "GC10|punch|weld_line": 2,
+          "GC10|inclusion|silk_spot": 2,
+          "CAST|crack_long|weld_slag": 2,
+          "CAST|slag_skin|weld_slag": 1,
+          "GC10|inclusion|oil": 1
+        },
+        "n_changed_episodes": 14,
+        "changed_episodes": [
+          {
+            "iter": 25,
+            "source": "GC10",
+            "pair": [
+              "punch",
+              "weld_line"
+            ]
+          },
+          {
+            "iter": 51,
+            "source": "CAST",
+            "pair": [
+              "slag_skin",
+              "weld_slag"
+            ]
+          },
+          {
+            "iter": 55,
+            "source": "GC10",
+            "pair": [
+              "punch",
+              "weld_line"
+            ]
+          },
+          {
+            "iter": 62,
+            "source": "GC10",
+            "pair": [
+              "inclusion",
+              "oil"
+            ]
+          },
+          {
+            "iter": 72,
+            "source": "GC10",
+            "pair": [
+              "inclusion",
+              "silk_spot"
+            ]
+          },
+          {
+            "iter": 76,
+            "source": "CAST",
+            "pair": [
+              "crack_long",
+              "weld_slag"
+            ]
+          },
+          {
+            "iter": 78,
+            "source": "GC10",
+            "pair": [
+              "inclusion",
+              "silk_spot"
+            ]
+          },
+          {
+            "iter": 79,
+            "source": "CAST",
+            "pair": [
+              "slag_skin",
+              "water_slag_mark"
+            ]
+          },
+          {
+            "iter": 80,
+            "source": "CAST",
+            "pair": [
+              "crack_long",
+              "weld_slag"
+            ]
+          },
+          {
+            "iter": 84,
+            "source": "CAST",
+            "pair": [
+              "slag_skin",
+              "water_slag_mark"
+            ]
+          },
+          {
+            "iter": 88,
+            "source": "CAST",
+            "pair": [
+              "slag_skin",
+              "water_slag_mark"
+            ]
+          },
+          {
+            "iter": 89,
+            "source": "CAST",
+            "pair": [
+              "slag_skin",
+              "water_slag_mark"
+            ]
+          },
+          {
+            "iter": 96,
+            "source": "CAST",
+            "pair": [
+              "slag_skin",
+              "water_slag_mark"
+            ]
+          },
+          {
+            "iter": 97,
+            "source": "CAST",
+            "pair": [
+              "slag_skin",
+              "water_slag_mark"
+            ]
+          }
+        ],
+        "holdout_in_train_episodes": 0
+      },
+      "data_summary_saturated": [
+        "CSU",
+        "PIPE",
+        "PLATE",
+        "S3D"
+      ],
+      "train_group_failures": {},
+      "train_source_attempts": {
+        "PIPE": 64,
+        "NEU": 56,
+        "CSU": 55,
+        "S3D": 58,
+        "CAST": 62,
+        "PLATE": 55,
+        "GC10": 50
+      },
+      "train_source_successes": {
+        "PIPE": 64,
+        "NEU": 56,
+        "CSU": 55,
+        "S3D": 58,
+        "CAST": 62,
+        "PLATE": 55,
+        "GC10": 50
+      },
+      "buffer_last": {
+        "iter": 100,
+        "active": {
+          "CAST": [
+            [
+              "slag_skin",
+              "water_slag_mark"
+            ]
+          ],
+          "CSU": [],
+          "GC10": [
+            [
+              "inclusion",
+              "water"
+            ]
+          ],
+          "NEU": [],
+          "PIPE": [
+            [
+              "fold_wrinkle",
+              "warp"
+            ]
+          ],
+          "PLATE": [
+            [
+              "foreign_embed",
+              "oxide_scale"
+            ],
+            [
+              "inclusion",
+              "oxide_scale"
+            ]
+          ],
+          "S3D": []
+        },
+        "top": {
+          "CAST": [
+            {
+              "pair": [
+                "slag_skin",
+                "weld_slag"
+              ],
+              "rate": 0.25,
+              "errors": 12,
+              "streak": 1,
+              "episodes": 5
+            },
+            {
+              "pair": [
+                "slag_skin",
+                "water_slag_mark"
+              ],
+              "rate": 0.21875,
+              "errors": 7,
+              "streak": 8,
+              "episodes": 5
+            },
+            {
+              "pair": [
+                "crack_long",
+                "weld_slag"
+              ],
+              "rate": 0.125,
+              "errors": 8,
+              "streak": 1,
+              "episodes": 5
+            }
+          ],
+          "CSU": [],
+          "GC10": [
+            {
+              "pair": [
+                "inclusion",
+                "water"
+              ],
+              "rate": 0.375,
+              "errors": 6,
+              "streak": 2,
+              "episodes": 4
+            },
+            {
+              "pair": [
+                "punch",
+                "weld_line"
+              ],
+              "rate": 0.3125,
+              "errors": 5,
+              "streak": 1,
+              "episodes": 4
+            },
+            {
+              "pair": [
+                "oil",
+                "water"
+              ],
+              "rate": 0.25,
+              "errors": 4,
+              "streak": 1,
+              "episodes": 4
+            }
+          ],
+          "NEU": [],
+          "PIPE": [
+            {
+              "pair": [
+                "short_gouge",
+                "warp"
+              ],
+              "rate": 0.225,
+              "errors": 18,
+              "streak": 1,
+              "episodes": 5
+            },
+            {
+              "pair": [
+                "fold_wrinkle",
+                "warp"
+              ],
+              "rate": 0.037500000000000006,
+              "errors": 3,
+              "streak": 3,
+              "episodes": 5
+            },
+            {
+              "pair": [
+                "fold_wrinkle",
+                "short_gouge"
+              ],
+              "rate": 0.025,
+              "errors": 2,
+              "streak": 1,
+              "episodes": 5
+            }
+          ],
+          "PLATE": [
+            {
+              "pair": [
+                "foreign_embed",
+                "oxide_scale"
+              ],
+              "rate": 0.20833333333333334,
+              "errors": 10,
+              "streak": 7,
+              "episodes": 3
+            },
+            {
+              "pair": [
+                "inclusion",
+                "oxide_scale"
+              ],
+              "rate": 0.041666666666666664,
+              "errors": 2,
+              "streak": 3,
+              "episodes": 3
+            }
+          ],
+          "S3D": []
+        },
+        "removed": {
+          "CAST": [],
+          "CSU": [],
+          "GC10": [],
+          "NEU": [],
+          "PIPE": [],
+          "PLATE": [],
+          "S3D": []
+        }
+      },
+      "buffer_entry_iters": null,
+      "source_class_counts": {
+        "CAST": 6,
+        "CSU": 3,
+        "GC10": 9,
+        "NEU": 6,
+        "PIPE": 3,
+        "PLATE": 3,
+        "S3D": 2
+      },
+      "strict_groups_summary": true,
+      "buffer_first_active": {
+        "GC10": {
+          "iter": 10,
+          "pairs": [
+            [
+              "inclusion",
+              "oil"
+            ]
+          ]
+        },
+        "PIPE": {
+          "iter": 10,
+          "pairs": [
+            [
+              "short_gouge",
+              "warp"
+            ],
+            [
+              "fold_wrinkle",
+              "warp"
+            ],
+            [
+              "fold_wrinkle",
+              "short_gouge"
+            ]
+          ]
+        },
+        "PLATE": {
+          "iter": 10,
+          "pairs": [
+            [
+              "inclusion",
+              "oxide_scale"
+            ]
+          ]
+        },
+        "CAST": {
+          "iter": 15,
+          "pairs": [
+            [
+              "slag_skin",
+              "weld_slag"
+            ],
+            [
+              "water_slag_mark",
+              "weld_slag"
+            ]
+          ]
+        },
+        "S3D": {
+          "iter": 85,
+          "pairs": [
+            [
+              "oxide_scale",
+              "scratch"
+            ]
+          ]
+        }
+      },
+      "val_sources_never_succeeded": [],
+      "val_sources_missing_entirely": null
+    },
+    "B_GC10_s0": {
+      "status": "evaluated",
+      "holdout_source": "GC10",
+      "seed": 0,
+      "iters": 100,
+      "feature_layer": 3,
+      "strict_groups": true,
+      "same_hard_pairs": true,
+      "hard_pair_protocol": true,
+      "use_policy": false,
+      "fixed_beta": 0.25,
+      "eval_tasks": 20,
+      "acceptance_neu_mde": null,
+      "holdout": {
+        "acc": 0.63125,
+        "loss": 1.328169083595276,
+        "query_count": 800,
+        "skipped": 0,
+        "hits": 505,
+        "per_class": {
+          "weld_line": {
+            "hit": 86,
+            "query": 96,
+            "recall": 0.8958333333333334
+          },
+          "inclusion": {
+            "hit": 34,
+            "query": 64,
+            "recall": 0.53125
+          },
+          "water": {
+            "hit": 62,
+            "query": 112,
+            "recall": 0.5535714285714286
+          },
+          "punch": {
+            "hit": 50,
+            "query": 104,
+            "recall": 0.4807692307692308
+          },
+          "oil": {
+            "hit": 36,
+            "query": 104,
+            "recall": 0.34615384615384615
+          },
+          "fold_wrinkle": {
+            "hit": 36,
+            "query": 48,
+            "recall": 0.75
+          },
+          "crescent": {
+            "hit": 109,
+            "query": 112,
+            "recall": 0.9732142857142857
+          },
+          "rolled_pit": {
+            "hit": 37,
+            "query": 80,
+            "recall": 0.4625
+          },
+          "silk_spot": {
+            "hit": 55,
+            "query": 80,
+            "recall": 0.6875
+          }
+        },
+        "confusion_top": [
+          [
+            "punch -> weld_line",
+            25
+          ],
+          [
+            "water -> oil",
+            17
+          ],
+          [
+            "oil -> punch",
+            13
+          ],
+          [
+            "oil -> water",
+            12
+          ],
+          [
+            "rolled_pit -> oil",
+            12
+          ],
+          [
+            "oil -> crescent",
+            12
+          ],
+          [
+            "rolled_pit -> water",
+            12
+          ],
+          [
+            "inclusion -> oil",
+            11
+          ],
+          [
+            "oil -> rolled_pit",
+            11
+          ],
+          [
+            "water -> silk_spot",
+            11
+          ],
+          [
+            "oil -> inclusion",
+            10
+          ],
+          [
+            "water -> inclusion",
+            9
+          ]
+        ],
+        "total_errors": 295,
+        "group_failures": {},
+        "source_attempts": {
+          "GC10": 20
+        },
+        "source_successes": {
+          "GC10": 20
+        }
+      },
+      "test_same": {
+        "acc": 0.9173076923076923,
+        "loss": 0.6124733485281467,
+        "query_count": 520,
+        "skipped": 0,
+        "by_source": {
+          "NEU": {
+            "acc": 0.9875,
+            "hit": 79,
+            "query": 80,
+            "episodes": 2,
+            "per_class": {
+              "patch": {
+                "hit": 16,
+                "query": 16,
+                "recall": 1.0
+              },
+              "scratch": {
+                "hit": 16,
+                "query": 16,
+                "recall": 1.0
+              },
+              "inclusion": {
+                "hit": 16,
+                "query": 16,
+                "recall": 1.0
+              },
+              "crazing": {
+                "hit": 16,
+                "query": 16,
+                "recall": 1.0
+              },
+              "pit_texture": {
+                "hit": 15,
+                "query": 16,
+                "recall": 0.9375
+              }
+            },
+            "confusion_top": [
+              [
+                "pit_texture -> crazing",
+                1
+              ]
+            ]
+          },
+          "PLATE": {
+            "acc": 0.9791666666666666,
+            "hit": 47,
+            "query": 48,
+            "episodes": 3,
+            "per_class": {
+              "foreign_embed": {
+                "hit": 24,
+                "query": 24,
+                "recall": 1.0
+              },
+              "oxide_scale": {
+                "hit": 23,
+                "query": 24,
+                "recall": 0.9583333333333334
+              }
+            },
+            "confusion_top": [
+              [
+                "oxide_scale -> foreign_embed",
+                1
+              ]
+            ]
+          },
+          "PIPE": {
+            "acc": 0.8541666666666666,
+            "hit": 82,
+            "query": 96,
+            "episodes": 4,
+            "per_class": {
+              "warp": {
+                "hit": 21,
+                "query": 32,
+                "recall": 0.65625
+              },
+              "short_gouge": {
+                "hit": 29,
+                "query": 32,
+                "recall": 0.90625
+              },
+              "fold_wrinkle": {
+                "hit": 32,
+                "query": 32,
+                "recall": 1.0
+              }
+            },
+            "confusion_top": [
+              [
+                "warp -> short_gouge",
+                7
+              ],
+              [
+                "warp -> fold_wrinkle",
+                4
+              ],
+              [
+                "short_gouge -> warp",
+                3
+              ]
+            ]
+          },
+          "CAST": {
+            "acc": 0.88,
+            "hit": 176,
+            "query": 200,
+            "episodes": 5,
+            "per_class": {
+              "water_slag_mark": {
+                "hit": 29,
+                "query": 32,
+                "recall": 0.90625
+              },
+              "crack_long": {
+                "hit": 34,
+                "query": 40,
+                "recall": 0.85
+              },
+              "cutting_opening": {
+                "hit": 32,
+                "query": 32,
+                "recall": 1.0
+              },
+              "scratch": {
+                "hit": 39,
+                "query": 40,
+                "recall": 0.975
+              },
+              "slag_skin": {
+                "hit": 31,
+                "query": 40,
+                "recall": 0.775
+              },
+              "weld_slag": {
+                "hit": 11,
+                "query": 16,
+                "recall": 0.6875
+              }
+            },
+            "confusion_top": [
+              [
+                "slag_skin -> weld_slag",
+                5
+              ],
+              [
+                "crack_long -> slag_skin",
+                3
+              ],
+              [
+                "water_slag_mark -> slag_skin",
+                3
+              ],
+              [
+                "crack_long -> weld_slag",
+                3
+              ],
+              [
+                "weld_slag -> slag_skin",
+                3
+              ],
+              [
+                "slag_skin -> water_slag_mark",
+                3
+              ],
+              [
+                "weld_slag -> crack_long",
+                2
+              ],
+              [
+                "scratch -> slag_skin",
+                1
+              ]
+            ]
+          },
+          "S3D": {
+            "acc": 0.96875,
+            "hit": 93,
+            "query": 96,
+            "episodes": 6,
+            "per_class": {
+              "oxide_scale": {
+                "hit": 45,
+                "query": 48,
+                "recall": 0.9375
+              },
+              "scratch": {
+                "hit": 48,
+                "query": 48,
+                "recall": 1.0
+              }
+            },
+            "confusion_top": [
+              [
+                "oxide_scale -> scratch",
+                3
+              ]
+            ]
+          }
+        }
+      },
+      "test_cross": {
+        "acc": 0.7455357142857143,
+        "loss": 0.9756526172161102,
+        "query_count": 672,
+        "skipped": 0
+      },
+      "validation": {
+        "n": 20,
+        "series": [
+          {
+            "iter": 5,
+            "acc": 0.8852739726027398,
+            "loss": 1.0263415843248367,
+            "query_count": 584,
+            "sources_succeeded": [
+              "CAST",
+              "NEU",
+              "PIPE",
+              "PLATE",
+              "S3D"
+            ],
+            "n_group_fail": 5
+          },
+          {
+            "iter": 10,
+            "acc": 0.858433734939759,
+            "loss": 1.001983182132244,
+            "query_count": 664,
+            "sources_succeeded": [
+              "CAST",
+              "CSU",
+              "NEU",
+              "PIPE",
+              "PLATE",
+              "S3D"
+            ],
+            "n_group_fail": 13
+          },
+          {
+            "iter": 15,
+            "acc": 0.8412698412698413,
+            "loss": 0.7472896203398705,
+            "query_count": 504,
+            "sources_succeeded": [
+              "CAST",
+              "CSU",
+              "NEU",
+              "PIPE",
+              "PLATE",
+              "S3D"
+            ],
+            "n_group_fail": 15
+          },
+          {
+            "iter": 20,
+            "acc": 0.8977272727272727,
+            "loss": 0.8511065393686295,
+            "query_count": 616,
+            "sources_succeeded": [
+              "CAST",
+              "CSU",
+              "NEU",
+              "PIPE",
+              "PLATE",
+              "S3D"
+            ],
+            "n_group_fail": 20
+          },
+          {
+            "iter": 25,
+            "acc": 0.8489583333333334,
+            "loss": 0.785924045741558,
+            "query_count": 576,
+            "sources_succeeded": [
+              "CAST",
+              "CSU",
+              "NEU",
+              "PIPE",
+              "PLATE",
+              "S3D"
+            ],
+            "n_group_fail": 26
+          },
+          {
+            "iter": 30,
+            "acc": 0.875,
+            "loss": 0.6578805327415467,
+            "query_count": 512,
+            "sources_succeeded": [
+              "CAST",
+              "CSU",
+              "NEU",
+              "PIPE",
+              "PLATE",
+              "S3D"
+            ],
+            "n_group_fail": 35
+          },
+          {
+            "iter": 35,
+            "acc": 0.8863636363636364,
+            "loss": 0.657589641213417,
+            "query_count": 528,
+            "sources_succeeded": [
+              "CAST",
+              "CSU",
+              "NEU",
+              "PIPE",
+              "PLATE",
+              "S3D"
+            ],
+            "n_group_fail": 43
+          },
+          {
+            "iter": 40,
+            "acc": 0.8125,
+            "loss": 0.7979937873780727,
+            "query_count": 576,
+            "sources_succeeded": [
+              "CAST",
+              "CSU",
+              "NEU",
+              "PIPE",
+              "PLATE",
+              "S3D"
+            ],
+            "n_group_fail": 54
+          },
+          {
+            "iter": 45,
+            "acc": 0.8821428571428571,
+            "loss": 0.7792102083563804,
+            "query_count": 560,
+            "sources_succeeded": [
+              "CAST",
+              "CSU",
+              "NEU",
+              "PIPE",
+              "PLATE",
+              "S3D"
+            ],
+            "n_group_fail": 61
+          },
+          {
+            "iter": 50,
+            "acc": 0.8688271604938271,
+            "loss": 0.8398504942655564,
+            "query_count": 648,
+            "sources_succeeded": [
+              "CAST",
+              "CSU",
+              "NEU",
+              "PIPE",
+              "PLATE",
+              "S3D"
+            ],
+            "n_group_fail": 65
+          },
+          {
+            "iter": 55,
+            "acc": 0.8700657894736842,
+            "loss": 0.7944867044687272,
+            "query_count": 608,
+            "sources_succeeded": [
+              "CAST",
+              "CSU",
+              "NEU",
+              "PIPE",
+              "PLATE",
+              "S3D"
+            ],
+            "n_group_fail": 68
+          },
+          {
+            "iter": 60,
+            "acc": 0.8544520547945206,
+            "loss": 0.7723692737519741,
+            "query_count": 584,
+            "sources_succeeded": [
+              "CAST",
+              "CSU",
+              "NEU",
+              "PIPE",
+              "PLATE",
+              "S3D"
+            ],
+            "n_group_fail": 76
+          },
+          {
+            "iter": 65,
+            "acc": 0.8442028985507246,
+            "loss": 0.7347594246268272,
+            "query_count": 552,
+            "sources_succeeded": [
+              "CAST",
+              "CSU",
+              "NEU",
+              "PIPE",
+              "PLATE",
+              "S3D"
+            ],
+            "n_group_fail": 83
+          },
+          {
+            "iter": 70,
+            "acc": 0.8863636363636364,
+            "loss": 0.6802559897303582,
+            "query_count": 528,
+            "sources_succeeded": [
+              "CAST",
+              "CSU",
+              "NEU",
+              "PIPE",
+              "PLATE",
+              "S3D"
+            ],
+            "n_group_fail": 95
+          },
+          {
+            "iter": 75,
+            "acc": 0.8977272727272727,
+            "loss": 0.6342190995812416,
+            "query_count": 528,
+            "sources_succeeded": [
+              "CAST",
+              "CSU",
+              "NEU",
+              "PIPE",
+              "PLATE",
+              "S3D"
+            ],
+            "n_group_fail": 109
+          },
+          {
+            "iter": 80,
+            "acc": 0.8544303797468354,
+            "loss": 0.7713717669248581,
+            "query_count": 632,
+            "sources_succeeded": [
+              "CAST",
+              "CSU",
+              "NEU",
+              "PIPE",
+              "PLATE",
+              "S3D"
+            ],
+            "n_group_fail": 112
+          },
+          {
+            "iter": 85,
+            "acc": 0.8644366197183099,
+            "loss": 0.6893031001091003,
+            "query_count": 568,
+            "sources_succeeded": [
+              "CAST",
+              "CSU",
+              "NEU",
+              "PIPE",
+              "PLATE",
+              "S3D"
+            ],
+            "n_group_fail": 119
+          },
+          {
+            "iter": 90,
+            "acc": 0.847972972972973,
+            "loss": 0.7391694389283657,
+            "query_count": 592,
+            "sources_succeeded": [
+              "CAST",
+              "CSU",
+              "NEU",
+              "PIPE",
+              "PLATE",
+              "S3D"
+            ],
+            "n_group_fail": 134
+          },
+          {
+            "iter": 95,
+            "acc": 0.8314393939393939,
+            "loss": 0.625232444703579,
+            "query_count": 528,
+            "sources_succeeded": [
+              "CAST",
+              "CSU",
+              "NEU",
+              "PIPE",
+              "PLATE",
+              "S3D"
+            ],
+            "n_group_fail": 143
+          },
+          {
+            "iter": 100,
+            "acc": 0.8732142857142857,
+            "loss": 0.6541882030665874,
+            "query_count": 560,
+            "sources_succeeded": [
+              "CAST",
+              "CSU",
+              "NEU",
+              "PIPE",
+              "PLATE",
+              "S3D"
+            ],
+            "n_group_fail": 155
+          }
+        ],
+        "first_acc": 0.8852739726027398,
+        "last_acc": 0.8732142857142857,
+        "min_acc": 0.8125,
+        "max_acc": 0.8977272727272727,
+        "group_failures_sum": {
+          "CR7:dent": 357,
+          "PLATE:oxide_scale": 164,
+          "CR7:linear": 408,
+          "CR7:macular": 396,
+          "NEU:scratch": 106
+        },
+        "source_attempts_sum": {
+          "CSU": 1484,
+          "NEU": 1631,
+          "CR7": 1161,
+          "S3D": 1914,
+          "PLATE": 1310,
+          "CAST": 1794,
+          "PIPE": 872
+        },
+        "source_successes_sum": {
+          "NEU": 1525,
+          "S3D": 1914,
+          "CAST": 1794,
+          "PIPE": 872,
+          "PLATE": 1146,
+          "CSU": 749
+        }
+      },
+      "hard_pairs": {
+        "jsonl_lines": 120,
+        "totals": {
+          "episodes": 400,
+          "saturated": 230,
+          "requested": 120,
+          "applied": 55,
+          "fallback": 65,
+          "changed": 6
+        },
+        "rates": {
+          "request_rate": 0.3,
+          "applied_rate": 0.1375,
+          "changed_rate": 0.015,
+          "fallback_given_request": 0.5416666666666666,
+          "changed_given_request": 0.05,
+          "changed_given_applied": 0.10909090909090909
+        },
+        "by_source": {
+          "CAST": {
+            "episodes": 54,
+            "requested": 15,
+            "applied": 15,
+            "changed": 6
+          },
+          "CR7": {
+            "episodes": 57,
+            "requested": 11,
+            "fallback": 11
+          },
+          "CSU": {
+            "episodes": 58,
+            "saturated": 58,
+            "requested": 18,
+            "fallback": 18
+          },
+          "NEU": {
+            "episodes": 59,
+            "requested": 16,
+            "fallback": 14,
+            "applied": 2
+          },
+          "PIPE": {
+            "episodes": 57,
+            "saturated": 57,
+            "requested": 20,
+            "applied": 17,
+            "fallback": 3
+          },
+          "PLATE": {
+            "episodes": 51,
+            "saturated": 51,
+            "requested": 14,
+            "applied": 14
+          },
+          "S3D": {
+            "episodes": 64,
+            "saturated": 64,
+            "requested": 26,
+            "fallback": 19,
+            "applied": 7
+          }
+        },
+        "prob_levels": [
+          0.0,
+          0.25,
+          0.35
+        ],
+        "max_prob": 0.35,
+        "first_nonzero_prob": {
+          "iter": 11,
+          "probability": 0.25,
+          "n_ep": 4
+        },
+        "first_request": {
+          "iter": 12,
+          "source": "S3D",
+          "pair": null,
+          "usable": 2,
+          "n_way": 2,
+          "fallback": true,
+          "applied": false,
+          "changed": false
+        },
+        "first_applied": {
+          "iter": 13,
+          "source": "PIPE",
+          "pair": [
+            "short_gouge",
+            "warp"
+          ]
+        },
+        "first_changed": {
+          "iter": 27,
+          "source": "CAST",
+          "pair": [
+            "slag_skin",
+            "weld_slag"
+          ]
+        },
+        "pair_applied": {
+          "PLATE|foreign_embed|oxide_scale": 14,
+          "PIPE|fold_wrinkle|warp": 8,
+          "CAST|slag_skin|weld_slag": 8,
+          "S3D|oxide_scale|scratch": 7,
+          "PIPE|short_gouge|warp": 6,
+          "CAST|slag_skin|water_slag_mark": 4,
+          "PIPE|fold_wrinkle|short_gouge": 3,
+          "CAST|water_slag_mark|weld_slag": 1,
+          "NEU|oxide_scale|pit_texture": 1,
+          "NEU|inclusion|pit_texture": 1,
+          "CAST|crack_long|slag_skin": 1,
+          "CAST|crack_long|weld_slag": 1
+        },
+        "pair_changed": {
+          "CAST|slag_skin|weld_slag": 4,
+          "CAST|slag_skin|water_slag_mark": 2
+        },
+        "n_changed_episodes": 6,
+        "changed_episodes": [
+          {
+            "iter": 27,
+            "source": "CAST",
+            "pair": [
+              "slag_skin",
+              "weld_slag"
+            ]
+          },
+          {
+            "iter": 36,
+            "source": "CAST",
+            "pair": [
+              "slag_skin",
+              "weld_slag"
+            ]
+          },
+          {
+            "iter": 47,
+            "source": "CAST",
+            "pair": [
+              "slag_skin",
+              "weld_slag"
+            ]
+          },
+          {
+            "iter": 74,
+            "source": "CAST",
+            "pair": [
+              "slag_skin",
+              "weld_slag"
+            ]
+          },
+          {
+            "iter": 79,
+            "source": "CAST",
+            "pair": [
+              "slag_skin",
+              "water_slag_mark"
+            ]
+          },
+          {
+            "iter": 90,
+            "source": "CAST",
+            "pair": [
+              "slag_skin",
+              "water_slag_mark"
+            ]
+          }
+        ],
+        "holdout_in_train_episodes": 0
+      },
+      "data_summary_saturated": [
+        "CSU",
+        "PIPE",
+        "PLATE",
+        "S3D"
+      ],
+      "train_group_failures": {},
+      "train_source_attempts": {
+        "PIPE": 57,
+        "NEU": 59,
+        "CR7": 57,
+        "S3D": 64,
+        "CSU": 58,
+        "PLATE": 51,
+        "CAST": 54
+      },
+      "train_source_successes": {
+        "PIPE": 57,
+        "NEU": 59,
+        "CR7": 57,
+        "S3D": 64,
+        "CSU": 58,
+        "PLATE": 51,
+        "CAST": 54
+      },
+      "buffer_last": {
+        "iter": 100,
+        "active": {
+          "CAST": [
+            [
+              "slag_skin",
+              "weld_slag"
+            ],
+            [
+              "slag_skin",
+              "water_slag_mark"
+            ]
+          ],
+          "CR7": [],
+          "CSU": [],
+          "NEU": [],
+          "PIPE": [
+            [
+              "short_gouge",
+              "warp"
+            ]
+          ],
+          "PLATE": [
+            [
+              "foreign_embed",
+              "oxide_scale"
+            ],
+            [
+              "inclusion",
+              "oxide_scale"
+            ]
+          ],
+          "S3D": []
+        },
+        "top": {
+          "CAST": [
+            {
+              "pair": [
+                "slag_skin",
+                "weld_slag"
+              ],
+              "rate": 0.375,
+              "errors": 12,
+              "streak": 19,
+              "episodes": 6
+            },
+            {
+              "pair": [
+                "slag_skin",
+                "water_slag_mark"
+              ],
+              "rate": 0.1875,
+              "errors": 3,
+              "streak": 11,
+              "episodes": 6
+            },
+            {
+              "pair": [
+                "water_slag_mark",
+                "weld_slag"
+              ],
+              "rate": 0.16666666666666666,
+              "errors": 8,
+              "streak": 1,
+              "episodes": 6
+            }
+          ],
+          "CR7": [],
+          "CSU": [],
+          "NEU": [
+            {
+              "pair": [
+                "inclusion",
+                "scratch"
+              ],
+              "rate": 0.125,
+              "errors": 2,
+              "streak": 1,
+              "episodes": 2
+            }
+          ],
+          "PIPE": [
+            {
+              "pair": [
+                "short_gouge",
+                "warp"
+              ],
+              "rate": 0.125,
+              "errors": 2,
+              "streak": 4,
+              "episodes": 1
+            }
+          ],
+          "PLATE": [
+            {
+              "pair": [
+                "foreign_embed",
+                "oxide_scale"
+              ],
+              "rate": 0.275,
+              "errors": 22,
+              "streak": 20,
+              "episodes": 5
+            },
+            {
+              "pair": [
+                "inclusion",
+                "oxide_scale"
+              ],
+              "rate": 0.0375,
+              "errors": 3,
+              "streak": 2,
+              "episodes": 5
+            }
+          ],
+          "S3D": [
+            {
+              "pair": [
+                "oxide_scale",
+                "scratch"
+              ],
+              "rate": 0.041666666666666664,
+              "errors": 4,
+              "streak": 1,
+              "episodes": 6
+            }
+          ]
+        },
+        "removed": {
+          "CAST": [
+            [
+              "crack_long",
+              "weld_slag"
+            ]
+          ],
+          "CR7": [],
+          "CSU": [],
+          "NEU": [],
+          "PIPE": [
+            [
+              "fold_wrinkle",
+              "warp"
+            ]
+          ],
+          "PLATE": [],
+          "S3D": []
+        }
+      },
+      "buffer_entry_iters": null,
+      "source_class_counts": {
+        "CAST": 6,
+        "CR7": 7,
+        "CSU": 3,
+        "NEU": 6,
+        "PIPE": 3,
+        "PLATE": 3,
+        "S3D": 2
+      },
+      "strict_groups_summary": true,
+      "buffer_first_active": {
+        "CAST": {
+          "iter": 10,
+          "pairs": [
+            [
+              "slag_skin",
+              "water_slag_mark"
+            ],
+            [
+              "water_slag_mark",
+              "weld_slag"
+            ]
+          ]
+        },
+        "PIPE": {
+          "iter": 10,
+          "pairs": [
+            [
+              "fold_wrinkle",
+              "short_gouge"
+            ],
+            [
+              "short_gouge",
+              "warp"
+            ],
+            [
+              "fold_wrinkle",
+              "warp"
+            ]
+          ]
+        },
+        "PLATE": {
+          "iter": 10,
+          "pairs": [
+            [
+              "foreign_embed",
+              "oxide_scale"
+            ]
+          ]
+        },
+        "NEU": {
+          "iter": 25,
+          "pairs": [
+            [
+              "oxide_scale",
+              "pit_texture"
+            ]
+          ]
+        },
+        "S3D": {
+          "iter": 60,
+          "pairs": [
+            [
+              "oxide_scale",
+              "scratch"
+            ]
+          ]
+        }
+      },
+      "val_sources_never_succeeded": [
+        "CR7"
+      ],
+      "val_sources_missing_entirely": null
+    },
+    "B_NEU_s0": {
+      "status": "evaluated",
+      "holdout_source": "NEU",
+      "seed": 0,
+      "iters": 100,
+      "feature_layer": 3,
+      "strict_groups": true,
+      "same_hard_pairs": true,
+      "hard_pair_protocol": true,
+      "use_policy": false,
+      "fixed_beta": 0.25,
+      "eval_tasks": 20,
+      "acceptance_neu_mde": null,
+      "holdout": {
+        "acc": 0.96375,
+        "loss": 1.0474888265132904,
+        "query_count": 800,
+        "skipped": 0,
+        "hits": 771,
+        "per_class": {
+          "pit_texture": {
+            "hit": 127,
+            "query": 136,
+            "recall": 0.9338235294117647
+          },
+          "inclusion": {
+            "hit": 124,
+            "query": 136,
+            "recall": 0.9117647058823529
+          },
+          "oxide_scale": {
+            "hit": 135,
+            "query": 136,
+            "recall": 0.9926470588235294
+          },
+          "patch": {
+            "hit": 141,
+            "query": 144,
+            "recall": 0.9791666666666666
+          },
+          "scratch": {
+            "hit": 142,
+            "query": 144,
+            "recall": 0.9861111111111112
+          },
+          "crazing": {
+            "hit": 102,
+            "query": 104,
+            "recall": 0.9807692307692307
+          }
+        },
+        "confusion_top": [
+          [
+            "inclusion -> scratch",
+            6
+          ],
+          [
+            "pit_texture -> crazing",
+            5
+          ],
+          [
+            "inclusion -> pit_texture",
+            3
+          ],
+          [
+            "pit_texture -> oxide_scale",
+            3
+          ],
+          [
+            "inclusion -> crazing",
+            2
+          ],
+          [
+            "crazing -> oxide_scale",
+            2
+          ],
+          [
+            "patch -> scratch",
+            2
+          ],
+          [
+            "inclusion -> oxide_scale",
+            1
+          ],
+          [
+            "scratch -> patch",
+            1
+          ],
+          [
+            "pit_texture -> patch",
+            1
+          ],
+          [
+            "patch -> oxide_scale",
+            1
+          ],
+          [
+            "scratch -> inclusion",
+            1
+          ]
+        ],
+        "total_errors": 29,
+        "group_failures": {},
+        "source_attempts": {
+          "NEU": 20
+        },
+        "source_successes": {
+          "NEU": 20
+        }
+      },
+      "test_same": {
+        "acc": 0.7625,
+        "loss": 0.7673545174300671,
+        "query_count": 560,
+        "skipped": 0,
+        "by_source": {
+          "GC10": {
+            "acc": 0.64,
+            "hit": 128,
+            "query": 200,
+            "episodes": 5,
+            "per_class": {
+              "weld_line": {
+                "hit": 36,
+                "query": 40,
+                "recall": 0.9
+              },
+              "silk_spot": {
+                "hit": 10,
+                "query": 24,
+                "recall": 0.4166666666666667
+              },
+              "oil": {
+                "hit": 13,
+                "query": 24,
+                "recall": 0.5416666666666666
+              },
+              "fold_wrinkle": {
+                "hit": 26,
+                "query": 32,
+                "recall": 0.8125
+              },
+              "crescent": {
+                "hit": 22,
+                "query": 24,
+                "recall": 0.9166666666666666
+              },
+              "punch": {
+                "hit": 6,
+                "query": 24,
+                "recall": 0.25
+              },
+              "inclusion": {
+                "hit": 3,
+                "query": 16,
+                "recall": 0.1875
+              },
+              "water": {
+                "hit": 12,
+                "query": 16,
+                "recall": 0.75
+              }
+            },
+            "confusion_top": [
+              [
+                "punch -> weld_line",
+                15
+              ],
+              [
+                "silk_spot -> crescent",
+                7
+              ],
+              [
+                "fold_wrinkle -> weld_line",
+                5
+              ],
+              [
+                "inclusion -> water",
+                5
+              ],
+              [
+                "silk_spot -> inclusion",
+                4
+              ],
+              [
+                "inclusion -> oil",
+                4
+              ],
+              [
+                "water -> oil",
+                4
+              ],
+              [
+                "weld_line -> crescent",
+                3
+              ]
+            ]
+          },
+          "PLATE": {
+            "acc": 0.8,
+            "hit": 64,
+            "query": 80,
+            "episodes": 5,
+            "per_class": {
+              "foreign_embed": {
+                "hit": 40,
+                "query": 40,
+                "recall": 1.0
+              },
+              "oxide_scale": {
+                "hit": 24,
+                "query": 40,
+                "recall": 0.6
+              }
+            },
+            "confusion_top": [
+              [
+                "oxide_scale -> foreign_embed",
+                16
+              ]
+            ]
+          },
+          "S3D": {
+            "acc": 0.9583333333333334,
+            "hit": 46,
+            "query": 48,
+            "episodes": 3,
+            "per_class": {
+              "oxide_scale": {
+                "hit": 22,
+                "query": 24,
+                "recall": 0.9166666666666666
+              },
+              "scratch": {
+                "hit": 24,
+                "query": 24,
+                "recall": 1.0
+              }
+            },
+            "confusion_top": [
+              [
+                "oxide_scale -> scratch",
+                2
+              ]
+            ]
+          },
+          "CAST": {
+            "acc": 0.8,
+            "hit": 128,
+            "query": 160,
+            "episodes": 4,
+            "per_class": {
+              "weld_slag": {
+                "hit": 7,
+                "query": 24,
+                "recall": 0.2916666666666667
+              },
+              "crack_long": {
+                "hit": 17,
+                "query": 24,
+                "recall": 0.7083333333333334
+              },
+              "slag_skin": {
+                "hit": 24,
+                "query": 32,
+                "recall": 0.75
+              },
+              "scratch": {
+                "hit": 24,
+                "query": 24,
+                "recall": 1.0
+              },
+              "cutting_opening": {
+                "hit": 32,
+                "query": 32,
+                "recall": 1.0
+              },
+              "water_slag_mark": {
+                "hit": 24,
+                "query": 24,
+                "recall": 1.0
+              }
+            },
+            "confusion_top": [
+              [
+                "weld_slag -> slag_skin",
+                15
+              ],
+              [
+                "slag_skin -> water_slag_mark",
+                7
+              ],
+              [
+                "crack_long -> slag_skin",
+                5
+              ],
+              [
+                "crack_long -> weld_slag",
+                2
+              ],
+              [
+                "weld_slag -> crack_long",
+                1
+              ],
+              [
+                "slag_skin -> weld_slag",
+                1
+              ],
+              [
+                "weld_slag -> water_slag_mark",
+                1
+              ]
+            ]
+          },
+          "PIPE": {
+            "acc": 0.8472222222222222,
+            "hit": 61,
+            "query": 72,
+            "episodes": 3,
+            "per_class": {
+              "warp": {
+                "hit": 18,
+                "query": 24,
+                "recall": 0.75
+              },
+              "short_gouge": {
+                "hit": 19,
+                "query": 24,
+                "recall": 0.7916666666666666
+              },
+              "fold_wrinkle": {
+                "hit": 24,
+                "query": 24,
+                "recall": 1.0
+              }
+            },
+            "confusion_top": [
+              [
+                "short_gouge -> warp",
+                5
+              ],
+              [
+                "warp -> short_gouge",
+                4
+              ],
+              [
+                "warp -> fold_wrinkle",
+                2
+              ]
+            ]
+          }
+        }
+      },
+      "test_cross": {
+        "acc": 0.6690140845070423,
+        "loss": 0.9232488870620728,
+        "query_count": 568,
+        "skipped": 0
+      },
+      "validation": {
+        "n": 20,
+        "series": [
+          {
+            "iter": 5,
+            "acc": 0.7323943661971831,
+            "loss": 1.0933128580451013,
+            "query_count": 568,
+            "sources_succeeded": [
+              "CAST",
+              "GC10",
+              "PIPE",
+              "PLATE",
+              "S3D"
+            ],
+            "n_group_fail": 4
+          },
+          {
+            "iter": 10,
+            "acc": 0.8162878787878788,
+            "loss": 0.8014466479420662,
+            "query_count": 528,
+            "sources_succeeded": [
+              "CAST",
+              "CSU",
+              "GC10",
+              "PIPE",
+              "PLATE",
+              "S3D"
+            ],
+            "n_group_fail": 13
+          },
+          {
+            "iter": 15,
+            "acc": 0.7733333333333333,
+            "loss": 0.922828096151352,
+            "query_count": 600,
+            "sources_succeeded": [
+              "CAST",
+              "CSU",
+              "GC10",
+              "PIPE",
+              "PLATE",
+              "S3D"
+            ],
+            "n_group_fail": 26
+          },
+          {
+            "iter": 20,
+            "acc": 0.7839285714285714,
+            "loss": 0.8206060126423835,
+            "query_count": 560,
+            "sources_succeeded": [
+              "CAST",
+              "CSU",
+              "GC10",
+              "PIPE",
+              "PLATE",
+              "S3D"
+            ],
+            "n_group_fail": 32
+          },
+          {
+            "iter": 25,
+            "acc": 0.8375,
+            "loss": 0.7968108586966991,
+            "query_count": 560,
+            "sources_succeeded": [
+              "CAST",
+              "CSU",
+              "GC10",
+              "PIPE",
+              "PLATE",
+              "S3D"
+            ],
+            "n_group_fail": 40
+          },
+          {
+            "iter": 30,
+            "acc": 0.8169014084507042,
+            "loss": 0.8246109403669835,
+            "query_count": 568,
+            "sources_succeeded": [
+              "CAST",
+              "CSU",
+              "GC10",
+              "PIPE",
+              "PLATE",
+              "S3D"
+            ],
+            "n_group_fail": 49
+          },
+          {
+            "iter": 35,
+            "acc": 0.7864583333333334,
+            "loss": 0.8448638305068016,
+            "query_count": 576,
+            "sources_succeeded": [
+              "CAST",
+              "CSU",
+              "GC10",
+              "PIPE",
+              "PLATE",
+              "S3D"
+            ],
+            "n_group_fail": 53
+          },
+          {
+            "iter": 40,
+            "acc": 0.7966666666666666,
+            "loss": 0.8709407888352871,
+            "query_count": 600,
+            "sources_succeeded": [
+              "CAST",
+              "CSU",
+              "GC10",
+              "PIPE",
+              "PLATE",
+              "S3D"
+            ],
+            "n_group_fail": 60
+          },
+          {
+            "iter": 45,
+            "acc": 0.7866666666666666,
+            "loss": 0.8649663418531418,
+            "query_count": 600,
+            "sources_succeeded": [
+              "CAST",
+              "CSU",
+              "GC10",
+              "PIPE",
+              "PLATE",
+              "S3D"
+            ],
+            "n_group_fail": 70
+          },
+          {
+            "iter": 50,
+            "acc": 0.7650602409638554,
+            "loss": 0.9270579561591148,
+            "query_count": 664,
+            "sources_succeeded": [
+              "CAST",
+              "CSU",
+              "GC10",
+              "PIPE",
+              "PLATE",
+              "S3D"
+            ],
+            "n_group_fail": 78
+          },
+          {
+            "iter": 55,
+            "acc": 0.8186619718309859,
+            "loss": 0.7679695598781109,
+            "query_count": 568,
+            "sources_succeeded": [
+              "CAST",
+              "CSU",
+              "GC10",
+              "PIPE",
+              "PLATE",
+              "S3D"
+            ],
+            "n_group_fail": 83
+          },
+          {
+            "iter": 60,
+            "acc": 0.810546875,
+            "loss": 0.635993430763483,
+            "query_count": 512,
+            "sources_succeeded": [
+              "CAST",
+              "CSU",
+              "GC10",
+              "PIPE",
+              "PLATE",
+              "S3D"
+            ],
+            "n_group_fail": 90
+          },
+          {
+            "iter": 65,
+            "acc": 0.8142857142857143,
+            "loss": 0.6887473076581955,
+            "query_count": 560,
+            "sources_succeeded": [
+              "CAST",
+              "CSU",
+              "GC10",
+              "PIPE",
+              "PLATE",
+              "S3D"
+            ],
+            "n_group_fail": 102
+          },
+          {
+            "iter": 70,
+            "acc": 0.8132911392405063,
+            "loss": 0.8825487464666366,
+            "query_count": 632,
+            "sources_succeeded": [
+              "CAST",
+              "CSU",
+              "GC10",
+              "PIPE",
+              "PLATE",
+              "S3D"
+            ],
+            "n_group_fail": 112
+          },
+          {
+            "iter": 75,
+            "acc": 0.8134615384615385,
+            "loss": 0.6712844371795654,
+            "query_count": 520,
+            "sources_succeeded": [
+              "CAST",
+              "CSU",
+              "GC10",
+              "PIPE",
+              "PLATE",
+              "S3D"
+            ],
+            "n_group_fail": 120
+          },
+          {
+            "iter": 80,
+            "acc": 0.8216911764705882,
+            "loss": 0.7529848664999008,
+            "query_count": 544,
+            "sources_succeeded": [
+              "CAST",
+              "CSU",
+              "GC10",
+              "PIPE",
+              "PLATE",
+              "S3D"
+            ],
+            "n_group_fail": 131
+          },
+          {
+            "iter": 85,
+            "acc": 0.8629032258064516,
+            "loss": 0.5785001121461392,
+            "query_count": 496,
+            "sources_succeeded": [
+              "CAST",
+              "CSU",
+              "GC10",
+              "PIPE",
+              "PLATE",
+              "S3D"
+            ],
+            "n_group_fail": 133
+          },
+          {
+            "iter": 90,
+            "acc": 0.7467948717948718,
+            "loss": 0.8842258974909782,
+            "query_count": 624,
+            "sources_succeeded": [
+              "CAST",
+              "CSU",
+              "GC10",
+              "PIPE",
+              "PLATE",
+              "S3D"
+            ],
+            "n_group_fail": 138
+          },
+          {
+            "iter": 95,
+            "acc": 0.7570422535211268,
+            "loss": 0.741528944671154,
+            "query_count": 568,
+            "sources_succeeded": [
+              "CAST",
+              "CSU",
+              "GC10",
+              "PIPE",
+              "PLATE",
+              "S3D"
+            ],
+            "n_group_fail": 146
+          },
+          {
+            "iter": 100,
+            "acc": 0.7934782608695652,
+            "loss": 0.7352006569504738,
+            "query_count": 552,
+            "sources_succeeded": [
+              "CAST",
+              "CSU",
+              "GC10",
+              "PIPE",
+              "PLATE",
+              "S3D"
+            ],
+            "n_group_fail": 157
+          }
+        ],
+        "first_acc": 0.7323943661971831,
+        "last_acc": 0.7934782608695652,
+        "min_acc": 0.7323943661971831,
+        "max_acc": 0.8629032258064516,
+        "group_failures_sum": {
+          "PLATE:oxide_scale": 319,
+          "CR7:linear": 325,
+          "CR7:macular": 546,
+          "CR7:dent": 447
+        },
+        "source_attempts_sum": {
+          "CSU": 1394,
+          "GC10": 1596,
+          "CAST": 1639,
+          "PLATE": 1350,
+          "S3D": 1636,
+          "PIPE": 1476,
+          "CR7": 1318
+        },
+        "source_successes_sum": {
+          "GC10": 1596,
+          "CAST": 1639,
+          "S3D": 1636,
+          "PLATE": 1031,
+          "PIPE": 1476,
+          "CSU": 622
+        }
+      },
+      "hard_pairs": {
+        "jsonl_lines": 120,
+        "totals": {
+          "episodes": 400,
+          "saturated": 230,
+          "requested": 118,
+          "applied": 71,
+          "changed": 15,
+          "fallback": 47
+        },
+        "rates": {
+          "request_rate": 0.295,
+          "applied_rate": 0.1775,
+          "changed_rate": 0.0375,
+          "fallback_given_request": 0.3983050847457627,
+          "changed_given_request": 0.1271186440677966,
+          "changed_given_applied": 0.2112676056338028
+        },
+        "by_source": {
+          "CAST": {
+            "episodes": 54,
+            "requested": 16,
+            "applied": 16,
+            "changed": 7
+          },
+          "CR7": {
+            "episodes": 61,
+            "requested": 20,
+            "fallback": 20
+          },
+          "CSU": {
+            "episodes": 60,
+            "saturated": 60,
+            "requested": 15,
+            "fallback": 15
+          },
+          "GC10": {
+            "episodes": 55,
+            "requested": 16,
+            "applied": 13,
+            "changed": 8,
+            "fallback": 3
+          },
+          "PIPE": {
+            "episodes": 58,
+            "saturated": 58,
+            "requested": 19,
+            "applied": 19
+          },
+          "PLATE": {
+            "episodes": 55,
+            "saturated": 55,
+            "requested": 19,
+            "applied": 19
+          },
+          "S3D": {
+            "episodes": 57,
+            "saturated": 57,
+            "requested": 13,
+            "fallback": 9,
+            "applied": 4
+          }
+        },
+        "prob_levels": [
+          0.0,
+          0.25,
+          0.35
+        ],
+        "max_prob": 0.35,
+        "first_nonzero_prob": {
+          "iter": 11,
+          "probability": 0.25,
+          "n_ep": 4
+        },
+        "first_request": {
+          "iter": 12,
+          "source": "CAST",
+          "pair": [
+            "slag_skin",
+            "water_slag_mark"
+          ],
+          "usable": 6,
+          "n_way": 5,
+          "fallback": false,
+          "applied": true,
+          "changed": false
+        },
+        "first_applied": {
+          "iter": 12,
+          "source": "CAST",
+          "pair": [
+            "slag_skin",
+            "water_slag_mark"
+          ]
+        },
+        "first_changed": {
+          "iter": 19,
+          "source": "GC10",
+          "pair": [
+            "punch",
+            "weld_line"
+          ]
+        },
+        "pair_applied": {
+          "PLATE|foreign_embed|oxide_scale": 19,
+          "PIPE|short_gouge|warp": 8,
+          "CAST|slag_skin|weld_slag": 7,
+          "CAST|slag_skin|water_slag_mark": 6,
+          "PIPE|fold_wrinkle|warp": 6,
+          "PIPE|fold_wrinkle|short_gouge": 5,
+          "GC10|inclusion|silk_spot": 4,
+          "S3D|oxide_scale|scratch": 4,
+          "CAST|water_slag_mark|weld_slag": 3,
+          "GC10|inclusion|water": 3,
+          "GC10|punch|weld_line": 2,
+          "GC10|silk_spot|water": 1,
+          "GC10|fold_wrinkle|silk_spot": 1,
+          "GC10|fold_wrinkle|weld_line": 1,
+          "GC10|oil|punch": 1
+        },
+        "pair_changed": {
+          "CAST|slag_skin|weld_slag": 4,
+          "GC10|punch|weld_line": 2,
+          "CAST|slag_skin|water_slag_mark": 2,
+          "GC10|inclusion|silk_spot": 2,
+          "GC10|silk_spot|water": 1,
+          "GC10|fold_wrinkle|silk_spot": 1,
+          "CAST|water_slag_mark|weld_slag": 1,
+          "GC10|fold_wrinkle|weld_line": 1,
+          "GC10|inclusion|water": 1
+        },
+        "n_changed_episodes": 15,
+        "changed_episodes": [
+          {
+            "iter": 19,
+            "source": "GC10",
+            "pair": [
+              "punch",
+              "weld_line"
+            ]
+          },
+          {
+            "iter": 20,
+            "source": "GC10",
+            "pair": [
+              "punch",
+              "weld_line"
+            ]
+          },
+          {
+            "iter": 21,
+            "source": "CAST",
+            "pair": [
+              "slag_skin",
+              "weld_slag"
+            ]
+          },
+          {
+            "iter": 24,
+            "source": "GC10",
+            "pair": [
+              "silk_spot",
+              "water"
+            ]
+          },
+          {
+            "iter": 27,
+            "source": "CAST",
+            "pair": [
+              "slag_skin",
+              "water_slag_mark"
+            ]
+          },
+          {
+            "iter": 28,
+            "source": "CAST",
+            "pair": [
+              "slag_skin",
+              "weld_slag"
+            ]
+          },
+          {
+            "iter": 32,
+            "source": "GC10",
+            "pair": [
+              "fold_wrinkle",
+              "silk_spot"
+            ]
+          },
+          {
+            "iter": 42,
+            "source": "CAST",
+            "pair": [
+              "slag_skin",
+              "weld_slag"
+            ]
+          },
+          {
+            "iter": 48,
+            "source": "CAST",
+            "pair": [
+              "water_slag_mark",
+              "weld_slag"
+            ]
+          },
+          {
+            "iter": 49,
+            "source": "GC10",
+            "pair": [
+              "inclusion",
+              "silk_spot"
+            ]
+          },
+          {
+            "iter": 79,
+            "source": "GC10",
+            "pair": [
+              "fold_wrinkle",
+              "weld_line"
+            ]
+          },
+          {
+            "iter": 79,
+            "source": "CAST",
+            "pair": [
+              "slag_skin",
+              "water_slag_mark"
+            ]
+          },
+          {
+            "iter": 82,
+            "source": "CAST",
+            "pair": [
+              "slag_skin",
+              "weld_slag"
+            ]
+          },
+          {
+            "iter": 98,
+            "source": "GC10",
+            "pair": [
+              "inclusion",
+              "silk_spot"
+            ]
+          },
+          {
+            "iter": 100,
+            "source": "GC10",
+            "pair": [
+              "inclusion",
+              "water"
+            ]
+          }
+        ],
+        "holdout_in_train_episodes": 0
+      },
+      "data_summary_saturated": [
+        "CSU",
+        "PIPE",
+        "PLATE",
+        "S3D"
+      ],
+      "train_group_failures": {},
+      "train_source_attempts": {
+        "PIPE": 58,
+        "GC10": 55,
+        "CSU": 60,
+        "CR7": 61,
+        "PLATE": 55,
+        "S3D": 57,
+        "CAST": 54
+      },
+      "train_source_successes": {
+        "PIPE": 58,
+        "GC10": 55,
+        "CSU": 60,
+        "CR7": 61,
+        "PLATE": 55,
+        "S3D": 57,
+        "CAST": 54
+      },
+      "buffer_last": {
+        "iter": 100,
+        "active": {
+          "CAST": [
+            [
+              "slag_skin",
+              "weld_slag"
+            ],
+            [
+              "slag_skin",
+              "water_slag_mark"
+            ],
+            [
+              "water_slag_mark",
+              "weld_slag"
+            ]
+          ],
+          "CR7": [],
+          "CSU": [],
+          "GC10": [
+            [
+              "inclusion",
+              "silk_spot"
+            ]
+          ],
+          "PIPE": [
+            [
+              "short_gouge",
+              "warp"
+            ],
+            [
+              "fold_wrinkle",
+              "short_gouge"
+            ],
+            [
+              "fold_wrinkle",
+              "warp"
+            ]
+          ],
+          "PLATE": [],
+          "S3D": [
+            [
+              "oxide_scale",
+              "scratch"
+            ]
+          ]
+        },
+        "top": {
+          "CAST": [
+            {
+              "pair": [
+                "slag_skin",
+                "weld_slag"
+              ],
+              "rate": 0.2708333333333333,
+              "errors": 13,
+              "streak": 7,
+              "episodes": 4
+            },
+            {
+              "pair": [
+                "slag_skin",
+                "water_slag_mark"
+              ],
+              "rate": 0.15625,
+              "errors": 10,
+              "streak": 2,
+              "episodes": 4
+            },
+            {
+              "pair": [
+                "water_slag_mark",
+                "weld_slag"
+              ],
+              "rate": 0.08333333333333333,
+              "errors": 4,
+              "streak": 7,
+              "episodes": 4
+            }
+          ],
+          "CR7": [],
+          "CSU": [],
+          "GC10": [
+            {
+              "pair": [
+                "inclusion",
+                "silk_spot"
+              ],
+              "rate": 0.28125,
+              "errors": 9,
+              "streak": 3,
+              "episodes": 3
+            },
+            {
+              "pair": [
+                "fold_wrinkle",
+                "silk_spot"
+              ],
+              "rate": 0.25,
+              "errors": 8,
+              "streak": 1,
+              "episodes": 3
+            },
+            {
+              "pair": [
+                "oil",
+                "water"
+              ],
+              "rate": 0.1875,
+              "errors": 3,
+              "streak": 1,
+              "episodes": 3
+            }
+          ],
+          "PIPE": [
+            {
+              "pair": [
+                "short_gouge",
+                "warp"
+              ],
+              "rate": 0.09375,
+              "errors": 6,
+              "streak": 3,
+              "episodes": 4
+            },
+            {
+              "pair": [
+                "fold_wrinkle",
+                "short_gouge"
+              ],
+              "rate": 0.078125,
+              "errors": 5,
+              "streak": 7,
+              "episodes": 4
+            },
+            {
+              "pair": [
+                "fold_wrinkle",
+                "warp"
+              ],
+              "rate": 0.0625,
+              "errors": 4,
+              "streak": 7,
+              "episodes": 4
+            }
+          ],
+          "PLATE": [
+            {
+              "pair": [
+                "foreign_embed",
+                "oxide_scale"
+              ],
+              "rate": 0.265625,
+              "errors": 17,
+              "streak": 1,
+              "episodes": 4
+            },
+            {
+              "pair": [
+                "inclusion",
+                "oxide_scale"
+              ],
+              "rate": 0.046875,
+              "errors": 3,
+              "streak": 1,
+              "episodes": 4
+            }
+          ],
+          "S3D": [
+            {
+              "pair": [
+                "oxide_scale",
+                "scratch"
+              ],
+              "rate": 0.025,
+              "errors": 2,
+              "streak": 2,
+              "episodes": 5
+            }
+          ]
+        },
+        "removed": {
+          "CAST": [],
+          "CR7": [],
+          "CSU": [],
+          "GC10": [
+            [
+              "inclusion",
+              "water"
+            ]
+          ],
+          "PIPE": [],
+          "PLATE": [],
+          "S3D": []
+        }
+      },
+      "buffer_entry_iters": null,
+      "source_class_counts": {
+        "CAST": 6,
+        "CR7": 7,
+        "CSU": 3,
+        "GC10": 9,
+        "PIPE": 3,
+        "PLATE": 3,
+        "S3D": 2
+      },
+      "strict_groups_summary": true,
+      "buffer_first_active": {
+        "CAST": {
+          "iter": 10,
+          "pairs": [
+            [
+              "slag_skin",
+              "weld_slag"
+            ],
+            [
+              "slag_skin",
+              "water_slag_mark"
+            ],
+            [
+              "water_slag_mark",
+              "weld_slag"
+            ]
+          ]
+        },
+        "PIPE": {
+          "iter": 10,
+          "pairs": [
+            [
+              "short_gouge",
+              "warp"
+            ],
+            [
+              "fold_wrinkle",
+              "warp"
+            ]
+          ]
+        },
+        "PLATE": {
+          "iter": 10,
+          "pairs": [
+            [
+              "foreign_embed",
+              "oxide_scale"
+            ],
+            [
+              "inclusion",
+              "oxide_scale"
+            ]
+          ]
+        },
+        "GC10": {
+          "iter": 15,
+          "pairs": [
+            [
+              "punch",
+              "weld_line"
+            ]
+          ]
+        },
+        "S3D": {
+          "iter": 55,
+          "pairs": [
+            [
+              "oxide_scale",
+              "scratch"
+            ]
+          ]
+        }
+      },
+      "val_sources_never_succeeded": [
+        "CR7"
+      ],
+      "val_sources_missing_entirely": null
+    }
+  },
+  "notes": {
+    "historical_holdout_rounded": {
+      "NEU": 0.951,
+      "CR7": 0.706,
+      "GC10": 0.665
+    },
+    "historical_holdout_source": "doc/cspd/实验记录.md layer3_p1 table (rounded, 800 queries)",
+    "historical_class_fractions_exact": {
+      "CR7": {
+        "oil": [
+          41,
+          96
+        ],
+        "linear": [
+          58,
+          120
+        ],
+        "pit_local": [
+          77,
+          144
+        ]
+      },
+      "GC10": {
+        "oil": [
+          46,
+          112
+        ],
+        "inclusion": [
+          32,
+          64
+        ],
+        "punch": [
+          45,
+          88
+        ]
+      }
+    },
+    "historical_class_fractions_source": "doc/cspd/实验记录.md layer3 留出混淆 section, 查询张数 line"
+  }
+}

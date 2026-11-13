@@ -1,0 +1,139 @@
+﻿source,class,split,images_from_merge_report,groups_total_all_splits,feas_k3q8,feas_k5q8,feas_source,note
+CR7,dent,train,369,16,True,True,diagnosis.json,diagnosis.json: CR7 train 7 类 k3/k5 均可行
+CR7,dent,val,100,16,False,False,diagnosis.json,"两组 sizes=[98,2]，无法分出 support k 且留下 q=8"
+CR7,dent,test,131,16,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+CR7,inclusion,train,333,28,True,True,diagnosis.json,diagnosis.json: CR7 train 7 类 k3/k5 均可行
+CR7,inclusion,val,58,28,True,True,diagnosis.json,
+CR7,inclusion,test,209,28,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+CR7,linear,train,425,17,True,True,diagnosis.json,diagnosis.json: CR7 train 7 类 k3/k5 均可行
+CR7,linear,val,83,17,False,False,diagnosis.json,单组 n=83，strict_groups 不能拆组
+CR7,linear,test,68,17,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+CR7,macular,train,424,19,True,True,diagnosis.json,diagnosis.json: CR7 train 7 类 k3/k5 均可行
+CR7,macular,val,91,19,False,False,diagnosis.json,单组 n=91，strict_groups 不能拆组
+CR7,macular,test,84,19,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+CR7,oil,train,361,39,True,True,diagnosis.json,diagnosis.json: CR7 train 7 类 k3/k5 均可行
+CR7,oil,val,114,39,True,True,diagnosis.json,
+CR7,oil,test,125,39,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+CR7,pit_local,train,350,30,True,True,diagnosis.json,diagnosis.json: CR7 train 7 类 k3/k5 均可行
+CR7,pit_local,val,93,30,True,True,diagnosis.json,
+CR7,pit_local,test,94,30,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+CR7,punch,train,332,26,True,True,diagnosis.json,diagnosis.json: CR7 train 7 类 k3/k5 均可行
+CR7,punch,val,124,26,True,True,diagnosis.json,
+CR7,punch,test,103,26,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+CSU,inclusion,train,148,16,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+CSU,inclusion,val,53,16,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+CSU,inclusion,test,44,16,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+CSU,oxide_scale_csu,train,8,6,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+CSU,oxide_scale_csu,val,2,6,False,False,diagnosis.json,"too_few_images (need>=11, have 2)"
+CSU,oxide_scale_csu,test,2,6,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+CSU,scratch,train,29,9,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+CSU,scratch,val,9,9,False,False,diagnosis.json,"too_few_images (need>=11, have 9)"
+CSU,scratch,test,11,9,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+GC10,crescent,train,137,82,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+GC10,crescent,val,45,82,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+GC10,crescent,test,44,82,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+GC10,fold_wrinkle,train,119,60,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+GC10,fold_wrinkle,val,40,60,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+GC10,fold_wrinkle,test,44,60,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+GC10,inclusion,train,128,69,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+GC10,inclusion,val,46,69,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+GC10,inclusion,test,42,69,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+GC10,oil,train,118,52,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+GC10,oil,val,37,52,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+GC10,oil,test,49,52,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+GC10,punch,train,131,151,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+GC10,punch,val,44,151,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+GC10,punch,test,44,151,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+GC10,rolled_pit,train,21,26,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+GC10,rolled_pit,val,5,26,False,False,diagnosis.json,"too_few_images (need>=11, have 5); 此为 val split。holdout_pool=all 合计31图/26组，本轮未重算 pool 可行性"
+GC10,rolled_pit,test,5,26,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+GC10,silk_spot,train,396,73,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+GC10,silk_spot,val,103,73,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+GC10,silk_spot,test,152,73,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+GC10,water,train,169,106,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+GC10,water,val,63,106,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+GC10,water,test,57,106,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+GC10,weld_line,train,163,179,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+GC10,weld_line,val,56,179,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+GC10,weld_line,test,54,179,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+NEU,crazing,train,170,27,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+NEU,crazing,val,73,27,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+NEU,crazing,test,52,27,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+NEU,inclusion,train,162,24,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+NEU,inclusion,val,81,24,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+NEU,inclusion,test,57,24,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+NEU,oxide_scale,train,209,14,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+NEU,oxide_scale,val,45,14,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+NEU,oxide_scale,test,46,14,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+NEU,patch,train,160,65,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+NEU,patch,val,52,65,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+NEU,patch,test,59,65,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+NEU,pit_texture,train,155,45,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+NEU,pit_texture,val,50,45,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+NEU,pit_texture,test,56,45,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+NEU,scratch,train,149,22,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+NEU,scratch,val,44,22,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+NEU,scratch,test,57,22,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+PLATE,foreign_embed,train,74,13,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+PLATE,foreign_embed,val,27,13,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+PLATE,foreign_embed,test,19,13,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+PLATE,inclusion,train,62,14,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+PLATE,inclusion,val,48,14,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+PLATE,inclusion,test,10,14,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+PLATE,oxide_scale,train,130,32,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+PLATE,oxide_scale,val,33,32,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+PLATE,oxide_scale,test,77,32,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+CAST,crack_long,train,72,24,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+CAST,crack_long,val,22,24,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+CAST,crack_long,test,28,24,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+CAST,cutting_opening,train,87,31,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+CAST,cutting_opening,val,21,31,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+CAST,cutting_opening,test,24,31,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+CAST,scratch,train,81,29,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+CAST,scratch,val,27,29,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+CAST,scratch,test,30,29,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+CAST,slag_skin,train,77,41,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+CAST,slag_skin,val,30,41,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+CAST,slag_skin,test,24,41,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+CAST,water_slag_mark,train,68,41,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+CAST,water_slag_mark,val,23,41,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+CAST,water_slag_mark,test,23,41,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+CAST,weld_slag,train,83,26,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+CAST,weld_slag,val,26,26,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+CAST,weld_slag,test,34,26,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+PIPE,fold_wrinkle,train,164,30,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+PIPE,fold_wrinkle,val,49,30,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+PIPE,fold_wrinkle,test,56,30,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+PIPE,short_gouge,train,83,25,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+PIPE,short_gouge,val,41,25,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+PIPE,short_gouge,test,23,25,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+PIPE,warp,train,80,30,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+PIPE,warp,val,25,30,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+PIPE,warp,test,27,30,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+S3D,oxide_scale,train,105,23,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+S3D,oxide_scale,val,29,23,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+S3D,oxide_scale,test,66,23,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+S3D,scratch,train,63,27,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+S3D,scratch,val,32,27,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+S3D,scratch,test,34,27,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+XSDD,iron_ash,train,56,9,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+XSDD,iron_ash,val,15,9,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+XSDD,iron_ash,test,51,9,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+XSDD,oxide_scale_plate,train,52,6,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+XSDD,oxide_scale_plate,val,11,6,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+XSDD,oxide_scale_plate,test,0,6,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+XSDD,oxide_scale_temp,train,87,3,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+XSDD,oxide_scale_temp,val,116,3,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+XSDD,oxide_scale_temp,test,0,3,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+XSDD,red_iron,train,220,19,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+XSDD,red_iron,val,72,19,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+XSDD,red_iron,test,105,19,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+XSDD,roll_print,train,83,3,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+XSDD,roll_print,val,120,3,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+XSDD,roll_print,test,0,3,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+XSDD,scratch,train,83,6,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+XSDD,scratch,val,47,6,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+XSDD,scratch,test,4,6,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+XSDD,slag_inclusion,train,177,26,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+XSDD,slag_inclusion,val,31,26,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性
+XSDD,slag_inclusion,test,30,26,未细数,未细数,merge_report_images_only,仅图像数; 本轮未全量重算可行性

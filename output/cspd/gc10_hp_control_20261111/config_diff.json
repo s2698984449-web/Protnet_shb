@@ -1,0 +1,36 @@
+{
+  "A_yaml": "config/cspd/gc10_hp_control_a.yaml",
+  "B_config_json": "output/cspd/hp_b_samplerfix_20261111_v2/B_GC10_s0/config.json",
+  "allowed_differences": [
+    {
+      "key": "config_path",
+      "A": "<missing>",
+      "B": "D:\\元强化学习\\代码\\config\\cspd\\queues\\hp_b_samplerfix_20261111_v2\\B_GC10_s0.yaml"
+    },
+    {
+      "key": "exp_name",
+      "A": "A_GC10_s0",
+      "B": "B_GC10_s0"
+    },
+    {
+      "key": "experiment_variant",
+      "A": "A",
+      "B": "B"
+    },
+    {
+      "key": "output_group",
+      "A": "gc10_hp_control_20261111",
+      "B": "hp_b_samplerfix_20261111_v2"
+    },
+    {
+      "key": "same_hard_pairs",
+      "A": false,
+      "B": true
+    }
+  ],
+  "unexpected_differences": [],
+  "ok": true,
+  "checked_at_zone": "Asia/Shanghai (UTC+8)",
+  "models_loaded": false,
+  "training_run": false
+}

@@ -1,0 +1,560 @@
+{
+  "generated_at": "2026-11-12 11:35:55 Asia/Shanghai",
+  "scope": "narrow audit: merge_report + configs + existing diagnosis/review/metrics; no image decode; no full file/mask walk after steering",
+  "opened_images": false,
+  "xsd_mask_path_check_before_narrowing": {
+    "XSDD_images_listed": 1360,
+    "XSDD_mask_files_found": 0,
+    "pixels_decoded": false
+  },
+  "split_rule": {
+    "yaml": "config/cspd/steel_sources_v3.yaml",
+    "layout": "class_source_split",
+    "seed": 0,
+    "ratios": [
+      0.6,
+      0.2,
+      0.2
+    ],
+    "method": "scripts/merge_sources.py split_rows: 按整个 group 划入 train/val/test，同组不跨 split。目标比例按组而非按张，实际图像比不必等于 60/20/20。",
+    "group_modes": {
+      "GC10": "regex img_\\d+_(\\d+)_\\d+ 文件名批次号",
+      "others": "hist 32x32 threshold 0.3，是直方图近邻簇，不是真实工况/卷号"
+    },
+    "group_namespace": "source/class/id，不能全局裸 id 去重"
+  },
+  "sources_in_index": [
+    "CAST",
+    "CR7",
+    "CSU",
+    "GC10",
+    "NEU",
+    "PIPE",
+    "PLATE",
+    "S3D",
+    "XSDD"
+  ],
+  "source_level": {
+    "CAST": {
+      "images_train": 468,
+      "images_val": 149,
+      "images_test": 163,
+      "images_total": 780,
+      "groups_total_all_splits_namespaced_sum": 192,
+      "groups_per_split": "未细数(merge_report 无按 split 组数; 本轮未读全部 groups.json 拆分)",
+      "n_semantic_classes": 6,
+      "classes": [
+        "crack_long",
+        "cutting_opening",
+        "scratch",
+        "slag_skin",
+        "water_slag_mark",
+        "weld_slag"
+      ],
+      "roles": {
+        "A_GC10": "训练+同域验证",
+        "B_GC10": "训练+同域验证",
+        "B_NEU": "训练+同域验证",
+        "B_CR7": "训练+同域验证"
+      },
+      "mask_note": "训练配置 require_mask=true; 本轮未逐文件复核mask。已有 diagnosis 对 CR7 全类及 CSU/GC10 若干 val 行记 missing_mask=0"
+    },
+    "CR7": {
+      "images_train": 2594,
+      "images_val": 663,
+      "images_test": 814,
+      "images_total": 4071,
+      "groups_total_all_splits_namespaced_sum": 175,
+      "groups_per_split": "未细数(merge_report 无按 split 组数; 本轮未读全部 groups.json 拆分)",
+      "n_semantic_classes": 7,
+      "classes": [
+        "dent",
+        "inclusion",
+        "linear",
+        "macular",
+        "oil",
+        "pit_local",
+        "punch"
+      ],
+      "roles": {
+        "A_GC10": "训练+同域验证",
+        "B_GC10": "训练+同域验证",
+        "B_NEU": "训练+同域验证",
+        "B_CR7": "留出(holdout_pool=all)"
+      },
+      "mask_note": "训练配置 require_mask=true; 本轮未逐文件复核mask。已有 diagnosis 对 CR7 全类及 CSU/GC10 若干 val 行记 missing_mask=0"
+    },
+    "CSU": {
+      "images_train": 185,
+      "images_val": 64,
+      "images_test": 57,
+      "images_total": 306,
+      "groups_total_all_splits_namespaced_sum": 31,
+      "groups_per_split": "未细数(merge_report 无按 split 组数; 本轮未读全部 groups.json 拆分)",
+      "n_semantic_classes": 3,
+      "classes": [
+        "inclusion",
+        "oxide_scale_csu",
+        "scratch"
+      ],
+      "roles": {
+        "A_GC10": "训练可采; 同域val实际成功0",
+        "B_GC10": "训练可采; 同域val实际成功0",
+        "B_NEU": "训练可采; 同域val实际成功0",
+        "B_CR7": "训练可采; 同域val实际成功0"
+      },
+      "mask_note": "merge 条目 require_mask=true; 本轮未再逐文件复核"
+    },
+    "GC10": {
+      "images_train": 1382,
+      "images_val": 439,
+      "images_test": 491,
+      "images_total": 2312,
+      "groups_total_all_splits_namespaced_sum": 798,
+      "groups_per_split": "未细数(merge_report 无按 split 组数; 本轮未读全部 groups.json 拆分)",
+      "n_semantic_classes": 9,
+      "classes": [
+        "crescent",
+        "fold_wrinkle",
+        "inclusion",
+        "oil",
+        "punch",
+        "rolled_pit",
+        "silk_spot",
+        "water",
+        "weld_line"
+      ],
+      "roles": {
+        "A_GC10": "留出(holdout_pool=all, same-source)",
+        "B_GC10": "留出(holdout_pool=all, same-source)",
+        "B_NEU": "训练+同域验证",
+        "B_CR7": "训练+同域验证"
+      },
+      "mask_note": "训练配置 require_mask=true; 本轮未逐文件复核mask。已有 diagnosis 对 CR7 全类及 CSU/GC10 若干 val 行记 missing_mask=0"
+    },
+    "NEU": {
+      "images_train": 1005,
+      "images_val": 345,
+      "images_test": 327,
+      "images_total": 1677,
+      "groups_total_all_splits_namespaced_sum": 197,
+      "groups_per_split": "未细数(merge_report 无按 split 组数; 本轮未读全部 groups.json 拆分)",
+      "n_semantic_classes": 6,
+      "classes": [
+        "crazing",
+        "inclusion",
+        "oxide_scale",
+        "patch",
+        "pit_texture",
+        "scratch"
+      ],
+      "roles": {
+        "A_GC10": "训练+同域验证",
+        "B_GC10": "训练+同域验证",
+        "B_NEU": "留出(holdout_pool=all)",
+        "B_CR7": "训练+同域验证"
+      },
+      "mask_note": "训练配置 require_mask=true; 本轮未逐文件复核mask。已有 diagnosis 对 CR7 全类及 CSU/GC10 若干 val 行记 missing_mask=0"
+    },
+    "PIPE": {
+      "images_train": 327,
+      "images_val": 115,
+      "images_test": 106,
+      "images_total": 548,
+      "groups_total_all_splits_namespaced_sum": 85,
+      "groups_per_split": "未细数(merge_report 无按 split 组数; 本轮未读全部 groups.json 拆分)",
+      "n_semantic_classes": 3,
+      "classes": [
+        "fold_wrinkle",
+        "short_gouge",
+        "warp"
+      ],
+      "roles": {
+        "A_GC10": "训练+同域验证",
+        "B_GC10": "训练+同域验证",
+        "B_NEU": "训练+同域验证",
+        "B_CR7": "训练+同域验证"
+      },
+      "mask_note": "训练配置 require_mask=true; 本轮未逐文件复核mask。已有 diagnosis 对 CR7 全类及 CSU/GC10 若干 val 行记 missing_mask=0"
+    },
+    "PLATE": {
+      "images_train": 266,
+      "images_val": 108,
+      "images_test": 106,
+      "images_total": 480,
+      "groups_total_all_splits_namespaced_sum": 59,
+      "groups_per_split": "未细数(merge_report 无按 split 组数; 本轮未读全部 groups.json 拆分)",
+      "n_semantic_classes": 3,
+      "classes": [
+        "foreign_embed",
+        "inclusion",
+        "oxide_scale"
+      ],
+      "roles": {
+        "A_GC10": "训练+同域验证",
+        "B_GC10": "训练+同域验证",
+        "B_NEU": "训练+同域验证",
+        "B_CR7": "训练+同域验证"
+      },
+      "mask_note": "训练配置 require_mask=true; 本轮未逐文件复核mask。已有 diagnosis 对 CR7 全类及 CSU/GC10 若干 val 行记 missing_mask=0"
+    },
+    "S3D": {
+      "images_train": 168,
+      "images_val": 61,
+      "images_test": 100,
+      "images_total": 329,
+      "groups_total_all_splits_namespaced_sum": 50,
+      "groups_per_split": "未细数(merge_report 无按 split 组数; 本轮未读全部 groups.json 拆分)",
+      "n_semantic_classes": 2,
+      "classes": [
+        "oxide_scale",
+        "scratch"
+      ],
+      "roles": {
+        "A_GC10": "训练+同域验证(饱和2-way)",
+        "B_GC10": "训练+同域验证(饱和2-way)",
+        "B_NEU": "训练+同域验证(饱和2-way)",
+        "B_CR7": "训练+同域验证(饱和2-way)"
+      },
+      "mask_note": "merge 条目 require_mask=true; 本轮未再逐文件复核"
+    },
+    "XSDD": {
+      "images_train": 758,
+      "images_val": 412,
+      "images_test": 190,
+      "images_total": 1360,
+      "groups_total_all_splits_namespaced_sum": 72,
+      "groups_per_split": "未细数(merge_report 无按 split 组数; 本轮未读全部 groups.json 拆分)",
+      "n_semantic_classes": 7,
+      "classes": [
+        "iron_ash",
+        "oxide_scale_plate",
+        "oxide_scale_temp",
+        "red_iron",
+        "roll_print",
+        "scratch",
+        "slag_inclusion"
+      ],
+      "roles": {
+        "A_GC10": "排除(exclude_sources+无mask)",
+        "B_GC10": "排除(exclude_sources+无mask)",
+        "B_NEU": "排除",
+        "B_CR7": "排除"
+      },
+      "mask_note": "数据索引中有图; 收窄前目录清点1360图/0个mask文件(只查路径存在,未解码像素); 配置 exclude_sources 且 require_mask=true"
+    }
+  },
+  "train_episodes": {
+    "meta_batch": 4,
+    "iters": 100,
+    "total_per_run": 400,
+    "by_run": {
+      "A_GC10": {
+        "PIPE": 62,
+        "NEU": 53,
+        "CR7": 61,
+        "S3D": 64,
+        "CSU": 56,
+        "PLATE": 50,
+        "CAST": 54
+      },
+      "B_GC10": {
+        "PIPE": 60,
+        "NEU": 54,
+        "CR7": 54,
+        "S3D": 61,
+        "CSU": 62,
+        "PLATE": 55,
+        "CAST": 54
+      },
+      "B_NEU": {
+        "PIPE": 54,
+        "GC10": 68,
+        "CSU": 53,
+        "CR7": 54,
+        "PLATE": 56,
+        "S3D": 57,
+        "CAST": 58
+      },
+      "B_CR7": {
+        "PIPE": 60,
+        "NEU": 66,
+        "CSU": 57,
+        "S3D": 57,
+        "CAST": 55,
+        "PLATE": 50,
+        "GC10": 55
+      }
+    },
+    "attempts_equal_successes": true,
+    "train_group_failures": {},
+    "class_coverage": "NA: 训练日志无完整 class_names，不能把资格当成采到"
+  },
+  "same_val_success_by_source_sum_of_per_eval_by_source": {
+    "A_GC10": {
+      "NEU": 66,
+      "CR7": 58,
+      "CAST": 62,
+      "S3D": 71,
+      "PIPE": 75,
+      "PLATE": 68,
+      "CSU": 0,
+      "GC10": 0,
+      "XSDD": 0
+    },
+    "B_GC10": {
+      "NEU": 66,
+      "CR7": 58,
+      "CAST": 62,
+      "S3D": 71,
+      "PIPE": 75,
+      "PLATE": 68,
+      "CSU": 0,
+      "GC10": 0,
+      "XSDD": 0
+    },
+    "B_NEU": {
+      "GC10": 50,
+      "CAST": 75,
+      "PLATE": 66,
+      "S3D": 67,
+      "CR7": 76,
+      "PIPE": 66,
+      "CSU": 0,
+      "NEU": 0,
+      "XSDD": 0
+    },
+    "B_CR7": {
+      "GC10": 77,
+      "PIPE": 67,
+      "PLATE": 69,
+      "CAST": 65,
+      "NEU": 71,
+      "S3D": 51,
+      "CSU": 0,
+      "CR7": 0,
+      "XSDD": 0
+    }
+  },
+  "same_val_note": "应使用各次 same_validation.by_source.episodes 求和。metrics 末次 source_attempts/successes 是 val_sampler 累计且中间穿插了 test_cross，不能当作纯同域验证覆盖，更不能把 20 个 snapshot 再相加。",
+  "val_sampler_last_cumulative_contaminated_by_cross": {
+    "A_GC10": {
+      "attempts": {
+        "CSU": 137,
+        "NEU": 121,
+        "CR7": 110,
+        "CAST": 126,
+        "S3D": 137,
+        "PIPE": 75,
+        "PLATE": 135
+      },
+      "successes": {
+        "NEU": 121,
+        "CR7": 110,
+        "CAST": 126,
+        "S3D": 137,
+        "PIPE": 75,
+        "CSU": 76,
+        "PLATE": 135
+      }
+    },
+    "B_GC10": {
+      "attempts": {
+        "CSU": 137,
+        "NEU": 121,
+        "CR7": 110,
+        "CAST": 126,
+        "S3D": 137,
+        "PIPE": 75,
+        "PLATE": 135
+      },
+      "successes": {
+        "NEU": 121,
+        "CR7": 110,
+        "CAST": 126,
+        "S3D": 137,
+        "PIPE": 75,
+        "CSU": 76,
+        "PLATE": 135
+      }
+    },
+    "B_NEU": {
+      "attempts": {
+        "CSU": 93,
+        "GC10": 111,
+        "CAST": 131,
+        "PLATE": 113,
+        "S3D": 119,
+        "CR7": 132,
+        "PIPE": 130
+      },
+      "successes": {
+        "GC10": 111,
+        "CAST": 131,
+        "PLATE": 113,
+        "S3D": 119,
+        "CR7": 132,
+        "PIPE": 130,
+        "CSU": 44
+      }
+    },
+    "B_CR7": {
+      "attempts": {
+        "GC10": 148,
+        "PIPE": 130,
+        "PLATE": 117,
+        "CAST": 117,
+        "NEU": 119,
+        "S3D": 105,
+        "CSU": 90
+      },
+      "successes": {
+        "GC10": 148,
+        "PIPE": 130,
+        "PLATE": 117,
+        "CAST": 117,
+        "NEU": 119,
+        "S3D": 105,
+        "CSU": 44
+      }
+    }
+  },
+  "known_infeasible_from_existing_diagnosis": [
+    {
+      "source": "CR7",
+      "class": "dent",
+      "split": "val",
+      "images": 100,
+      "n_groups": 2,
+      "feas_k3q8": false,
+      "feas_k5q8": false,
+      "reason": "两组 sizes=[98,2]，无法分出 support k 且留下 q=8"
+    },
+    {
+      "source": "CR7",
+      "class": "linear",
+      "split": "val",
+      "images": 83,
+      "n_groups": 1,
+      "feas_k3q8": false,
+      "feas_k5q8": false,
+      "reason": "单组 n=83，strict_groups 不能拆组"
+    },
+    {
+      "source": "CR7",
+      "class": "macular",
+      "split": "val",
+      "images": 91,
+      "n_groups": 1,
+      "feas_k3q8": false,
+      "feas_k5q8": false,
+      "reason": "单组 n=91，strict_groups 不能拆组"
+    },
+    {
+      "source": "CR7",
+      "class": "inclusion",
+      "split": "val",
+      "images": 58,
+      "n_groups": 7,
+      "feas_k3q8": true,
+      "feas_k5q8": true,
+      "reason": ""
+    },
+    {
+      "source": "CR7",
+      "class": "oil",
+      "split": "val",
+      "images": 114,
+      "n_groups": 12,
+      "feas_k3q8": true,
+      "feas_k5q8": true,
+      "reason": ""
+    },
+    {
+      "source": "CR7",
+      "class": "pit_local",
+      "split": "val",
+      "images": 93,
+      "n_groups": 6,
+      "feas_k3q8": true,
+      "feas_k5q8": true,
+      "reason": ""
+    },
+    {
+      "source": "CR7",
+      "class": "punch",
+      "split": "val",
+      "images": 124,
+      "n_groups": 6,
+      "feas_k3q8": true,
+      "feas_k5q8": true,
+      "reason": ""
+    },
+    {
+      "source": "CSU",
+      "class": "oxide_scale_csu",
+      "split": "val",
+      "images": 2,
+      "n_groups": 1,
+      "feas_k3q8": false,
+      "feas_k5q8": false,
+      "reason": "too_few_images (need>=11, have 2)"
+    },
+    {
+      "source": "CSU",
+      "class": "scratch",
+      "split": "val",
+      "images": 9,
+      "n_groups": 3,
+      "feas_k3q8": false,
+      "feas_k5q8": false,
+      "reason": "too_few_images (need>=11, have 9)"
+    },
+    {
+      "source": "GC10",
+      "class": "rolled_pit",
+      "split": "val",
+      "images": 5,
+      "n_groups": 5,
+      "feas_k3q8": false,
+      "feas_k5q8": false,
+      "reason": "too_few_images (need>=11, have 5); 此为 val split。holdout_pool=all 合计31图/26组，本轮未重算 pool 可行性"
+    }
+  ],
+  "neu_plate_k_dependent": "已有 diagnosis.other_val_group_infeasible 未列入 NEU/PLATE；本轮未重扫，是否另有 k 依赖不可行未细数。",
+  "exclusive_pairs_when_GC10_holdout": [
+    {
+      "pair": [
+        "oil",
+        "water"
+      ],
+      "reason": "unavailable_same_source_pair: 训练来源上不同时共存"
+    },
+    {
+      "pair": [
+        "punch",
+        "weld_line"
+      ],
+      "reason": "unavailable_same_source_pair: 训练来源上不同时共存"
+    }
+  ],
+  "csu_val": "CSU val 三类中 oxide_scale_csu 与 scratch 均不足 k+q，仅 inclusion 可能可行，来源级可行类 <2，四面同域 val 成功均为 0。训练 split 仍采到了 CSU。",
+  "holdout_pool": "holdout_pool=all 把该留出来源自己的 train+val+test 合池，组仍隔离；不是标准只用 test split。support 类标签不用于训练网络。paired 为同来源 same 评估。",
+  "paired_manifest_reused": {
+    "seed": 20261111,
+    "n_tasks": 20,
+    "all_5way": true,
+    "k3": 11,
+    "k5": 9,
+    "support_items": 390,
+    "query_items": 800,
+    "unique_source": "GC10 1190 items in manifest",
+    "splits_under_pool_all": {
+      "train": 706,
+      "val": 242,
+      "test": 242
+    },
+    "group_overlap": 0,
+    "cross_source": false
+  }
+}

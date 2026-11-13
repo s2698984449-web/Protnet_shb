@@ -1,0 +1,274 @@
+{
+  "created_at": "2026-11-11T20:49:21",
+  "config_path": "D:\\元强化学习\\代码\\config\\cspd\\gc10_hp_control_a.yaml",
+  "baseline_ckpt": "D:\\元强化学习\\代码\\output\\cspd\\hp_b_samplerfix_20261111_v2\\B_GC10_s0\\last.pt",
+  "candidate_ckpt": "D:\\元强化学习\\代码\\output\\cspd\\gc10_hp_control_20261111\\A_GC10_s0\\last.pt",
+  "manifest_path": "D:\\元强化学习\\代码\\output\\cspd\\gc10_hp_control_20261111\\paired_eval\\manifest.json",
+  "manifest_created_this_run": true,
+  "manifest_seed": 20261111,
+  "n_tasks": 20,
+  "device": "cuda",
+  "config_diff": {
+    "left": "A_yaml",
+    "right": "B_config_json",
+    "allowed_differences": [
+      {
+        "key": "config_path",
+        "equal": false,
+        "allowed_unique": true,
+        "A_yaml": "<missing>",
+        "B_config_json": "D:\\元强化学习\\代码\\config\\cspd\\queues\\hp_b_samplerfix_20261111_v2\\B_GC10_s0.yaml"
+      },
+      {
+        "key": "exp_name",
+        "equal": false,
+        "allowed_unique": true,
+        "A_yaml": "A_GC10_s0",
+        "B_config_json": "B_GC10_s0"
+      },
+      {
+        "key": "experiment_variant",
+        "equal": false,
+        "allowed_unique": true,
+        "A_yaml": "A",
+        "B_config_json": "B"
+      },
+      {
+        "key": "output_group",
+        "equal": false,
+        "allowed_unique": true,
+        "A_yaml": "gc10_hp_control_20261111",
+        "B_config_json": "hp_b_samplerfix_20261111_v2"
+      },
+      {
+        "key": "same_hard_pairs",
+        "equal": false,
+        "allowed_unique": true,
+        "A_yaml": false,
+        "B_config_json": true
+      }
+    ],
+    "unexpected_differences": [],
+    "ok": true
+  },
+  "B": {
+    "acc": 0.6125,
+    "loss": 1.3232856512069702,
+    "query_count": 800,
+    "episode_count": 20,
+    "per_class": {
+      "crescent": {
+        "hit": 110,
+        "denominator": 112,
+        "recall": 0.9821428571428571
+      },
+      "fold_wrinkle": {
+        "hit": 83,
+        "denominator": 96,
+        "recall": 0.8645833333333334
+      },
+      "inclusion": {
+        "hit": 33,
+        "denominator": 104,
+        "recall": 0.3173076923076923
+      },
+      "oil": {
+        "hit": 34,
+        "denominator": 96,
+        "recall": 0.3541666666666667
+      },
+      "punch": {
+        "hit": 37,
+        "denominator": 80,
+        "recall": 0.4625
+      },
+      "rolled_pit": {
+        "hit": 41,
+        "denominator": 96,
+        "recall": 0.4270833333333333
+      },
+      "silk_spot": {
+        "hit": 57,
+        "denominator": 88,
+        "recall": 0.6477272727272727
+      },
+      "water": {
+        "hit": 31,
+        "denominator": 48,
+        "recall": 0.6458333333333334
+      },
+      "weld_line": {
+        "hit": 64,
+        "denominator": 80,
+        "recall": 0.8
+      }
+    },
+    "confusion": {
+      "punch|fold_wrinkle": 12,
+      "rolled_pit|fold_wrinkle": 16,
+      "rolled_pit|oil": 15,
+      "oil|punch": 11,
+      "oil|inclusion": 12,
+      "oil|rolled_pit": 10,
+      "oil|fold_wrinkle": 11,
+      "inclusion|fold_wrinkle": 7,
+      "inclusion|punch": 5,
+      "inclusion|oil": 12,
+      "rolled_pit|inclusion": 6,
+      "rolled_pit|punch": 5,
+      "inclusion|rolled_pit": 7,
+      "punch|oil": 6,
+      "punch|inclusion": 3,
+      "inclusion|silk_spot": 29,
+      "oil|silk_spot": 11,
+      "oil|crescent": 5,
+      "crescent|fold_wrinkle": 2,
+      "silk_spot|inclusion": 13,
+      "silk_spot|fold_wrinkle": 4,
+      "silk_spot|weld_line": 2,
+      "silk_spot|rolled_pit": 2,
+      "weld_line|inclusion": 1,
+      "weld_line|crescent": 2,
+      "rolled_pit|silk_spot": 7,
+      "rolled_pit|weld_line": 1,
+      "rolled_pit|crescent": 1,
+      "inclusion|water": 9,
+      "water|inclusion": 4,
+      "water|rolled_pit": 5,
+      "water|silk_spot": 7,
+      "silk_spot|water": 6,
+      "silk_spot|oil": 2,
+      "punch|silk_spot": 6,
+      "punch|weld_line": 15,
+      "punch|water": 1,
+      "weld_line|punch": 7,
+      "oil|water": 2,
+      "water|fold_wrinkle": 1,
+      "silk_spot|crescent": 2,
+      "fold_wrinkle|weld_line": 7,
+      "rolled_pit|water": 4,
+      "inclusion|weld_line": 1,
+      "inclusion|crescent": 1,
+      "fold_wrinkle|oil": 1,
+      "fold_wrinkle|silk_spot": 4,
+      "fold_wrinkle|inclusion": 1,
+      "weld_line|fold_wrinkle": 6
+    }
+  },
+  "A": {
+    "acc": 0.6025,
+    "loss": 1.3481810927391051,
+    "query_count": 800,
+    "episode_count": 20,
+    "per_class": {
+      "crescent": {
+        "hit": 110,
+        "denominator": 112,
+        "recall": 0.9821428571428571
+      },
+      "fold_wrinkle": {
+        "hit": 81,
+        "denominator": 96,
+        "recall": 0.84375
+      },
+      "inclusion": {
+        "hit": 34,
+        "denominator": 104,
+        "recall": 0.3269230769230769
+      },
+      "oil": {
+        "hit": 31,
+        "denominator": 96,
+        "recall": 0.3229166666666667
+      },
+      "punch": {
+        "hit": 37,
+        "denominator": 80,
+        "recall": 0.4625
+      },
+      "rolled_pit": {
+        "hit": 36,
+        "denominator": 96,
+        "recall": 0.375
+      },
+      "silk_spot": {
+        "hit": 58,
+        "denominator": 88,
+        "recall": 0.6590909090909091
+      },
+      "water": {
+        "hit": 30,
+        "denominator": 48,
+        "recall": 0.625
+      },
+      "weld_line": {
+        "hit": 65,
+        "denominator": 80,
+        "recall": 0.8125
+      }
+    },
+    "confusion": {
+      "punch|fold_wrinkle": 12,
+      "rolled_pit|fold_wrinkle": 15,
+      "rolled_pit|inclusion": 7,
+      "rolled_pit|punch": 9,
+      "rolled_pit|oil": 13,
+      "oil|punch": 15,
+      "oil|inclusion": 12,
+      "oil|rolled_pit": 9,
+      "oil|fold_wrinkle": 12,
+      "inclusion|punch": 10,
+      "inclusion|oil": 9,
+      "inclusion|fold_wrinkle": 7,
+      "inclusion|rolled_pit": 6,
+      "punch|inclusion": 4,
+      "inclusion|silk_spot": 28,
+      "oil|silk_spot": 10,
+      "oil|crescent": 5,
+      "crescent|fold_wrinkle": 2,
+      "silk_spot|inclusion": 11,
+      "silk_spot|fold_wrinkle": 5,
+      "silk_spot|weld_line": 2,
+      "silk_spot|rolled_pit": 2,
+      "weld_line|inclusion": 1,
+      "weld_line|crescent": 2,
+      "rolled_pit|weld_line": 4,
+      "rolled_pit|silk_spot": 7,
+      "rolled_pit|crescent": 3,
+      "inclusion|water": 8,
+      "water|inclusion": 3,
+      "water|rolled_pit": 5,
+      "water|silk_spot": 7,
+      "silk_spot|water": 6,
+      "fold_wrinkle|punch": 1,
+      "punch|silk_spot": 5,
+      "punch|weld_line": 16,
+      "punch|water": 1,
+      "weld_line|punch": 7,
+      "punch|oil": 5,
+      "oil|water": 2,
+      "water|fold_wrinkle": 1,
+      "fold_wrinkle|crescent": 1,
+      "silk_spot|crescent": 3,
+      "water|crescent": 2,
+      "fold_wrinkle|weld_line": 6,
+      "rolled_pit|water": 2,
+      "inclusion|weld_line": 1,
+      "inclusion|crescent": 1,
+      "silk_spot|oil": 1,
+      "fold_wrinkle|oil": 1,
+      "fold_wrinkle|silk_spot": 5,
+      "fold_wrinkle|inclusion": 1,
+      "weld_line|fold_wrinkle": 5
+    }
+  },
+  "paired": {
+    "query_count": 800,
+    "both_correct": 471,
+    "both_wrong": 299,
+    "A_correct_B_wrong": 11,
+    "B_correct_A_wrong": 19,
+    "note": "Single-seed paired counts only. Do not treat differences as significance."
+  },
+  "note": "Evaluated sequentially with torch.no_grad. Loss is mean per-episode cross-entropy, same formula as evaluate_curriculum. This manifest is independent of B official holdout episodes. Single seed, no significance claim."
+}

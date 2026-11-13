@@ -386,6 +386,7 @@ class DualRegionBetaDetector(nn.Module):
             fixed_beta=0.25,
             beta_center=0.25,
             beta_scale=0.25,
+            feature_layer=3,
     ):
         super().__init__()
         self.feat_dim = int(feat_dim)
@@ -395,7 +396,14 @@ class DualRegionBetaDetector(nn.Module):
         self.fixed_beta = float(fixed_beta)
         self.backbone = SpatialResNet18(
             pretrained=pretrained_backbone, freeze=freeze_backbone)
-        self.proj3 = nn.Conv2d(256, self.feat_dim, kernel_size=1)
+        self.feature_layer = int(feature_layer)
+        if self.feature_layer not in (3, 4):
+            raise ValueError('feature_layer must be 3 or 4')
+        # Default keeps old layer3 checkpoint keys unchanged.
+        if self.feature_layer == 3:
+            self.proj3 = nn.Conv2d(256, self.feat_dim, kernel_size=1)
+        else:
+            self.proj4 = nn.Conv2d(512, self.feat_dim, kernel_size=1)
         # 低维统计：6 标量 + 工况均值 + 工况 mask
         self.policy = EpisodeBetaPolicy(
             state_dim=6 + 2 * self.cond_dim,
@@ -410,8 +418,10 @@ class DualRegionBetaDetector(nn.Module):
         return self
 
     def _maps(self, x):
-        layer3, _ = self.backbone(x)
-        return self.proj3(layer3)
+        layer3, layer4 = self.backbone(x)
+        if self.feature_layer == 3:
+            return self.proj3(layer3)
+        return self.proj4(layer4)
 
     def _core_ring(self, feat, masks):
         """core 为掩码落到特征图的格子；ring 先在输入分辨率按 dilate_px 像素膨胀，再落到特征图，与工业 encode_core_context 一致。

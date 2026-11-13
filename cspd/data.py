@@ -414,8 +414,10 @@ class CurriculumNewSplitEpisodes:
         self.query_only = str(cfg.get('query_only') or '').strip()
         exclude_sources = set(cfg.get('exclude_sources') or [])
         # holdout_eval=same 时，普通测试也不放留出来源；留出评估自己把 query_only 设成该来源。
-        if self.holdout and self.holdout != self.query_only:
-            if self.split != 'test' or str(cfg.get('holdout_eval') or '') == 'same':
+        if self.holdout:
+            if self.split in ('train', 'val') or (
+                self.holdout != self.query_only and str(cfg.get('holdout_eval') or '') == 'same'
+            ):
                 exclude_sources.add(self.holdout)
         self.exclude_cross = set(cfg.get('exclude_classes_cross') or [])
         self.source_table = dict(cfg.get('source_table') or {})
@@ -446,7 +448,15 @@ class CurriculumNewSplitEpisodes:
         self.cross_classes = {str(name) for name in raw_cross} if raw_cross else None
         self.group_of = {}
         self.source_dist = {}
-        self.hard_pairs = []
+        self.hard_pairs = []  # legacy non-suite hook
+        self.same_hard_pairs = {}
+        self.hard_pair_enabled = bool(cfg.get('same_hard_pairs', False))
+        self.hard_rng = random.Random(seed + 17011)
+        self.hard_probability = 0.0
+        self.strict_groups = bool(cfg.get('strict_groups', False))
+        self.group_failures = {}
+        self.source_attempts = {}
+        self.source_successes = {}
         self.by_class = {}
         for class_dir in sorted(p for p in root.iterdir() if p.is_dir()):
             name = class_dir.name
@@ -593,6 +603,27 @@ class CurriculumNewSplitEpisodes:
             by_group.setdefault(gid, []).append(item)
         groups = list(by_group.values())
         self.rng.shuffle(groups)
+        if self.strict_groups:
+            # Subset sum reserves whole groups for query; never split a group.
+            total = sum(len(g) for g in groups)
+            states = {0: []}
+            selected = None
+            for index, group in enumerate(groups):
+                for size, ids in list(states.items()):
+                    new_size = size + len(group)
+                    if new_size > total - need_q:
+                        continue
+                    states.setdefault(new_size, ids + [index])
+                    if new_size >= k:
+                        selected = states[new_size]
+                        break
+                if selected is not None:
+                    break
+            if selected is None:
+                return None
+            support = [item for i in selected for item in groups[i]]
+            query = [item for i, g in enumerate(groups) if i not in selected for item in g]
+            return self.rng.sample(support, k), self.rng.sample(query, need_q)
         support = []
         query = []
         for group in groups:
@@ -606,15 +637,63 @@ class CurriculumNewSplitEpisodes:
         self.rng.shuffle(query)
         return support[:k], query[:need_q]
 
-    def _sample_source(self, query_source, cross_source, progress, stage_sources):
+    def _group_sizes(self, pool, class_name, source):
+        """Per-group sizes; None if any image lacks a group id or no map exists."""
+        if not self.group_of:
+            return None
+        by_group = {}
+        for item in pool:
+            gid = self.group_of.get((class_name, source, item[0].stem))
+            if gid is None:
+                return None
+            by_group.setdefault(gid, []).append(item)
+        return [len(g) for g in by_group.values()]
+
+    def _strict_partition_exists(self, sizes, k, need_q):
+        """Whole-group subset with size in [k, total-need_q]. No RNG."""
+        if not sizes or len(sizes) < 2:
+            return False
+        total = sum(sizes)
+        if total < k + need_q:
+            return False
+        states = {0: True}
+        for size in sizes:
+            for prev in list(states):
+                new_size = prev + size
+                if new_size > total - need_q:
+                    continue
+                if new_size >= k:
+                    return True
+                states[new_size] = True
+        return False
+
+    def _same_source_feasible(self, name, source, k, need_q):
+        """Enough images, and when strict_groups a legal support/query partition at this k."""
+        pool = self.by_class[name][source]
+        if len(pool) < k + need_q:
+            return False
+        if not self.strict_groups:
+            return True
+        sizes = self._group_sizes(pool, name, source)
+        if sizes is None:
+            return False
+        return self._strict_partition_exists(sizes, k, need_q)
+
+    def _too_few_feasible(self, query_source, k, need_q):
+        if self.strict_groups:
+            return 'strict groups: source {} has fewer than 2 feasible classes (k={}, q={})'.format(
+                query_source, k, need_q)
+        return '来源 {} 可抽类不足'.format(query_source)
+
+    def _sample_source(self, query_source, cross_source, progress, stage_sources, record_paths=False):
         k = self._pick_k()
         need_q = self.q_query
         usable = []
         support_of = {}
         same_names = []
+        # k is already chosen; feasibility is evaluated at that k (and q), not a mixed k.
         for name in self.source_classes[query_source]:
-            q_paths = self.by_class[name][query_source]
-            if len(q_paths) >= k + need_q:
+            if self._same_source_feasible(name, query_source, k, need_q):
                 same_names.append(name)
         if cross_source:
             allowed = self.cross_classes
@@ -640,9 +719,9 @@ class CurriculumNewSplitEpisodes:
         else:
             usable = list(same_names)
             if len(usable) < 2:
-                raise RuntimeError('来源 {} 可抽类不足'.format(query_source))
+                raise RuntimeError(self._too_few_feasible(query_source, k, need_q))
         if len(usable) < 2:
-            raise RuntimeError('来源 {} 可抽类不足'.format(query_source))
+            raise RuntimeError(self._too_few_feasible(query_source, k, need_q))
         n_way = min(self.n_way_cap, len(usable))
         chosen = []
         if stage_sources and progress >= 0.75 and not cross_source:
@@ -653,18 +732,27 @@ class CurriculumNewSplitEpisodes:
         if cross_source:
             cross_first = [name for name in usable if name in support_of]
             chosen = list(cross_first[:n_way])
-        rest = [name for name in usable if name not in chosen]
-        need = n_way - len(chosen)
-        if need > 0:
-            if len(rest) < need:
-                raise RuntimeError('来源 {} 可抽类不足'.format(query_source))
-            chosen.extend(self.rng.sample(rest, need))
+        hard_info = None
+        if self.hard_pair_enabled and stage_sources and not cross_source:
+            from cspd.hard_pairs import choose_classes
+            chosen, hard_info = choose_classes(
+                usable, n_way, self.rng, self.hard_rng,
+                self.same_hard_pairs.get(query_source, []), self.hard_probability)
+        else:
+            rest = [name for name in usable if name not in chosen]
+            need = n_way - len(chosen)
+            if need > 0:
+                if len(rest) < need:
+                    raise RuntimeError('来源 {} 可抽类不足'.format(query_source))
+                chosen.extend(self.rng.sample(rest, need))
         buckets = {
             'support_x': [], 'support_y': [], 'support_cond': [], 'support_cond_mask': [],
             'support_mask': [], 'support_has_mask': [],
             'query_x': [], 'query_y': [], 'query_cond': [], 'query_cond_mask': [],
             'query_mask': [], 'query_has_mask': [],
         }
+        support_records = []
+        query_records = []
         for local_y, name in enumerate(chosen):
             q_pool = list(self.by_class[name][query_source])
             if name in support_of:
@@ -675,6 +763,10 @@ class CurriculumNewSplitEpisodes:
             else:
                 split_pair = self._split_by_group(q_pool, k, need_q, name, query_source)
                 if split_pair is None:
+                    if self.strict_groups:
+                        key = '{}:{}'.format(query_source, name)
+                        self.group_failures[key] = self.group_failures.get(key, 0) + 1
+                        raise RuntimeError('strict groups unavailable: ' + key)
                     picked = self.rng.sample(q_pool, k + need_q)
                     support_items = picked[:k]
                     query_items = picked[k:]
@@ -689,6 +781,8 @@ class CurriculumNewSplitEpisodes:
                 buckets['support_cond_mask'].append(item['y_cond_mask'])
                 buckets['support_mask'].append(item['mask'])
                 buckets['support_has_mask'].append(item['has_mask'])
+                if record_paths:
+                    support_records.append(self._item_record(name, src_name, path, mask, local_y))
             for path, mask in query_items:
                 item = self._load(path, mask, query_source)
                 buckets['query_x'].append(item['x'])
@@ -697,7 +791,9 @@ class CurriculumNewSplitEpisodes:
                 buckets['query_cond_mask'].append(item['y_cond_mask'])
                 buckets['query_mask'].append(item['mask'])
                 buckets['query_has_mask'].append(item['has_mask'])
-        return {
+                if record_paths:
+                    query_records.append(self._item_record(name, query_source, path, mask, local_y))
+        episode = {
             'support_x': torch.stack(buckets['support_x'], 0),
             'support_y': torch.tensor(buckets['support_y'], dtype=torch.long),
             'support_cond': torch.stack(buckets['support_cond'], 0),
@@ -715,11 +811,16 @@ class CurriculumNewSplitEpisodes:
             'cross_source': bool(cross_source),
             'n_way': n_way,
             'k_shot': k,
+            'hard_pair': hard_info,
         }
+        if record_paths:
+            episode['support_records'] = support_records
+            episode['query_records'] = query_records
+        return episode
 
     def sample(
             self, cross_source=None, progress=0.0, avoid_sources=None,
-            stage_sources=False, allow_fallback=True):
+            stage_sources=False, allow_fallback=True, record_paths=False):
         if cross_source is None:
             cross_source = self.rng.random() < curriculum_rho(progress)
         candidates = self._query_candidates(cross_source)
@@ -735,6 +836,7 @@ class CurriculumNewSplitEpisodes:
                 avoid_sources=avoid_sources,
                 stage_sources=stage_sources,
                 allow_fallback=False,
+                record_paths=record_paths,
             )
         if not candidates:
             raise RuntimeError('没有可采样的查询来源 cross={}'.format(cross_source))
@@ -742,8 +844,13 @@ class CurriculumNewSplitEpisodes:
         self.rng.shuffle(order)
         last_error = None
         for query_source in order:
+            self.source_attempts[query_source] = self.source_attempts.get(query_source, 0) + 1
             try:
-                return self._sample_source(query_source, cross_source, progress, stage_sources)
+                episode = self._sample_source(
+                    query_source, cross_source, progress, stage_sources,
+                    record_paths=record_paths)
+                self.source_successes[query_source] = self.source_successes.get(query_source, 0) + 1
+                return episode
             except RuntimeError as exc:
                 last_error = exc
         if cross_source and not self.query_only and allow_fallback:
@@ -753,8 +860,160 @@ class CurriculumNewSplitEpisodes:
                 avoid_sources=avoid_sources,
                 stage_sources=stage_sources,
                 allow_fallback=False,
+                record_paths=record_paths,
             )
         raise last_error or RuntimeError('来源不足')
+
+
+    def _item_record(self, class_name, source, path, mask, local_y):
+        """Path/group record relative to data_root. Used only by the manifest entry."""
+        path = Path(path)
+        try:
+            rel = path.resolve().relative_to(self.root.resolve()).as_posix()
+        except ValueError:
+            raise RuntimeError('path escapes data_root: {}'.format(path))
+        mask_rel = None
+        if mask is not None:
+            mask_path = Path(mask)
+            if mask_path.is_file():
+                try:
+                    mask_rel = mask_path.resolve().relative_to(self.root.resolve()).as_posix()
+                except ValueError:
+                    raise RuntimeError('mask path escapes data_root: {}'.format(mask_path))
+        gid = self.group_of.get((class_name, source, path.stem))
+        split_name = path.parent.name
+        return {
+            'class': class_name,
+            'source': source,
+            'y': int(local_y),
+            'path': rel,
+            'mask_path': mask_rel,
+            'group_id': None if gid is None else str(gid),
+            'split': split_name,
+        }
+
+    def _resolve_data_path(self, rel):
+        if not rel:
+            raise RuntimeError('empty data path in record')
+        path = (self.root / rel).resolve()
+        try:
+            path.relative_to(self.root.resolve())
+        except ValueError:
+            raise RuntimeError('path escapes data_root: {}'.format(rel))
+        if not path.is_file():
+            raise RuntimeError('missing path: {}'.format(rel))
+        return path
+
+    def validate_episode_record(self, rec, expected_source=None):
+        """Fail closed: no same-group repair, no cross-source mix, no missing files."""
+        names = list(rec.get('class_names') or [])
+        if len(names) < 2:
+            raise RuntimeError('episode has fewer than 2 classes')
+        n_way = int(rec.get('n_way') or 0)
+        if n_way != len(names):
+            raise RuntimeError('n_way does not match class_names')
+        k_shot = int(rec.get('k_shot') or 0)
+        q_query = int(rec.get('q_query') or self.q_query)
+        if k_shot <= 0 or q_query <= 0:
+            raise RuntimeError('invalid k_shot/q_query in record')
+        if bool(rec.get('cross_source')):
+            raise RuntimeError('cross-source records are not accepted by this validator')
+        expected = expected_source or rec.get('query_source')
+        support = list(rec.get('support') or [])
+        query = list(rec.get('query') or [])
+        if len(support) != n_way * k_shot or len(query) != n_way * q_query:
+            raise RuntimeError('support/query count does not match n_way * k/q')
+        groups_s = {}
+        groups_q = {}
+        for split_name, rows, groups in (('support', support, groups_s), ('query', query, groups_q)):
+            counts = {}
+            for item in rows:
+                name = item.get('class')
+                source = item.get('source')
+                if name not in names:
+                    raise RuntimeError('record class not in class_names: {}'.format(name))
+                if expected and source != expected:
+                    raise RuntimeError('source isolation failed: {} vs {}'.format(source, expected))
+                path = self._resolve_data_path(item.get('path'))
+                rel_parts = path.relative_to(self.root.resolve()).parts
+                if len(rel_parts) < 4 or rel_parts[0] != name or rel_parts[1] != source:
+                    raise RuntimeError('path class/source mismatch: {}'.format(item.get('path')))
+                if self.require_mask:
+                    mask_rel = item.get('mask_path')
+                    if not mask_rel:
+                        raise RuntimeError('missing mask_path: {}'.format(item.get('path')))
+                    mask_path = self._resolve_data_path(mask_rel)
+                    if mask_path.stem != path.stem:
+                        raise RuntimeError('mask stem mismatch: {}'.format(mask_rel))
+                gid = item.get('group_id')
+                if gid is None or str(gid) == '':
+                    raise RuntimeError('missing group_id: {}'.format(item.get('path')))
+                gid = str(gid)
+                live = self.group_of.get((name, source, path.stem))
+                if live is None or str(live) != gid:
+                    raise RuntimeError('group_id mismatch for {}'.format(item.get('path')))
+                groups.setdefault(name, set()).add(gid)
+                counts[name] = counts.get(name, 0) + 1
+            expected_n = k_shot if split_name == 'support' else q_query
+            for name in names:
+                if counts.get(name, 0) != expected_n:
+                    raise RuntimeError('{} count for {} is {}, expected {}'.format(
+                        split_name, name, counts.get(name, 0), expected_n))
+        for name in names:
+            overlap = groups_s.get(name, set()) & groups_q.get(name, set())
+            if overlap:
+                raise RuntimeError('support/query group overlap for {}: {}'.format(
+                    name, sorted(overlap)))
+        return True
+
+    def episode_from_record(self, rec):
+        """Rebuild tensors from a frozen path list with the same _load pipeline."""
+        self.validate_episode_record(rec, expected_source=rec.get('query_source'))
+        names = list(rec['class_names'])
+        index = {name: i for i, name in enumerate(names)}
+        buckets = {
+            'support_x': [], 'support_y': [], 'support_cond': [], 'support_cond_mask': [],
+            'support_mask': [], 'support_has_mask': [],
+            'query_x': [], 'query_y': [], 'query_cond': [], 'query_cond_mask': [],
+            'query_mask': [], 'query_has_mask': [],
+        }
+        for split_name, key_prefix in (('support', 'support'), ('query', 'query')):
+            for item in rec[split_name]:
+                path = self._resolve_data_path(item['path'])
+                mask = self._resolve_data_path(item['mask_path']) if item.get('mask_path') else None
+                source = item['source']
+                loaded = self._load(path, mask, source)
+                y = index[item['class']]
+                if int(item.get('y', y)) != y:
+                    raise RuntimeError('local y mismatch for {}'.format(item['path']))
+                buckets[key_prefix + '_x'].append(loaded['x'])
+                buckets[key_prefix + '_y'].append(y)
+                buckets[key_prefix + '_cond'].append(loaded['y_cond'])
+                buckets[key_prefix + '_cond_mask'].append(loaded['y_cond_mask'])
+                buckets[key_prefix + '_mask'].append(loaded['mask'])
+                buckets[key_prefix + '_has_mask'].append(loaded['has_mask'])
+        return {
+            'support_x': torch.stack(buckets['support_x'], 0),
+            'support_y': torch.tensor(buckets['support_y'], dtype=torch.long),
+            'support_cond': torch.stack(buckets['support_cond'], 0),
+            'support_cond_mask': torch.stack(buckets['support_cond_mask'], 0),
+            'support_mask': torch.stack(buckets['support_mask'], 0),
+            'support_has_mask': torch.tensor(buckets['support_has_mask'], dtype=torch.bool),
+            'query_x': torch.stack(buckets['query_x'], 0),
+            'query_y': torch.tensor(buckets['query_y'], dtype=torch.long),
+            'query_cond': torch.stack(buckets['query_cond'], 0),
+            'query_cond_mask': torch.stack(buckets['query_cond_mask'], 0),
+            'query_mask': torch.stack(buckets['query_mask'], 0),
+            'query_has_mask': torch.tensor(buckets['query_has_mask'], dtype=torch.bool),
+            'class_names': names,
+            'query_source': rec['query_source'],
+            'cross_source': bool(rec.get('cross_source')),
+            'n_way': int(rec['n_way']),
+            'k_shot': int(rec['k_shot']),
+            'hard_pair': None,
+            'support_records': list(rec['support']),
+            'query_records': list(rec['query']),
+        }
 
 
 def make_curriculum(cfg, split, seed):

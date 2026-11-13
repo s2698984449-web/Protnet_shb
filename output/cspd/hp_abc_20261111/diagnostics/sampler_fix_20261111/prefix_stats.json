@@ -1,0 +1,2182 @@
+{
+  "sources": {
+    "CAST": {
+      "splits": {
+        "train": {
+          "classes": [
+            "crack_long",
+            "cutting_opening",
+            "scratch",
+            "slag_skin",
+            "water_slag_mark",
+            "weld_slag"
+          ],
+          "by_k": {
+            "3": {
+              "count_usable": [
+                "crack_long",
+                "cutting_opening",
+                "scratch",
+                "slag_skin",
+                "water_slag_mark",
+                "weld_slag"
+              ],
+              "group_feasible": [
+                "crack_long",
+                "cutting_opening",
+                "scratch",
+                "slag_skin",
+                "water_slag_mark",
+                "weld_slag"
+              ],
+              "count_usable_but_group_infeasible": [],
+              "n_feasible": 6,
+              "official_n_way": 5,
+              "can_form_official_episode": true,
+              "official_episode_saturated": false,
+              "offline_combo_counts_2_3_4_5": {
+                "2": 15,
+                "3": 20,
+                "4": 15,
+                "5": 6
+              },
+              "infeasible_detail": {}
+            },
+            "5": {
+              "count_usable": [
+                "crack_long",
+                "cutting_opening",
+                "scratch",
+                "slag_skin",
+                "water_slag_mark",
+                "weld_slag"
+              ],
+              "group_feasible": [
+                "crack_long",
+                "cutting_opening",
+                "scratch",
+                "slag_skin",
+                "water_slag_mark",
+                "weld_slag"
+              ],
+              "count_usable_but_group_infeasible": [],
+              "n_feasible": 6,
+              "official_n_way": 5,
+              "can_form_official_episode": true,
+              "official_episode_saturated": false,
+              "offline_combo_counts_2_3_4_5": {
+                "2": 15,
+                "3": 20,
+                "4": 15,
+                "5": 6
+              },
+              "infeasible_detail": {}
+            }
+          }
+        },
+        "val": {
+          "classes": [
+            "crack_long",
+            "cutting_opening",
+            "scratch",
+            "slag_skin",
+            "water_slag_mark",
+            "weld_slag"
+          ],
+          "by_k": {
+            "3": {
+              "count_usable": [
+                "crack_long",
+                "cutting_opening",
+                "scratch",
+                "slag_skin",
+                "water_slag_mark",
+                "weld_slag"
+              ],
+              "group_feasible": [
+                "crack_long",
+                "cutting_opening",
+                "scratch",
+                "slag_skin",
+                "water_slag_mark",
+                "weld_slag"
+              ],
+              "count_usable_but_group_infeasible": [],
+              "n_feasible": 6,
+              "official_n_way": 5,
+              "can_form_official_episode": true,
+              "official_episode_saturated": false,
+              "offline_combo_counts_2_3_4_5": {
+                "2": 15,
+                "3": 20,
+                "4": 15,
+                "5": 6
+              },
+              "infeasible_detail": {}
+            },
+            "5": {
+              "count_usable": [
+                "crack_long",
+                "cutting_opening",
+                "scratch",
+                "slag_skin",
+                "water_slag_mark",
+                "weld_slag"
+              ],
+              "group_feasible": [
+                "crack_long",
+                "cutting_opening",
+                "scratch",
+                "slag_skin",
+                "water_slag_mark",
+                "weld_slag"
+              ],
+              "count_usable_but_group_infeasible": [],
+              "n_feasible": 6,
+              "official_n_way": 5,
+              "can_form_official_episode": true,
+              "official_episode_saturated": false,
+              "offline_combo_counts_2_3_4_5": {
+                "2": 15,
+                "3": 20,
+                "4": 15,
+                "5": 6
+              },
+              "infeasible_detail": {}
+            }
+          }
+        },
+        "test": {
+          "classes": [
+            "crack_long",
+            "cutting_opening",
+            "scratch",
+            "slag_skin",
+            "water_slag_mark",
+            "weld_slag"
+          ],
+          "by_k": {
+            "3": {
+              "count_usable": [
+                "crack_long",
+                "cutting_opening",
+                "scratch",
+                "slag_skin",
+                "water_slag_mark",
+                "weld_slag"
+              ],
+              "group_feasible": [
+                "crack_long",
+                "cutting_opening",
+                "scratch",
+                "slag_skin",
+                "water_slag_mark",
+                "weld_slag"
+              ],
+              "count_usable_but_group_infeasible": [],
+              "n_feasible": 6,
+              "official_n_way": 5,
+              "can_form_official_episode": true,
+              "official_episode_saturated": false,
+              "offline_combo_counts_2_3_4_5": {
+                "2": 15,
+                "3": 20,
+                "4": 15,
+                "5": 6
+              },
+              "infeasible_detail": {}
+            },
+            "5": {
+              "count_usable": [
+                "crack_long",
+                "cutting_opening",
+                "scratch",
+                "slag_skin",
+                "water_slag_mark",
+                "weld_slag"
+              ],
+              "group_feasible": [
+                "crack_long",
+                "cutting_opening",
+                "scratch",
+                "slag_skin",
+                "water_slag_mark",
+                "weld_slag"
+              ],
+              "count_usable_but_group_infeasible": [],
+              "n_feasible": 6,
+              "official_n_way": 5,
+              "can_form_official_episode": true,
+              "official_episode_saturated": false,
+              "offline_combo_counts_2_3_4_5": {
+                "2": 15,
+                "3": 20,
+                "4": 15,
+                "5": 6
+              },
+              "infeasible_detail": {}
+            }
+          }
+        }
+      }
+    },
+    "CR7": {
+      "splits": {
+        "train": {
+          "classes": [
+            "dent",
+            "inclusion",
+            "linear",
+            "macular",
+            "oil",
+            "pit_local",
+            "punch"
+          ],
+          "by_k": {
+            "3": {
+              "count_usable": [
+                "dent",
+                "inclusion",
+                "linear",
+                "macular",
+                "oil",
+                "pit_local",
+                "punch"
+              ],
+              "group_feasible": [
+                "dent",
+                "inclusion",
+                "linear",
+                "macular",
+                "oil",
+                "pit_local",
+                "punch"
+              ],
+              "count_usable_but_group_infeasible": [],
+              "n_feasible": 7,
+              "official_n_way": 5,
+              "can_form_official_episode": true,
+              "official_episode_saturated": false,
+              "offline_combo_counts_2_3_4_5": {
+                "2": 21,
+                "3": 35,
+                "4": 35,
+                "5": 21
+              },
+              "infeasible_detail": {}
+            },
+            "5": {
+              "count_usable": [
+                "dent",
+                "inclusion",
+                "linear",
+                "macular",
+                "oil",
+                "pit_local",
+                "punch"
+              ],
+              "group_feasible": [
+                "dent",
+                "inclusion",
+                "linear",
+                "macular",
+                "oil",
+                "pit_local",
+                "punch"
+              ],
+              "count_usable_but_group_infeasible": [],
+              "n_feasible": 7,
+              "official_n_way": 5,
+              "can_form_official_episode": true,
+              "official_episode_saturated": false,
+              "offline_combo_counts_2_3_4_5": {
+                "2": 21,
+                "3": 35,
+                "4": 35,
+                "5": 21
+              },
+              "infeasible_detail": {}
+            }
+          }
+        },
+        "val": {
+          "classes": [
+            "dent",
+            "inclusion",
+            "linear",
+            "macular",
+            "oil",
+            "pit_local",
+            "punch"
+          ],
+          "by_k": {
+            "3": {
+              "count_usable": [
+                "dent",
+                "inclusion",
+                "linear",
+                "macular",
+                "oil",
+                "pit_local",
+                "punch"
+              ],
+              "group_feasible": [
+                "inclusion",
+                "oil",
+                "pit_local",
+                "punch"
+              ],
+              "count_usable_but_group_infeasible": [
+                "dent",
+                "linear",
+                "macular"
+              ],
+              "n_feasible": 4,
+              "official_n_way": 4,
+              "can_form_official_episode": true,
+              "official_episode_saturated": true,
+              "offline_combo_counts_2_3_4_5": {
+                "2": 6,
+                "3": 4,
+                "4": 1,
+                "5": 0
+              },
+              "infeasible_detail": {
+                "dent": "no_group_subset_with_sum_in_[3,92] sizes=[98, 2]",
+                "linear": "single_group_cannot_split (n_groups=1, n=83)",
+                "macular": "single_group_cannot_split (n_groups=1, n=91)"
+              }
+            },
+            "5": {
+              "count_usable": [
+                "dent",
+                "inclusion",
+                "linear",
+                "macular",
+                "oil",
+                "pit_local",
+                "punch"
+              ],
+              "group_feasible": [
+                "inclusion",
+                "oil",
+                "pit_local",
+                "punch"
+              ],
+              "count_usable_but_group_infeasible": [
+                "dent",
+                "linear",
+                "macular"
+              ],
+              "n_feasible": 4,
+              "official_n_way": 4,
+              "can_form_official_episode": true,
+              "official_episode_saturated": true,
+              "offline_combo_counts_2_3_4_5": {
+                "2": 6,
+                "3": 4,
+                "4": 1,
+                "5": 0
+              },
+              "infeasible_detail": {
+                "dent": "no_group_subset_with_sum_in_[5,92] sizes=[98, 2]",
+                "linear": "single_group_cannot_split (n_groups=1, n=83)",
+                "macular": "single_group_cannot_split (n_groups=1, n=91)"
+              }
+            }
+          }
+        },
+        "test": {
+          "classes": [
+            "dent",
+            "inclusion",
+            "linear",
+            "macular",
+            "oil",
+            "pit_local",
+            "punch"
+          ],
+          "by_k": {
+            "3": {
+              "count_usable": [
+                "dent",
+                "inclusion",
+                "linear",
+                "macular",
+                "oil",
+                "pit_local",
+                "punch"
+              ],
+              "group_feasible": [
+                "dent",
+                "linear",
+                "macular",
+                "oil",
+                "pit_local",
+                "punch"
+              ],
+              "count_usable_but_group_infeasible": [
+                "inclusion"
+              ],
+              "n_feasible": 6,
+              "official_n_way": 5,
+              "can_form_official_episode": true,
+              "official_episode_saturated": false,
+              "offline_combo_counts_2_3_4_5": {
+                "2": 15,
+                "3": 20,
+                "4": 15,
+                "5": 6
+              },
+              "infeasible_detail": {
+                "inclusion": "single_group_cannot_split (n_groups=1, n=209)"
+              }
+            },
+            "5": {
+              "count_usable": [
+                "dent",
+                "inclusion",
+                "linear",
+                "macular",
+                "oil",
+                "pit_local",
+                "punch"
+              ],
+              "group_feasible": [
+                "dent",
+                "linear",
+                "macular",
+                "oil",
+                "pit_local",
+                "punch"
+              ],
+              "count_usable_but_group_infeasible": [
+                "inclusion"
+              ],
+              "n_feasible": 6,
+              "official_n_way": 5,
+              "can_form_official_episode": true,
+              "official_episode_saturated": false,
+              "offline_combo_counts_2_3_4_5": {
+                "2": 15,
+                "3": 20,
+                "4": 15,
+                "5": 6
+              },
+              "infeasible_detail": {
+                "inclusion": "single_group_cannot_split (n_groups=1, n=209)"
+              }
+            }
+          }
+        }
+      }
+    },
+    "CSU": {
+      "splits": {
+        "train": {
+          "classes": [
+            "inclusion",
+            "oxide_scale_csu",
+            "scratch"
+          ],
+          "by_k": {
+            "3": {
+              "count_usable": [
+                "inclusion",
+                "scratch"
+              ],
+              "group_feasible": [
+                "inclusion",
+                "scratch"
+              ],
+              "count_usable_but_group_infeasible": [],
+              "n_feasible": 2,
+              "official_n_way": 2,
+              "can_form_official_episode": true,
+              "official_episode_saturated": true,
+              "offline_combo_counts_2_3_4_5": {
+                "2": 1,
+                "3": 0,
+                "4": 0,
+                "5": 0
+              },
+              "infeasible_detail": {
+                "oxide_scale_csu": "too_few_images (need >= 11, have 8)"
+              }
+            },
+            "5": {
+              "count_usable": [
+                "inclusion",
+                "scratch"
+              ],
+              "group_feasible": [
+                "inclusion",
+                "scratch"
+              ],
+              "count_usable_but_group_infeasible": [],
+              "n_feasible": 2,
+              "official_n_way": 2,
+              "can_form_official_episode": true,
+              "official_episode_saturated": true,
+              "offline_combo_counts_2_3_4_5": {
+                "2": 1,
+                "3": 0,
+                "4": 0,
+                "5": 0
+              },
+              "infeasible_detail": {
+                "oxide_scale_csu": "too_few_images (need >= 13, have 8)"
+              }
+            }
+          }
+        },
+        "val": {
+          "classes": [
+            "inclusion",
+            "oxide_scale_csu",
+            "scratch"
+          ],
+          "by_k": {
+            "3": {
+              "count_usable": [
+                "inclusion"
+              ],
+              "group_feasible": [
+                "inclusion"
+              ],
+              "count_usable_but_group_infeasible": [],
+              "n_feasible": 1,
+              "official_n_way": null,
+              "can_form_official_episode": false,
+              "official_episode_saturated": false,
+              "offline_combo_counts_2_3_4_5": {
+                "2": 0,
+                "3": 0,
+                "4": 0,
+                "5": 0
+              },
+              "infeasible_detail": {
+                "oxide_scale_csu": "too_few_images (need >= 11, have 2)",
+                "scratch": "too_few_images (need >= 11, have 9)"
+              }
+            },
+            "5": {
+              "count_usable": [
+                "inclusion"
+              ],
+              "group_feasible": [
+                "inclusion"
+              ],
+              "count_usable_but_group_infeasible": [],
+              "n_feasible": 1,
+              "official_n_way": null,
+              "can_form_official_episode": false,
+              "official_episode_saturated": false,
+              "offline_combo_counts_2_3_4_5": {
+                "2": 0,
+                "3": 0,
+                "4": 0,
+                "5": 0
+              },
+              "infeasible_detail": {
+                "oxide_scale_csu": "too_few_images (need >= 13, have 2)",
+                "scratch": "too_few_images (need >= 13, have 9)"
+              }
+            }
+          }
+        },
+        "test": {
+          "classes": [
+            "inclusion",
+            "oxide_scale_csu",
+            "scratch"
+          ],
+          "by_k": {
+            "3": {
+              "count_usable": [
+                "inclusion",
+                "scratch"
+              ],
+              "group_feasible": [
+                "inclusion"
+              ],
+              "count_usable_but_group_infeasible": [
+                "scratch"
+              ],
+              "n_feasible": 1,
+              "official_n_way": null,
+              "can_form_official_episode": false,
+              "official_episode_saturated": false,
+              "offline_combo_counts_2_3_4_5": {
+                "2": 0,
+                "3": 0,
+                "4": 0,
+                "5": 0
+              },
+              "infeasible_detail": {
+                "oxide_scale_csu": "too_few_images (need >= 11, have 2)",
+                "scratch": "no_group_subset_with_sum_in_[3,3] sizes=[10, 1]"
+              }
+            },
+            "5": {
+              "count_usable": [
+                "inclusion"
+              ],
+              "group_feasible": [
+                "inclusion"
+              ],
+              "count_usable_but_group_infeasible": [],
+              "n_feasible": 1,
+              "official_n_way": null,
+              "can_form_official_episode": false,
+              "official_episode_saturated": false,
+              "offline_combo_counts_2_3_4_5": {
+                "2": 0,
+                "3": 0,
+                "4": 0,
+                "5": 0
+              },
+              "infeasible_detail": {
+                "oxide_scale_csu": "too_few_images (need >= 13, have 2)",
+                "scratch": "too_few_images (need >= 13, have 11)"
+              }
+            }
+          }
+        }
+      }
+    },
+    "GC10": {
+      "splits": {
+        "train": {
+          "classes": [
+            "crescent",
+            "fold_wrinkle",
+            "inclusion",
+            "oil",
+            "punch",
+            "rolled_pit",
+            "silk_spot",
+            "water",
+            "weld_line"
+          ],
+          "by_k": {
+            "3": {
+              "count_usable": [
+                "crescent",
+                "fold_wrinkle",
+                "inclusion",
+                "oil",
+                "punch",
+                "rolled_pit",
+                "silk_spot",
+                "water",
+                "weld_line"
+              ],
+              "group_feasible": [
+                "crescent",
+                "fold_wrinkle",
+                "inclusion",
+                "oil",
+                "punch",
+                "rolled_pit",
+                "silk_spot",
+                "water",
+                "weld_line"
+              ],
+              "count_usable_but_group_infeasible": [],
+              "n_feasible": 9,
+              "official_n_way": 5,
+              "can_form_official_episode": true,
+              "official_episode_saturated": false,
+              "offline_combo_counts_2_3_4_5": {
+                "2": 36,
+                "3": 84,
+                "4": 126,
+                "5": 126
+              },
+              "infeasible_detail": {}
+            },
+            "5": {
+              "count_usable": [
+                "crescent",
+                "fold_wrinkle",
+                "inclusion",
+                "oil",
+                "punch",
+                "rolled_pit",
+                "silk_spot",
+                "water",
+                "weld_line"
+              ],
+              "group_feasible": [
+                "crescent",
+                "fold_wrinkle",
+                "inclusion",
+                "oil",
+                "punch",
+                "rolled_pit",
+                "silk_spot",
+                "water",
+                "weld_line"
+              ],
+              "count_usable_but_group_infeasible": [],
+              "n_feasible": 9,
+              "official_n_way": 5,
+              "can_form_official_episode": true,
+              "official_episode_saturated": false,
+              "offline_combo_counts_2_3_4_5": {
+                "2": 36,
+                "3": 84,
+                "4": 126,
+                "5": 126
+              },
+              "infeasible_detail": {}
+            }
+          }
+        },
+        "val": {
+          "classes": [
+            "crescent",
+            "fold_wrinkle",
+            "inclusion",
+            "oil",
+            "punch",
+            "rolled_pit",
+            "silk_spot",
+            "water",
+            "weld_line"
+          ],
+          "by_k": {
+            "3": {
+              "count_usable": [
+                "crescent",
+                "fold_wrinkle",
+                "inclusion",
+                "oil",
+                "punch",
+                "silk_spot",
+                "water",
+                "weld_line"
+              ],
+              "group_feasible": [
+                "crescent",
+                "fold_wrinkle",
+                "inclusion",
+                "oil",
+                "punch",
+                "silk_spot",
+                "water",
+                "weld_line"
+              ],
+              "count_usable_but_group_infeasible": [],
+              "n_feasible": 8,
+              "official_n_way": 5,
+              "can_form_official_episode": true,
+              "official_episode_saturated": false,
+              "offline_combo_counts_2_3_4_5": {
+                "2": 28,
+                "3": 56,
+                "4": 70,
+                "5": 56
+              },
+              "infeasible_detail": {
+                "rolled_pit": "too_few_images (need >= 11, have 5)"
+              }
+            },
+            "5": {
+              "count_usable": [
+                "crescent",
+                "fold_wrinkle",
+                "inclusion",
+                "oil",
+                "punch",
+                "silk_spot",
+                "water",
+                "weld_line"
+              ],
+              "group_feasible": [
+                "crescent",
+                "fold_wrinkle",
+                "inclusion",
+                "oil",
+                "punch",
+                "silk_spot",
+                "water",
+                "weld_line"
+              ],
+              "count_usable_but_group_infeasible": [],
+              "n_feasible": 8,
+              "official_n_way": 5,
+              "can_form_official_episode": true,
+              "official_episode_saturated": false,
+              "offline_combo_counts_2_3_4_5": {
+                "2": 28,
+                "3": 56,
+                "4": 70,
+                "5": 56
+              },
+              "infeasible_detail": {
+                "rolled_pit": "too_few_images (need >= 13, have 5)"
+              }
+            }
+          }
+        },
+        "test": {
+          "classes": [
+            "crescent",
+            "fold_wrinkle",
+            "inclusion",
+            "oil",
+            "punch",
+            "rolled_pit",
+            "silk_spot",
+            "water",
+            "weld_line"
+          ],
+          "by_k": {
+            "3": {
+              "count_usable": [
+                "crescent",
+                "fold_wrinkle",
+                "inclusion",
+                "oil",
+                "punch",
+                "silk_spot",
+                "water",
+                "weld_line"
+              ],
+              "group_feasible": [
+                "crescent",
+                "fold_wrinkle",
+                "inclusion",
+                "oil",
+                "punch",
+                "silk_spot",
+                "water",
+                "weld_line"
+              ],
+              "count_usable_but_group_infeasible": [],
+              "n_feasible": 8,
+              "official_n_way": 5,
+              "can_form_official_episode": true,
+              "official_episode_saturated": false,
+              "offline_combo_counts_2_3_4_5": {
+                "2": 28,
+                "3": 56,
+                "4": 70,
+                "5": 56
+              },
+              "infeasible_detail": {
+                "rolled_pit": "too_few_images (need >= 11, have 5)"
+              }
+            },
+            "5": {
+              "count_usable": [
+                "crescent",
+                "fold_wrinkle",
+                "inclusion",
+                "oil",
+                "punch",
+                "silk_spot",
+                "water",
+                "weld_line"
+              ],
+              "group_feasible": [
+                "crescent",
+                "fold_wrinkle",
+                "inclusion",
+                "oil",
+                "punch",
+                "silk_spot",
+                "water",
+                "weld_line"
+              ],
+              "count_usable_but_group_infeasible": [],
+              "n_feasible": 8,
+              "official_n_way": 5,
+              "can_form_official_episode": true,
+              "official_episode_saturated": false,
+              "offline_combo_counts_2_3_4_5": {
+                "2": 28,
+                "3": 56,
+                "4": 70,
+                "5": 56
+              },
+              "infeasible_detail": {
+                "rolled_pit": "too_few_images (need >= 13, have 5)"
+              }
+            }
+          }
+        }
+      }
+    },
+    "NEU": {
+      "splits": {
+        "train": {
+          "classes": [
+            "crazing",
+            "inclusion",
+            "oxide_scale",
+            "patch",
+            "pit_texture",
+            "scratch"
+          ],
+          "by_k": {
+            "3": {
+              "count_usable": [
+                "crazing",
+                "inclusion",
+                "oxide_scale",
+                "patch",
+                "pit_texture",
+                "scratch"
+              ],
+              "group_feasible": [
+                "crazing",
+                "inclusion",
+                "oxide_scale",
+                "patch",
+                "pit_texture",
+                "scratch"
+              ],
+              "count_usable_but_group_infeasible": [],
+              "n_feasible": 6,
+              "official_n_way": 5,
+              "can_form_official_episode": true,
+              "official_episode_saturated": false,
+              "offline_combo_counts_2_3_4_5": {
+                "2": 15,
+                "3": 20,
+                "4": 15,
+                "5": 6
+              },
+              "infeasible_detail": {}
+            },
+            "5": {
+              "count_usable": [
+                "crazing",
+                "inclusion",
+                "oxide_scale",
+                "patch",
+                "pit_texture",
+                "scratch"
+              ],
+              "group_feasible": [
+                "crazing",
+                "inclusion",
+                "oxide_scale",
+                "patch",
+                "pit_texture",
+                "scratch"
+              ],
+              "count_usable_but_group_infeasible": [],
+              "n_feasible": 6,
+              "official_n_way": 5,
+              "can_form_official_episode": true,
+              "official_episode_saturated": false,
+              "offline_combo_counts_2_3_4_5": {
+                "2": 15,
+                "3": 20,
+                "4": 15,
+                "5": 6
+              },
+              "infeasible_detail": {}
+            }
+          }
+        },
+        "val": {
+          "classes": [
+            "crazing",
+            "inclusion",
+            "oxide_scale",
+            "patch",
+            "pit_texture",
+            "scratch"
+          ],
+          "by_k": {
+            "3": {
+              "count_usable": [
+                "crazing",
+                "inclusion",
+                "oxide_scale",
+                "patch",
+                "pit_texture",
+                "scratch"
+              ],
+              "group_feasible": [
+                "crazing",
+                "inclusion",
+                "oxide_scale",
+                "patch",
+                "pit_texture",
+                "scratch"
+              ],
+              "count_usable_but_group_infeasible": [],
+              "n_feasible": 6,
+              "official_n_way": 5,
+              "can_form_official_episode": true,
+              "official_episode_saturated": false,
+              "offline_combo_counts_2_3_4_5": {
+                "2": 15,
+                "3": 20,
+                "4": 15,
+                "5": 6
+              },
+              "infeasible_detail": {}
+            },
+            "5": {
+              "count_usable": [
+                "crazing",
+                "inclusion",
+                "oxide_scale",
+                "patch",
+                "pit_texture",
+                "scratch"
+              ],
+              "group_feasible": [
+                "crazing",
+                "inclusion",
+                "oxide_scale",
+                "patch",
+                "pit_texture"
+              ],
+              "count_usable_but_group_infeasible": [
+                "scratch"
+              ],
+              "n_feasible": 5,
+              "official_n_way": 5,
+              "can_form_official_episode": true,
+              "official_episode_saturated": true,
+              "offline_combo_counts_2_3_4_5": {
+                "2": 10,
+                "3": 10,
+                "4": 5,
+                "5": 1
+              },
+              "infeasible_detail": {
+                "scratch": "no_group_subset_with_sum_in_[5,36] sizes=[41, 3]"
+              }
+            }
+          }
+        },
+        "test": {
+          "classes": [
+            "crazing",
+            "inclusion",
+            "oxide_scale",
+            "patch",
+            "pit_texture",
+            "scratch"
+          ],
+          "by_k": {
+            "3": {
+              "count_usable": [
+                "crazing",
+                "inclusion",
+                "oxide_scale",
+                "patch",
+                "pit_texture",
+                "scratch"
+              ],
+              "group_feasible": [
+                "crazing",
+                "inclusion",
+                "patch",
+                "pit_texture",
+                "scratch"
+              ],
+              "count_usable_but_group_infeasible": [
+                "oxide_scale"
+              ],
+              "n_feasible": 5,
+              "official_n_way": 5,
+              "can_form_official_episode": true,
+              "official_episode_saturated": true,
+              "offline_combo_counts_2_3_4_5": {
+                "2": 10,
+                "3": 10,
+                "4": 5,
+                "5": 1
+              },
+              "infeasible_detail": {
+                "oxide_scale": "single_group_cannot_split (n_groups=1, n=46)"
+              }
+            },
+            "5": {
+              "count_usable": [
+                "crazing",
+                "inclusion",
+                "oxide_scale",
+                "patch",
+                "pit_texture",
+                "scratch"
+              ],
+              "group_feasible": [
+                "crazing",
+                "inclusion",
+                "patch",
+                "pit_texture",
+                "scratch"
+              ],
+              "count_usable_but_group_infeasible": [
+                "oxide_scale"
+              ],
+              "n_feasible": 5,
+              "official_n_way": 5,
+              "can_form_official_episode": true,
+              "official_episode_saturated": true,
+              "offline_combo_counts_2_3_4_5": {
+                "2": 10,
+                "3": 10,
+                "4": 5,
+                "5": 1
+              },
+              "infeasible_detail": {
+                "oxide_scale": "single_group_cannot_split (n_groups=1, n=46)"
+              }
+            }
+          }
+        }
+      }
+    },
+    "PIPE": {
+      "splits": {
+        "train": {
+          "classes": [
+            "fold_wrinkle",
+            "short_gouge",
+            "warp"
+          ],
+          "by_k": {
+            "3": {
+              "count_usable": [
+                "fold_wrinkle",
+                "short_gouge",
+                "warp"
+              ],
+              "group_feasible": [
+                "fold_wrinkle",
+                "short_gouge",
+                "warp"
+              ],
+              "count_usable_but_group_infeasible": [],
+              "n_feasible": 3,
+              "official_n_way": 3,
+              "can_form_official_episode": true,
+              "official_episode_saturated": true,
+              "offline_combo_counts_2_3_4_5": {
+                "2": 3,
+                "3": 1,
+                "4": 0,
+                "5": 0
+              },
+              "infeasible_detail": {}
+            },
+            "5": {
+              "count_usable": [
+                "fold_wrinkle",
+                "short_gouge",
+                "warp"
+              ],
+              "group_feasible": [
+                "fold_wrinkle",
+                "short_gouge",
+                "warp"
+              ],
+              "count_usable_but_group_infeasible": [],
+              "n_feasible": 3,
+              "official_n_way": 3,
+              "can_form_official_episode": true,
+              "official_episode_saturated": true,
+              "offline_combo_counts_2_3_4_5": {
+                "2": 3,
+                "3": 1,
+                "4": 0,
+                "5": 0
+              },
+              "infeasible_detail": {}
+            }
+          }
+        },
+        "val": {
+          "classes": [
+            "fold_wrinkle",
+            "short_gouge",
+            "warp"
+          ],
+          "by_k": {
+            "3": {
+              "count_usable": [
+                "fold_wrinkle",
+                "short_gouge",
+                "warp"
+              ],
+              "group_feasible": [
+                "fold_wrinkle",
+                "short_gouge",
+                "warp"
+              ],
+              "count_usable_but_group_infeasible": [],
+              "n_feasible": 3,
+              "official_n_way": 3,
+              "can_form_official_episode": true,
+              "official_episode_saturated": true,
+              "offline_combo_counts_2_3_4_5": {
+                "2": 3,
+                "3": 1,
+                "4": 0,
+                "5": 0
+              },
+              "infeasible_detail": {}
+            },
+            "5": {
+              "count_usable": [
+                "fold_wrinkle",
+                "short_gouge",
+                "warp"
+              ],
+              "group_feasible": [
+                "fold_wrinkle",
+                "short_gouge",
+                "warp"
+              ],
+              "count_usable_but_group_infeasible": [],
+              "n_feasible": 3,
+              "official_n_way": 3,
+              "can_form_official_episode": true,
+              "official_episode_saturated": true,
+              "offline_combo_counts_2_3_4_5": {
+                "2": 3,
+                "3": 1,
+                "4": 0,
+                "5": 0
+              },
+              "infeasible_detail": {}
+            }
+          }
+        },
+        "test": {
+          "classes": [
+            "fold_wrinkle",
+            "short_gouge",
+            "warp"
+          ],
+          "by_k": {
+            "3": {
+              "count_usable": [
+                "fold_wrinkle",
+                "short_gouge",
+                "warp"
+              ],
+              "group_feasible": [
+                "fold_wrinkle",
+                "short_gouge",
+                "warp"
+              ],
+              "count_usable_but_group_infeasible": [],
+              "n_feasible": 3,
+              "official_n_way": 3,
+              "can_form_official_episode": true,
+              "official_episode_saturated": true,
+              "offline_combo_counts_2_3_4_5": {
+                "2": 3,
+                "3": 1,
+                "4": 0,
+                "5": 0
+              },
+              "infeasible_detail": {}
+            },
+            "5": {
+              "count_usable": [
+                "fold_wrinkle",
+                "short_gouge",
+                "warp"
+              ],
+              "group_feasible": [
+                "fold_wrinkle",
+                "short_gouge",
+                "warp"
+              ],
+              "count_usable_but_group_infeasible": [],
+              "n_feasible": 3,
+              "official_n_way": 3,
+              "can_form_official_episode": true,
+              "official_episode_saturated": true,
+              "offline_combo_counts_2_3_4_5": {
+                "2": 3,
+                "3": 1,
+                "4": 0,
+                "5": 0
+              },
+              "infeasible_detail": {}
+            }
+          }
+        }
+      }
+    },
+    "PLATE": {
+      "splits": {
+        "train": {
+          "classes": [
+            "foreign_embed",
+            "inclusion",
+            "oxide_scale"
+          ],
+          "by_k": {
+            "3": {
+              "count_usable": [
+                "foreign_embed",
+                "inclusion",
+                "oxide_scale"
+              ],
+              "group_feasible": [
+                "foreign_embed",
+                "inclusion",
+                "oxide_scale"
+              ],
+              "count_usable_but_group_infeasible": [],
+              "n_feasible": 3,
+              "official_n_way": 3,
+              "can_form_official_episode": true,
+              "official_episode_saturated": true,
+              "offline_combo_counts_2_3_4_5": {
+                "2": 3,
+                "3": 1,
+                "4": 0,
+                "5": 0
+              },
+              "infeasible_detail": {}
+            },
+            "5": {
+              "count_usable": [
+                "foreign_embed",
+                "inclusion",
+                "oxide_scale"
+              ],
+              "group_feasible": [
+                "foreign_embed",
+                "inclusion",
+                "oxide_scale"
+              ],
+              "count_usable_but_group_infeasible": [],
+              "n_feasible": 3,
+              "official_n_way": 3,
+              "can_form_official_episode": true,
+              "official_episode_saturated": true,
+              "offline_combo_counts_2_3_4_5": {
+                "2": 3,
+                "3": 1,
+                "4": 0,
+                "5": 0
+              },
+              "infeasible_detail": {}
+            }
+          }
+        },
+        "val": {
+          "classes": [
+            "foreign_embed",
+            "inclusion",
+            "oxide_scale"
+          ],
+          "by_k": {
+            "3": {
+              "count_usable": [
+                "foreign_embed",
+                "inclusion",
+                "oxide_scale"
+              ],
+              "group_feasible": [
+                "foreign_embed",
+                "inclusion",
+                "oxide_scale"
+              ],
+              "count_usable_but_group_infeasible": [],
+              "n_feasible": 3,
+              "official_n_way": 3,
+              "can_form_official_episode": true,
+              "official_episode_saturated": true,
+              "offline_combo_counts_2_3_4_5": {
+                "2": 3,
+                "3": 1,
+                "4": 0,
+                "5": 0
+              },
+              "infeasible_detail": {}
+            },
+            "5": {
+              "count_usable": [
+                "foreign_embed",
+                "inclusion",
+                "oxide_scale"
+              ],
+              "group_feasible": [
+                "foreign_embed",
+                "inclusion"
+              ],
+              "count_usable_but_group_infeasible": [
+                "oxide_scale"
+              ],
+              "n_feasible": 2,
+              "official_n_way": 2,
+              "can_form_official_episode": true,
+              "official_episode_saturated": true,
+              "offline_combo_counts_2_3_4_5": {
+                "2": 1,
+                "3": 0,
+                "4": 0,
+                "5": 0
+              },
+              "infeasible_detail": {
+                "oxide_scale": "no_group_subset_with_sum_in_[5,25] sizes=[30, 1, 1, 1]"
+              }
+            }
+          }
+        },
+        "test": {
+          "classes": [
+            "foreign_embed",
+            "inclusion",
+            "oxide_scale"
+          ],
+          "by_k": {
+            "3": {
+              "count_usable": [
+                "foreign_embed",
+                "oxide_scale"
+              ],
+              "group_feasible": [
+                "foreign_embed",
+                "oxide_scale"
+              ],
+              "count_usable_but_group_infeasible": [],
+              "n_feasible": 2,
+              "official_n_way": 2,
+              "can_form_official_episode": true,
+              "official_episode_saturated": true,
+              "offline_combo_counts_2_3_4_5": {
+                "2": 1,
+                "3": 0,
+                "4": 0,
+                "5": 0
+              },
+              "infeasible_detail": {
+                "inclusion": "too_few_images (need >= 11, have 10)"
+              }
+            },
+            "5": {
+              "count_usable": [
+                "foreign_embed",
+                "oxide_scale"
+              ],
+              "group_feasible": [
+                "foreign_embed",
+                "oxide_scale"
+              ],
+              "count_usable_but_group_infeasible": [],
+              "n_feasible": 2,
+              "official_n_way": 2,
+              "can_form_official_episode": true,
+              "official_episode_saturated": true,
+              "offline_combo_counts_2_3_4_5": {
+                "2": 1,
+                "3": 0,
+                "4": 0,
+                "5": 0
+              },
+              "infeasible_detail": {
+                "inclusion": "too_few_images (need >= 13, have 10)"
+              }
+            }
+          }
+        }
+      }
+    },
+    "S3D": {
+      "splits": {
+        "train": {
+          "classes": [
+            "oxide_scale",
+            "scratch"
+          ],
+          "by_k": {
+            "3": {
+              "count_usable": [
+                "oxide_scale",
+                "scratch"
+              ],
+              "group_feasible": [
+                "oxide_scale",
+                "scratch"
+              ],
+              "count_usable_but_group_infeasible": [],
+              "n_feasible": 2,
+              "official_n_way": 2,
+              "can_form_official_episode": true,
+              "official_episode_saturated": true,
+              "offline_combo_counts_2_3_4_5": {
+                "2": 1,
+                "3": 0,
+                "4": 0,
+                "5": 0
+              },
+              "infeasible_detail": {}
+            },
+            "5": {
+              "count_usable": [
+                "oxide_scale",
+                "scratch"
+              ],
+              "group_feasible": [
+                "oxide_scale",
+                "scratch"
+              ],
+              "count_usable_but_group_infeasible": [],
+              "n_feasible": 2,
+              "official_n_way": 2,
+              "can_form_official_episode": true,
+              "official_episode_saturated": true,
+              "offline_combo_counts_2_3_4_5": {
+                "2": 1,
+                "3": 0,
+                "4": 0,
+                "5": 0
+              },
+              "infeasible_detail": {}
+            }
+          }
+        },
+        "val": {
+          "classes": [
+            "oxide_scale",
+            "scratch"
+          ],
+          "by_k": {
+            "3": {
+              "count_usable": [
+                "oxide_scale",
+                "scratch"
+              ],
+              "group_feasible": [
+                "oxide_scale",
+                "scratch"
+              ],
+              "count_usable_but_group_infeasible": [],
+              "n_feasible": 2,
+              "official_n_way": 2,
+              "can_form_official_episode": true,
+              "official_episode_saturated": true,
+              "offline_combo_counts_2_3_4_5": {
+                "2": 1,
+                "3": 0,
+                "4": 0,
+                "5": 0
+              },
+              "infeasible_detail": {}
+            },
+            "5": {
+              "count_usable": [
+                "oxide_scale",
+                "scratch"
+              ],
+              "group_feasible": [
+                "oxide_scale",
+                "scratch"
+              ],
+              "count_usable_but_group_infeasible": [],
+              "n_feasible": 2,
+              "official_n_way": 2,
+              "can_form_official_episode": true,
+              "official_episode_saturated": true,
+              "offline_combo_counts_2_3_4_5": {
+                "2": 1,
+                "3": 0,
+                "4": 0,
+                "5": 0
+              },
+              "infeasible_detail": {}
+            }
+          }
+        },
+        "test": {
+          "classes": [
+            "oxide_scale",
+            "scratch"
+          ],
+          "by_k": {
+            "3": {
+              "count_usable": [
+                "oxide_scale",
+                "scratch"
+              ],
+              "group_feasible": [
+                "oxide_scale",
+                "scratch"
+              ],
+              "count_usable_but_group_infeasible": [],
+              "n_feasible": 2,
+              "official_n_way": 2,
+              "can_form_official_episode": true,
+              "official_episode_saturated": true,
+              "offline_combo_counts_2_3_4_5": {
+                "2": 1,
+                "3": 0,
+                "4": 0,
+                "5": 0
+              },
+              "infeasible_detail": {}
+            },
+            "5": {
+              "count_usable": [
+                "oxide_scale",
+                "scratch"
+              ],
+              "group_feasible": [
+                "oxide_scale",
+                "scratch"
+              ],
+              "count_usable_but_group_infeasible": [],
+              "n_feasible": 2,
+              "official_n_way": 2,
+              "can_form_official_episode": true,
+              "official_episode_saturated": true,
+              "offline_combo_counts_2_3_4_5": {
+                "2": 1,
+                "3": 0,
+                "4": 0,
+                "5": 0
+              },
+              "infeasible_detail": {}
+            }
+          }
+        }
+      }
+    }
+  },
+  "pair_injectability_by_holdout": {
+    "NEU": {
+      "CR7:oil-inclusion": {
+        "holdout": "NEU",
+        "status": "训练池机械可注入；真实缓冲仍取决于后续真实验证混淆（本次无新模型混淆）",
+        "reasons": [],
+        "training_hosts": [
+          {
+            "source": "CR7",
+            "by_k": {
+              "3": {
+                "both_train_group_feasible": true,
+                "both_val_group_feasible": true,
+                "train_can_form_episode": true,
+                "train_can_change_composition": true
+              },
+              "5": {
+                "both_train_group_feasible": true,
+                "both_val_group_feasible": true,
+                "train_can_form_episode": true,
+                "train_can_change_composition": true
+              }
+            }
+          },
+          {
+            "source": "GC10",
+            "by_k": {
+              "3": {
+                "both_train_group_feasible": true,
+                "both_val_group_feasible": true,
+                "train_can_form_episode": true,
+                "train_can_change_composition": true
+              },
+              "5": {
+                "both_train_group_feasible": true,
+                "both_val_group_feasible": true,
+                "train_can_form_episode": true,
+                "train_can_change_composition": true
+              }
+            }
+          }
+        ],
+        "val_hosts_both_feasible": [
+          "CR7",
+          "GC10"
+        ]
+      },
+      "CR7:linear-pit_local": {
+        "holdout": "NEU",
+        "status": "给定pair在训练池机械可注入；但当前val组可行类不含该对的两端，真实缓冲不能从现行严格val混淆产生（无新模型混淆）",
+        "reasons": [
+          "val两端不能同时组可行，真实top3/缓冲不能在本次声称"
+        ],
+        "training_hosts": [
+          {
+            "source": "CR7",
+            "by_k": {
+              "3": {
+                "both_train_group_feasible": true,
+                "both_val_group_feasible": false,
+                "train_can_form_episode": true,
+                "train_can_change_composition": true
+              },
+              "5": {
+                "both_train_group_feasible": true,
+                "both_val_group_feasible": false,
+                "train_can_form_episode": true,
+                "train_can_change_composition": true
+              }
+            }
+          }
+        ],
+        "val_hosts_both_feasible": []
+      },
+      "CR7:pit_local-inclusion": {
+        "holdout": "NEU",
+        "status": "训练池机械可注入；真实缓冲仍取决于后续真实验证混淆（本次无新模型混淆）",
+        "reasons": [],
+        "training_hosts": [
+          {
+            "source": "CR7",
+            "by_k": {
+              "3": {
+                "both_train_group_feasible": true,
+                "both_val_group_feasible": true,
+                "train_can_form_episode": true,
+                "train_can_change_composition": true
+              },
+              "5": {
+                "both_train_group_feasible": true,
+                "both_val_group_feasible": true,
+                "train_can_form_episode": true,
+                "train_can_change_composition": true
+              }
+            }
+          }
+        ],
+        "val_hosts_both_feasible": [
+          "CR7"
+        ]
+      },
+      "GC10:oil-inclusion": {
+        "holdout": "NEU",
+        "status": "训练池机械可注入；真实缓冲仍取决于后续真实验证混淆（本次无新模型混淆）",
+        "reasons": [],
+        "training_hosts": [
+          {
+            "source": "CR7",
+            "by_k": {
+              "3": {
+                "both_train_group_feasible": true,
+                "both_val_group_feasible": true,
+                "train_can_form_episode": true,
+                "train_can_change_composition": true
+              },
+              "5": {
+                "both_train_group_feasible": true,
+                "both_val_group_feasible": true,
+                "train_can_form_episode": true,
+                "train_can_change_composition": true
+              }
+            }
+          },
+          {
+            "source": "GC10",
+            "by_k": {
+              "3": {
+                "both_train_group_feasible": true,
+                "both_val_group_feasible": true,
+                "train_can_form_episode": true,
+                "train_can_change_composition": true
+              },
+              "5": {
+                "both_train_group_feasible": true,
+                "both_val_group_feasible": true,
+                "train_can_form_episode": true,
+                "train_can_change_composition": true
+              }
+            }
+          }
+        ],
+        "val_hosts_both_feasible": [
+          "CR7",
+          "GC10"
+        ]
+      },
+      "GC10:oil-water": {
+        "holdout": "NEU",
+        "status": "训练池机械可注入；真实缓冲仍取决于后续真实验证混淆（本次无新模型混淆）",
+        "reasons": [],
+        "training_hosts": [
+          {
+            "source": "GC10",
+            "by_k": {
+              "3": {
+                "both_train_group_feasible": true,
+                "both_val_group_feasible": true,
+                "train_can_form_episode": true,
+                "train_can_change_composition": true
+              },
+              "5": {
+                "both_train_group_feasible": true,
+                "both_val_group_feasible": true,
+                "train_can_form_episode": true,
+                "train_can_change_composition": true
+              }
+            }
+          }
+        ],
+        "val_hosts_both_feasible": [
+          "GC10"
+        ]
+      },
+      "GC10:punch-weld_line": {
+        "holdout": "NEU",
+        "status": "训练池机械可注入；真实缓冲仍取决于后续真实验证混淆（本次无新模型混淆）",
+        "reasons": [],
+        "training_hosts": [
+          {
+            "source": "GC10",
+            "by_k": {
+              "3": {
+                "both_train_group_feasible": true,
+                "both_val_group_feasible": true,
+                "train_can_form_episode": true,
+                "train_can_change_composition": true
+              },
+              "5": {
+                "both_train_group_feasible": true,
+                "both_val_group_feasible": true,
+                "train_can_form_episode": true,
+                "train_can_change_composition": true
+              }
+            }
+          }
+        ],
+        "val_hosts_both_feasible": [
+          "GC10"
+        ]
+      },
+      "NEU:inclusion-pit_texture": {
+        "holdout": "NEU",
+        "status": "不可注入",
+        "reasons": [
+          "训练来源上不同时共存"
+        ],
+        "training_hosts": [],
+        "val_hosts_both_feasible": []
+      }
+    },
+    "CR7": {
+      "CR7:oil-inclusion": {
+        "holdout": "CR7",
+        "status": "训练池机械可注入；真实缓冲仍取决于后续真实验证混淆（本次无新模型混淆）",
+        "reasons": [],
+        "training_hosts": [
+          {
+            "source": "GC10",
+            "by_k": {
+              "3": {
+                "both_train_group_feasible": true,
+                "both_val_group_feasible": true,
+                "train_can_form_episode": true,
+                "train_can_change_composition": true
+              },
+              "5": {
+                "both_train_group_feasible": true,
+                "both_val_group_feasible": true,
+                "train_can_form_episode": true,
+                "train_can_change_composition": true
+              }
+            }
+          }
+        ],
+        "val_hosts_both_feasible": [
+          "GC10"
+        ]
+      },
+      "CR7:linear-pit_local": {
+        "holdout": "CR7",
+        "status": "不可注入",
+        "reasons": [
+          "训练来源上不同时共存"
+        ],
+        "training_hosts": [],
+        "val_hosts_both_feasible": []
+      },
+      "CR7:pit_local-inclusion": {
+        "holdout": "CR7",
+        "status": "不可注入",
+        "reasons": [
+          "训练来源上不同时共存"
+        ],
+        "training_hosts": [],
+        "val_hosts_both_feasible": []
+      },
+      "GC10:oil-inclusion": {
+        "holdout": "CR7",
+        "status": "训练池机械可注入；真实缓冲仍取决于后续真实验证混淆（本次无新模型混淆）",
+        "reasons": [],
+        "training_hosts": [
+          {
+            "source": "GC10",
+            "by_k": {
+              "3": {
+                "both_train_group_feasible": true,
+                "both_val_group_feasible": true,
+                "train_can_form_episode": true,
+                "train_can_change_composition": true
+              },
+              "5": {
+                "both_train_group_feasible": true,
+                "both_val_group_feasible": true,
+                "train_can_form_episode": true,
+                "train_can_change_composition": true
+              }
+            }
+          }
+        ],
+        "val_hosts_both_feasible": [
+          "GC10"
+        ]
+      },
+      "GC10:oil-water": {
+        "holdout": "CR7",
+        "status": "训练池机械可注入；真实缓冲仍取决于后续真实验证混淆（本次无新模型混淆）",
+        "reasons": [],
+        "training_hosts": [
+          {
+            "source": "GC10",
+            "by_k": {
+              "3": {
+                "both_train_group_feasible": true,
+                "both_val_group_feasible": true,
+                "train_can_form_episode": true,
+                "train_can_change_composition": true
+              },
+              "5": {
+                "both_train_group_feasible": true,
+                "both_val_group_feasible": true,
+                "train_can_form_episode": true,
+                "train_can_change_composition": true
+              }
+            }
+          }
+        ],
+        "val_hosts_both_feasible": [
+          "GC10"
+        ]
+      },
+      "GC10:punch-weld_line": {
+        "holdout": "CR7",
+        "status": "训练池机械可注入；真实缓冲仍取决于后续真实验证混淆（本次无新模型混淆）",
+        "reasons": [],
+        "training_hosts": [
+          {
+            "source": "GC10",
+            "by_k": {
+              "3": {
+                "both_train_group_feasible": true,
+                "both_val_group_feasible": true,
+                "train_can_form_episode": true,
+                "train_can_change_composition": true
+              },
+              "5": {
+                "both_train_group_feasible": true,
+                "both_val_group_feasible": true,
+                "train_can_form_episode": true,
+                "train_can_change_composition": true
+              }
+            }
+          }
+        ],
+        "val_hosts_both_feasible": [
+          "GC10"
+        ]
+      },
+      "NEU:inclusion-pit_texture": {
+        "holdout": "CR7",
+        "status": "训练池机械可注入；真实缓冲仍取决于后续真实验证混淆（本次无新模型混淆）",
+        "reasons": [],
+        "training_hosts": [
+          {
+            "source": "NEU",
+            "by_k": {
+              "3": {
+                "both_train_group_feasible": true,
+                "both_val_group_feasible": true,
+                "train_can_form_episode": true,
+                "train_can_change_composition": true
+              },
+              "5": {
+                "both_train_group_feasible": true,
+                "both_val_group_feasible": true,
+                "train_can_form_episode": true,
+                "train_can_change_composition": true
+              }
+            }
+          }
+        ],
+        "val_hosts_both_feasible": [
+          "NEU"
+        ]
+      }
+    },
+    "GC10": {
+      "CR7:oil-inclusion": {
+        "holdout": "GC10",
+        "status": "训练池机械可注入；真实缓冲仍取决于后续真实验证混淆（本次无新模型混淆）",
+        "reasons": [],
+        "training_hosts": [
+          {
+            "source": "CR7",
+            "by_k": {
+              "3": {
+                "both_train_group_feasible": true,
+                "both_val_group_feasible": true,
+                "train_can_form_episode": true,
+                "train_can_change_composition": true
+              },
+              "5": {
+                "both_train_group_feasible": true,
+                "both_val_group_feasible": true,
+                "train_can_form_episode": true,
+                "train_can_change_composition": true
+              }
+            }
+          }
+        ],
+        "val_hosts_both_feasible": [
+          "CR7"
+        ]
+      },
+      "CR7:linear-pit_local": {
+        "holdout": "GC10",
+        "status": "给定pair在训练池机械可注入；但当前val组可行类不含该对的两端，真实缓冲不能从现行严格val混淆产生（无新模型混淆）",
+        "reasons": [
+          "val两端不能同时组可行，真实top3/缓冲不能在本次声称"
+        ],
+        "training_hosts": [
+          {
+            "source": "CR7",
+            "by_k": {
+              "3": {
+                "both_train_group_feasible": true,
+                "both_val_group_feasible": false,
+                "train_can_form_episode": true,
+                "train_can_change_composition": true
+              },
+              "5": {
+                "both_train_group_feasible": true,
+                "both_val_group_feasible": false,
+                "train_can_form_episode": true,
+                "train_can_change_composition": true
+              }
+            }
+          }
+        ],
+        "val_hosts_both_feasible": []
+      },
+      "CR7:pit_local-inclusion": {
+        "holdout": "GC10",
+        "status": "训练池机械可注入；真实缓冲仍取决于后续真实验证混淆（本次无新模型混淆）",
+        "reasons": [],
+        "training_hosts": [
+          {
+            "source": "CR7",
+            "by_k": {
+              "3": {
+                "both_train_group_feasible": true,
+                "both_val_group_feasible": true,
+                "train_can_form_episode": true,
+                "train_can_change_composition": true
+              },
+              "5": {
+                "both_train_group_feasible": true,
+                "both_val_group_feasible": true,
+                "train_can_form_episode": true,
+                "train_can_change_composition": true
+              }
+            }
+          }
+        ],
+        "val_hosts_both_feasible": [
+          "CR7"
+        ]
+      },
+      "GC10:oil-inclusion": {
+        "holdout": "GC10",
+        "status": "训练池机械可注入；真实缓冲仍取决于后续真实验证混淆（本次无新模型混淆）",
+        "reasons": [],
+        "training_hosts": [
+          {
+            "source": "CR7",
+            "by_k": {
+              "3": {
+                "both_train_group_feasible": true,
+                "both_val_group_feasible": true,
+                "train_can_form_episode": true,
+                "train_can_change_composition": true
+              },
+              "5": {
+                "both_train_group_feasible": true,
+                "both_val_group_feasible": true,
+                "train_can_form_episode": true,
+                "train_can_change_composition": true
+              }
+            }
+          }
+        ],
+        "val_hosts_both_feasible": [
+          "CR7"
+        ]
+      },
+      "GC10:oil-water": {
+        "holdout": "GC10",
+        "status": "不可注入",
+        "reasons": [
+          "训练来源上不同时共存"
+        ],
+        "training_hosts": [],
+        "val_hosts_both_feasible": []
+      },
+      "GC10:punch-weld_line": {
+        "holdout": "GC10",
+        "status": "不可注入",
+        "reasons": [
+          "训练来源上不同时共存"
+        ],
+        "training_hosts": [],
+        "val_hosts_both_feasible": []
+      },
+      "NEU:inclusion-pit_texture": {
+        "holdout": "GC10",
+        "status": "训练池机械可注入；真实缓冲仍取决于后续真实验证混淆（本次无新模型混淆）",
+        "reasons": [],
+        "training_hosts": [
+          {
+            "source": "NEU",
+            "by_k": {
+              "3": {
+                "both_train_group_feasible": true,
+                "both_val_group_feasible": true,
+                "train_can_form_episode": true,
+                "train_can_change_composition": true
+              },
+              "5": {
+                "both_train_group_feasible": true,
+                "both_val_group_feasible": true,
+                "train_can_form_episode": true,
+                "train_can_change_composition": true
+              }
+            }
+          }
+        ],
+        "val_hosts_both_feasible": [
+          "NEU"
+        ]
+      }
+    }
+  },
+  "notes": [
+    "official n_way = min(5, n_feasible) if n_feasible>=2 else cannot form; 2/3-way counts are offline only when official way is higher.",
+    "When n_feasible<=5, official episodes are saturated: hard-pair changed cannot occur on that split.",
+    "CR7 val 4-way is saturated by construction; val episodes do not need changed."
+  ]
+}

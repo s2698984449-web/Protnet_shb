@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="2700" height="946" viewBox="0 0 2700 946" role="img">
+<title>工况编码与条件输入</title>
+<rect width="100%" height="100%" fill="#FFFFFF"/>
+<rect x="80.0" y="200.0" width="605.0" height="162.0" rx="18" ry="18" fill="#EFF6FF" stroke="#1D4ED8" stroke-width="2.6"/>
+<rect x="725.0" y="200.0" width="605.0" height="162.0" rx="18" ry="18" fill="#EFF6FF" stroke="#1D4ED8" stroke-width="2.6"/>
+<rect x="1370.0" y="200.0" width="605.0" height="162.0" rx="18" ry="18" fill="#EFF6FF" stroke="#1D4ED8" stroke-width="2.6"/>
+<rect x="2015.0" y="200.0" width="605.0" height="162.0" rx="18" ry="18" fill="#F3F4F6" stroke="#6B7280" stroke-width="2.6" stroke-dasharray="9 7"/>
+<rect x="80.0" y="432.0" width="980.0" height="162.0" rx="18" ry="18" fill="#FAFAFA" stroke="#D1D5DB" stroke-width="2.0"/>
+<rect x="1120.0" y="432.0" width="1500.0" height="162.0" rx="18" ry="18" fill="#EFF6FF" stroke="#1D4ED8" stroke-width="2.6"/>
+<rect x="80.0" y="664.0" width="605.0" height="162.0" rx="18" ry="18" fill="#EFF6FF" stroke="#1D4ED8" stroke-width="2.6"/>
+<rect x="725.0" y="664.0" width="605.0" height="162.0" rx="18" ry="18" fill="#F3F4F6" stroke="#6B7280" stroke-width="2.6" stroke-dasharray="9 7"/>
+<rect x="1370.0" y="664.0" width="605.0" height="162.0" rx="18" ry="18" fill="#F3F4F6" stroke="#6B7280" stroke-width="2.6" stroke-dasharray="9 7"/>
+<rect x="2015.0" y="664.0" width="605.0" height="162.0" rx="18" ry="18" fill="#F3F4F6" stroke="#6B7280" stroke-width="2.6" stroke-dasharray="9 7"/>
+<line x1="1060.0" y1="513.0" x2="1107.0" y2="513.0" stroke="#1D4ED8" stroke-width="2.8" stroke-linecap="round"/>
+<polygon points="1120.0,513.0 1109.9,519.4 1109.9,506.6" fill="#1D4ED8" stroke="none"/>
+<line x1="685.0" y1="745.0" x2="712.0" y2="745.0" stroke="#6B7280" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="9 7"/>
+<polygon points="725.0,745.0 714.9,751.4 714.9,738.6" fill="#6B7280" stroke="none"/>
+<rect x="1000.0" y="46.0" width="22" height="16" rx="4" fill="#EFF6FF" stroke="#1D4ED8" stroke-width="2"/>
+<text x="1030.0" y="60.0" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="15">数据与给定掩码</text>
+<rect x="1169.0" y="46.0" width="22" height="16" rx="4" fill="#F3F4F6" stroke="#6B7280" stroke-width="2"/>
+<text x="1199.0" y="60.0" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="15">冻结</text>
+<rect x="1263.0" y="46.0" width="22" height="16" rx="4" fill="#ECFDF5" stroke="#047857" stroke-width="2"/>
+<text x="1293.0" y="60.0" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="15">可训练 / 更新</text>
+<rect x="1416.0" y="46.0" width="22" height="16" rx="4" fill="#FFF7ED" stroke="#C2410C" stroke-width="2" stroke-dasharray="7 5"/>
+<text x="1446.0" y="60.0" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="15">验证反馈</text>
+<rect x="1540.0" y="46.0" width="22" height="16" rx="4" fill="#F3F4F6" stroke="#6B7280" stroke-width="2" stroke-dasharray="7 5"/>
+<text x="1570.0" y="60.0" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="15">未启用 / 预留</text>
+<text x="80" y="62" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="38" font-weight="700">工况编码与条件输入</text>
+<text x="80" y="108" fill="#4B5563" font-family="Microsoft YaHei, sans-serif" font-size="20">数据侧始终组装槽位与缺测掩码；当前课程模型默认不把工况送入特征或 β</text>
+<text x="80.0" y="175.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="20" font-weight="700">① 槽位来源（按优先级合并；某维已填则不被后续来源覆盖）</text>
+<text x="104.0" y="228.0" text-anchor="start" fill="#1D4ED8" font-family="Microsoft YaHei, sans-serif" font-size="21" font-weight="700">1. condition_file（可选）</text>
+<text x="104.0" y="264.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">JSON：相对数据根的路径 → 槽位字典</text>
+<text x="104.0" y="291.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">按图填写，优先级最高</text>
+<text x="104.0" y="318.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">当前配置未提供该文件</text>
+<text x="749.0" y="228.0" text-anchor="start" fill="#1D4ED8" font-family="Microsoft YaHei, sans-serif" font-size="21" font-weight="700">2. source_table（当前主来源）</text>
+<text x="749.0" y="264.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">来源目录名 → 已知槽位</text>
+<text x="749.0" y="291.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">数值是 0–1 码本，不是物理单位</text>
+<text x="749.0" y="318.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">例如 material=1 表示钢；exposure 常缺测</text>
+<text x="1394.0" y="228.0" text-anchor="start" fill="#1D4ED8" font-family="Microsoft YaHei, sans-serif" font-size="21" font-weight="700">3. illumination_manifest（可选）</text>
+<text x="1394.0" y="264.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">亮度脚本 CSV 的 offset 写入 illuminance</text>
+<text x="1394.0" y="291.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">先压到约 [-1, 1]，再映到 [0, 1]（中心 0.5）</text>
+<text x="1394.0" y="318.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">当前配置未提供该表</text>
+<text x="2039.0" y="228.0" text-anchor="start" fill="#6B7280" font-family="Microsoft YaHei, sans-serif" font-size="21" font-weight="700">4. 图像灰度均值（可选补位）</text>
+<text x="2039.0" y="264.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">仅当 illuminance 仍缺测时可用</text>
+<text x="2039.0" y="291.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">用灰度均值 / 255 补该槽位</text>
+<text x="2039.0" y="318.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">课程采样默认 cond_fallback_image_stats=false，不启用</text>
+<text x="80.0" y="404.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="20" font-weight="700">② ConditionBuilder 内部计算 → 每张图的输出</text>
+<text x="104.0" y="460.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="21" font-weight="700">槽位 values 与 mask（D = 6）</text>
+<text x="104.0" y="496.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">cond_slots：material, surface, illuminance, light_mode, exposure, camera</text>
+<text x="104.0" y="523.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">values ∈ R^D，mask ∈ {0, 1}^D：1=有记录，0=缺测</text>
+<text x="104.0" y="550.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">缺测维保持 0 且 mask=0；不把“没有记录”当成已观测的数值 0 去学</text>
+<text x="1144.0" y="460.0" text-anchor="start" fill="#1D4ED8" font-family="Microsoft YaHei, sans-serif" font-size="21" font-weight="700">装入 episode 的张量</text>
+<text x="1144.0" y="496.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">support_cond / query_cond 与对应 cond_mask，形状为 (张数, 6)</text>
+<text x="1144.0" y="523.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">curriculum 路径按来源名查 source_table，不另填 source_slot</text>
+<text x="1144.0" y="550.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">apply_cond_mask(cond, mask) = cond ⊙ mask，供工况编码器使用，不是 DualRegion 打分的一步</text>
+<text x="80.0" y="636.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="20" font-weight="700">③ 谁在消费：只画代码里真实发生的连接</text>
+<text x="104.0" y="692.0" text-anchor="start" fill="#1D4ED8" font-family="Microsoft YaHei, sans-serif" font-size="21" font-weight="700">数据接口（始终）</text>
+<text x="104.0" y="728.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">每张图都会组装 cond 与 mask</text>
+<text x="104.0" y="755.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">随 episode 交给 forward_episode</text>
+<text x="104.0" y="782.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">这只说明数据侧有接口，不等于模型已使用</text>
+<text x="749.0" y="692.0" text-anchor="start" fill="#6B7280" font-family="Microsoft YaHei, sans-serif" font-size="21" font-weight="700">当前 DualRegion（本版）</text>
+<text x="749.0" y="728.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">use_policy=false 时不消费工况</text>
+<text x="749.0" y="755.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">query_cond 在 forward 中被丢弃</text>
+<text x="749.0" y="782.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">不进入特征、不调制、也不进入打分</text>
+<text x="1394.0" y="692.0" text-anchor="start" fill="#6B7280" font-family="Microsoft YaHei, sans-serif" font-size="21" font-weight="700">可选：仅当 use_policy=true</text>
+<text x="1394.0" y="728.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">只用 support 的 cond 均值与 mask 均值</text>
+<text x="1394.0" y="755.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">拼进 EpisodeBetaPolicy 的整集状态</text>
+<text x="1394.0" y="782.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">仍不做 FiLM 或通道调制，见 04</text>
+<text x="2039.0" y="692.0" text-anchor="start" fill="#6B7280" font-family="Microsoft YaHei, sans-serif" font-size="21" font-weight="700">其他模式：ConditionStrategy</text>
+<text x="2039.0" y="728.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">非 curriculum 训练才走这条路</text>
+<text x="2039.0" y="755.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">先 mask 再 cond_encoder，经 FiLM 调制特征</text>
+<text x="2039.0" y="782.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">类内工况均值还可进入 PolicyNet 状态</text>
+<text x="80" y="910.0" fill="#4B5563" font-family="Microsoft YaHei, sans-serif" font-size="15">对应 cspd/condition_io.py 的 ConditionBuilder、cspd/data.py 的课程采样 _load，以及 DualRegionBetaDetector.forward。本图不声称工况已提升精度。</text>
+<text x="2620.0" y="918.0" text-anchor="end" fill="#6B7280" font-family="Microsoft YaHei, sans-serif" font-size="15">bot · cspd</text>
+</svg>

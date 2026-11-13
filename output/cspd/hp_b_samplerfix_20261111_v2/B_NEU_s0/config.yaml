@@ -1,0 +1,121 @@
+exp_name: B_NEU_s0
+train_mode: curriculum
+data_root: D:/元强化学习/代码/data/new_split_v3
+holdout_source: NEU
+holdout_eval: same
+holdout_pool: all
+exclude_sources:
+- XSDD
+exclude_classes_cross: []
+require_mask: true
+include_classes: []
+source_table:
+  NEU:
+    material: 1.0
+    surface: 1.0
+    illuminance: 0.477
+    camera: 0.0
+  GC10:
+    material: 1.0
+    surface: 0.0
+    illuminance: 0.328
+    light_mode: 1.0
+    camera: 0.0
+  CR7:
+    material: 1.0
+    surface: 0.25
+    illuminance: 0.44
+    camera: 0.0
+  PLATE:
+    material: 1.0
+    surface: 0.8
+    illuminance: 0.275
+    camera: 0.0
+  CAST:
+    material: 1.0
+    surface: 0.55
+    illuminance: 0.398
+    camera: 0.0
+  PIPE:
+    material: 1.0
+    surface: 0.4
+    illuminance: 0.371
+    camera: 0.0
+  CSU:
+    material: 1.0
+    surface: 0.15
+    illuminance: 0.35
+    camera: 0.0
+  S3D:
+    material: 1.0
+    surface: 0.65
+    illuminance: 0.36
+    camera: 0.0
+cond_slots:
+- material
+- surface
+- illuminance
+- light_mode
+- exposure
+- camera
+cond_dim: 6
+condition_file: null
+illumination_manifest: null
+cond_fallback_image_stats: false
+illuminance_offset_scale: 80.0
+image_size: 224
+crop_to_mask: true
+crop_margin: 0.35
+crop_min_side: 96
+crop_square: true
+n_way: 5
+k_choices:
+- 3
+- 5
+k_probs:
+- 0.7
+- 0.3
+q_query: 8
+feat_dim: 128
+context_dilate_px: 16
+use_policy: false
+freeze_policy: true
+fixed_beta: 0.25
+beta_center: 0.25
+beta_scale: 0.25
+policy_unfreeze_frac: 0.25
+pretrained_backbone: true
+freeze_backbone: true
+lr: 0.0003
+policy_lr_ratio: 0.3
+weight_decay: 0.0001
+grad_clip: 1.0
+meta_batch: 4
+grad_accum: 2
+iters: 100
+eval_every: 5
+eval_tasks: 20
+early_stop: false
+early_start: 50
+patience: 10
+monitor: loss
+min_delta: 0.0
+seed: 0
+device: cuda
+rho_schedule:
+- - 0.0
+  - 0.0
+- - 1.0
+  - 0.0
+hard_pair_protocol: true
+same_hard_pairs: true
+feature_layer: 3
+strict_groups: true
+acceptance_neu_mde: null
+historical_holdout:
+  NEU: 0.951
+  CR7: 0.706
+  GC10: 0.665
+output_group: hp_b_samplerfix_20261111_v2
+experiment_variant: B
+config_path: D:\元强化学习\代码\config\cspd\queues\hp_b_samplerfix_20261111_v2\B_NEU_s0.yaml

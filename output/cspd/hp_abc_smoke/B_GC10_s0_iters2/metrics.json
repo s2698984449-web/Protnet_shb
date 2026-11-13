@@ -1,0 +1,720 @@
+{
+  "config": {
+    "exp_name": "B_GC10_s0_iters2",
+    "train_mode": "curriculum",
+    "data_root": "D:/元强化学习/代码/data/new_split_v3",
+    "holdout_source": "GC10",
+    "holdout_eval": "same",
+    "holdout_pool": "all",
+    "exclude_sources": [
+      "XSDD"
+    ],
+    "exclude_classes_cross": [],
+    "require_mask": true,
+    "include_classes": [],
+    "source_table": {
+      "NEU": {
+        "material": 1.0,
+        "surface": 1.0,
+        "illuminance": 0.477,
+        "camera": 0.0
+      },
+      "GC10": {
+        "material": 1.0,
+        "surface": 0.0,
+        "illuminance": 0.328,
+        "light_mode": 1.0,
+        "camera": 0.0
+      },
+      "CR7": {
+        "material": 1.0,
+        "surface": 0.25,
+        "illuminance": 0.44,
+        "camera": 0.0
+      },
+      "PLATE": {
+        "material": 1.0,
+        "surface": 0.8,
+        "illuminance": 0.275,
+        "camera": 0.0
+      },
+      "CAST": {
+        "material": 1.0,
+        "surface": 0.55,
+        "illuminance": 0.398,
+        "camera": 0.0
+      },
+      "PIPE": {
+        "material": 1.0,
+        "surface": 0.4,
+        "illuminance": 0.371,
+        "camera": 0.0
+      },
+      "CSU": {
+        "material": 1.0,
+        "surface": 0.15,
+        "illuminance": 0.35,
+        "camera": 0.0
+      },
+      "S3D": {
+        "material": 1.0,
+        "surface": 0.65,
+        "illuminance": 0.36,
+        "camera": 0.0
+      }
+    },
+    "cond_slots": [
+      "material",
+      "surface",
+      "illuminance",
+      "light_mode",
+      "exposure",
+      "camera"
+    ],
+    "cond_dim": 6,
+    "condition_file": null,
+    "illumination_manifest": null,
+    "cond_fallback_image_stats": false,
+    "illuminance_offset_scale": 80.0,
+    "image_size": 224,
+    "crop_to_mask": true,
+    "crop_margin": 0.35,
+    "crop_min_side": 96,
+    "crop_square": true,
+    "n_way": 5,
+    "k_choices": [
+      3,
+      5
+    ],
+    "k_probs": [
+      0.7,
+      0.3
+    ],
+    "q_query": 8,
+    "feat_dim": 128,
+    "context_dilate_px": 16,
+    "use_policy": false,
+    "freeze_policy": true,
+    "fixed_beta": 0.25,
+    "beta_center": 0.25,
+    "beta_scale": 0.25,
+    "policy_unfreeze_frac": 0.25,
+    "pretrained_backbone": true,
+    "freeze_backbone": true,
+    "lr": 0.0003,
+    "policy_lr_ratio": 0.3,
+    "weight_decay": 0.0001,
+    "grad_clip": 1.0,
+    "meta_batch": 4,
+    "grad_accum": 2,
+    "iters": 2,
+    "eval_every": 5,
+    "eval_tasks": 2,
+    "early_stop": false,
+    "early_start": 50,
+    "patience": 10,
+    "monitor": "loss",
+    "min_delta": 0.0,
+    "seed": 0,
+    "device": "cuda",
+    "rho_schedule": [
+      [
+        0.0,
+        0.0
+      ],
+      [
+        1.0,
+        0.0
+      ]
+    ],
+    "hard_pair_protocol": true,
+    "same_hard_pairs": true,
+    "feature_layer": 3,
+    "strict_groups": true,
+    "acceptance_neu_mde": null,
+    "historical_holdout": {
+      "NEU": 0.951,
+      "CR7": 0.706,
+      "GC10": 0.665
+    },
+    "output_group": "hp_abc_smoke",
+    "experiment_variant": "B"
+  },
+  "train_sources": [
+    "CAST",
+    "CR7",
+    "CSU",
+    "NEU",
+    "PIPE",
+    "PLATE",
+    "S3D"
+  ],
+  "test_same": {
+    "acc": 0.8928571428571429,
+    "loss": 1.0746447443962097,
+    "beta": 0.25,
+    "per_class": {
+      "patch": [
+        8,
+        8
+      ],
+      "scratch": [
+        8,
+        8
+      ],
+      "inclusion": [
+        8,
+        8
+      ],
+      "crazing": [
+        8,
+        8
+      ],
+      "pit_texture": [
+        7,
+        8
+      ],
+      "foreign_embed": [
+        3,
+        8
+      ],
+      "oxide_scale": [
+        8,
+        8
+      ]
+    },
+    "confusion": {
+      "pit_texture -> crazing": 1,
+      "foreign_embed -> oxide_scale": 5
+    },
+    "skipped": 0,
+    "skip_reasons": {},
+    "query_count": 56,
+    "by_source": {
+      "NEU": {
+        "per_class": {
+          "patch": [
+            8,
+            8
+          ],
+          "scratch": [
+            8,
+            8
+          ],
+          "inclusion": [
+            8,
+            8
+          ],
+          "crazing": [
+            8,
+            8
+          ],
+          "pit_texture": [
+            7,
+            8
+          ]
+        },
+        "confusion": {
+          "pit_texture -> crazing": 1
+        },
+        "opportunities": {
+          "patch -> scratch": 8,
+          "patch -> inclusion": 8,
+          "patch -> crazing": 8,
+          "patch -> pit_texture": 8,
+          "scratch -> patch": 8,
+          "scratch -> inclusion": 8,
+          "scratch -> crazing": 8,
+          "scratch -> pit_texture": 8,
+          "inclusion -> patch": 8,
+          "inclusion -> scratch": 8,
+          "inclusion -> crazing": 8,
+          "inclusion -> pit_texture": 8,
+          "crazing -> patch": 8,
+          "crazing -> scratch": 8,
+          "crazing -> inclusion": 8,
+          "crazing -> pit_texture": 8,
+          "pit_texture -> patch": 8,
+          "pit_texture -> scratch": 8,
+          "pit_texture -> inclusion": 8,
+          "pit_texture -> crazing": 8
+        },
+        "episodes": 1
+      },
+      "PLATE": {
+        "per_class": {
+          "foreign_embed": [
+            3,
+            8
+          ],
+          "oxide_scale": [
+            8,
+            8
+          ]
+        },
+        "confusion": {
+          "foreign_embed -> oxide_scale": 5
+        },
+        "opportunities": {
+          "foreign_embed -> oxide_scale": 8,
+          "oxide_scale -> foreign_embed": 8
+        },
+        "episodes": 1
+      }
+    },
+    "group_failures": {},
+    "source_attempts": {
+      "NEU": 1,
+      "CSU": 1,
+      "PLATE": 1
+    },
+    "source_successes": {
+      "NEU": 1,
+      "PLATE": 1
+    }
+  },
+  "test_cross": {
+    "acc": 0.71875,
+    "loss": 0.6592898368835449,
+    "beta": 0.25,
+    "per_class": {
+      "inclusion": [
+        8,
+        8
+      ],
+      "scratch": [
+        8,
+        16
+      ],
+      "oxide_scale": [
+        7,
+        8
+      ]
+    },
+    "confusion": {
+      "scratch -> inclusion": 8,
+      "oxide_scale -> scratch": 1
+    },
+    "skipped": 0,
+    "skip_reasons": {},
+    "query_count": 32,
+    "by_source": {
+      "CSU": {
+        "per_class": {
+          "inclusion": [
+            8,
+            8
+          ],
+          "scratch": [
+            0,
+            8
+          ]
+        },
+        "confusion": {
+          "scratch -> inclusion": 8
+        },
+        "opportunities": {
+          "inclusion -> scratch": 8,
+          "scratch -> inclusion": 8
+        },
+        "episodes": 1
+      },
+      "S3D": {
+        "per_class": {
+          "oxide_scale": [
+            7,
+            8
+          ],
+          "scratch": [
+            8,
+            8
+          ]
+        },
+        "confusion": {
+          "oxide_scale -> scratch": 1
+        },
+        "opportunities": {
+          "oxide_scale -> scratch": 8,
+          "scratch -> oxide_scale": 8
+        },
+        "episodes": 1
+      }
+    },
+    "group_failures": {},
+    "source_attempts": {
+      "NEU": 1,
+      "CSU": 2,
+      "PLATE": 1,
+      "S3D": 1
+    },
+    "source_successes": {
+      "NEU": 1,
+      "PLATE": 1,
+      "CSU": 1,
+      "S3D": 1
+    }
+  },
+  "hard_sampling": {
+    "PIPE": {
+      "episodes": 2,
+      "requested": 0,
+      "applied": 0,
+      "changed": 0,
+      "fallback": 0,
+      "saturated": 2
+    },
+    "NEU": {
+      "episodes": 2,
+      "requested": 0,
+      "applied": 0,
+      "changed": 0,
+      "fallback": 0,
+      "saturated": 0
+    },
+    "CR7": {
+      "episodes": 2,
+      "requested": 0,
+      "applied": 0,
+      "changed": 0,
+      "fallback": 0,
+      "saturated": 0
+    },
+    "S3D": {
+      "episodes": 2,
+      "requested": 0,
+      "applied": 0,
+      "changed": 0,
+      "fallback": 0,
+      "saturated": 2
+    }
+  },
+  "validation": [
+    {
+      "iter": 2,
+      "buffer": {
+        "CAST": {
+          "episodes": 0,
+          "top": [],
+          "active": [],
+          "removed": []
+        },
+        "CR7": {
+          "episodes": 0,
+          "top": [],
+          "active": [],
+          "removed": []
+        },
+        "CSU": {
+          "episodes": 0,
+          "top": [],
+          "active": [],
+          "removed": []
+        },
+        "NEU": {
+          "episodes": 1,
+          "top": [],
+          "active": [],
+          "removed": []
+        },
+        "PIPE": {
+          "episodes": 0,
+          "top": [],
+          "active": [],
+          "removed": []
+        },
+        "PLATE": {
+          "episodes": 0,
+          "top": [],
+          "active": [],
+          "removed": []
+        },
+        "S3D": {
+          "episodes": 1,
+          "top": [],
+          "active": [],
+          "removed": []
+        }
+      },
+      "same_validation": {
+        "acc": 0.9464285714285714,
+        "loss": 1.0179069638252258,
+        "beta": 0.25,
+        "per_class": {
+          "oxide_scale": [
+            16,
+            16
+          ],
+          "scratch": [
+            15,
+            16
+          ],
+          "inclusion": [
+            8,
+            8
+          ],
+          "pit_texture": [
+            7,
+            8
+          ],
+          "crazing": [
+            7,
+            8
+          ]
+        },
+        "confusion": {
+          "scratch -> inclusion": 1,
+          "pit_texture -> oxide_scale": 1,
+          "crazing -> oxide_scale": 1
+        },
+        "skipped": 0,
+        "skip_reasons": {},
+        "query_count": 56,
+        "by_source": {
+          "NEU": {
+            "per_class": {
+              "oxide_scale": [
+                8,
+                8
+              ],
+              "scratch": [
+                7,
+                8
+              ],
+              "inclusion": [
+                8,
+                8
+              ],
+              "pit_texture": [
+                7,
+                8
+              ],
+              "crazing": [
+                7,
+                8
+              ]
+            },
+            "confusion": {
+              "scratch -> inclusion": 1,
+              "pit_texture -> oxide_scale": 1,
+              "crazing -> oxide_scale": 1
+            },
+            "opportunities": {
+              "oxide_scale -> scratch": 8,
+              "oxide_scale -> inclusion": 8,
+              "oxide_scale -> pit_texture": 8,
+              "oxide_scale -> crazing": 8,
+              "scratch -> oxide_scale": 8,
+              "scratch -> inclusion": 8,
+              "scratch -> pit_texture": 8,
+              "scratch -> crazing": 8,
+              "inclusion -> oxide_scale": 8,
+              "inclusion -> scratch": 8,
+              "inclusion -> pit_texture": 8,
+              "inclusion -> crazing": 8,
+              "pit_texture -> oxide_scale": 8,
+              "pit_texture -> scratch": 8,
+              "pit_texture -> inclusion": 8,
+              "pit_texture -> crazing": 8,
+              "crazing -> oxide_scale": 8,
+              "crazing -> scratch": 8,
+              "crazing -> inclusion": 8,
+              "crazing -> pit_texture": 8
+            },
+            "episodes": 1
+          },
+          "S3D": {
+            "per_class": {
+              "oxide_scale": [
+                8,
+                8
+              ],
+              "scratch": [
+                8,
+                8
+              ]
+            },
+            "confusion": {},
+            "opportunities": {
+              "oxide_scale -> scratch": 8,
+              "scratch -> oxide_scale": 8
+            },
+            "episodes": 1
+          }
+        },
+        "group_failures": {
+          "CR7:dent": 1
+        },
+        "source_attempts": {
+          "CSU": 1,
+          "NEU": 1,
+          "CR7": 1,
+          "S3D": 1
+        },
+        "source_successes": {
+          "NEU": 1,
+          "S3D": 1
+        }
+      }
+    }
+  ],
+  "train_group_failures": {},
+  "train_source_attempts": {
+    "PIPE": 2,
+    "NEU": 2,
+    "CR7": 2,
+    "S3D": 2
+  },
+  "train_source_successes": {
+    "PIPE": 2,
+    "NEU": 2,
+    "CR7": 2,
+    "S3D": 2
+  },
+  "status": "evaluated",
+  "holdout": {
+    "acc": 0.6875,
+    "loss": 1.52486252784729,
+    "beta": 0.25,
+    "per_class": {
+      "weld_line": [
+        15,
+        16
+      ],
+      "inclusion": [
+        4,
+        8
+      ],
+      "water": [
+        13,
+        16
+      ],
+      "punch": [
+        8,
+        16
+      ],
+      "oil": [
+        2,
+        8
+      ],
+      "fold_wrinkle": [
+        5,
+        8
+      ],
+      "crescent": [
+        8,
+        8
+      ]
+    },
+    "confusion": {
+      "weld_line -> punch": 1,
+      "inclusion -> water": 3,
+      "inclusion -> punch": 1,
+      "water -> inclusion": 1,
+      "punch -> weld_line": 3,
+      "punch -> water": 1,
+      "oil -> water": 1,
+      "oil -> punch": 4,
+      "oil -> inclusion": 1,
+      "water -> fold_wrinkle": 2,
+      "fold_wrinkle -> punch": 1,
+      "fold_wrinkle -> weld_line": 2,
+      "punch -> fold_wrinkle": 4
+    },
+    "skipped": 0,
+    "skip_reasons": {},
+    "query_count": 80,
+    "by_source": {
+      "GC10": {
+        "per_class": {
+          "weld_line": [
+            15,
+            16
+          ],
+          "inclusion": [
+            4,
+            8
+          ],
+          "water": [
+            13,
+            16
+          ],
+          "punch": [
+            8,
+            16
+          ],
+          "oil": [
+            2,
+            8
+          ],
+          "fold_wrinkle": [
+            5,
+            8
+          ],
+          "crescent": [
+            8,
+            8
+          ]
+        },
+        "confusion": {
+          "weld_line -> punch": 1,
+          "inclusion -> water": 3,
+          "inclusion -> punch": 1,
+          "water -> inclusion": 1,
+          "punch -> weld_line": 3,
+          "punch -> water": 1,
+          "oil -> water": 1,
+          "oil -> punch": 4,
+          "oil -> inclusion": 1,
+          "water -> fold_wrinkle": 2,
+          "fold_wrinkle -> punch": 1,
+          "fold_wrinkle -> weld_line": 2,
+          "punch -> fold_wrinkle": 4
+        },
+        "opportunities": {
+          "weld_line -> inclusion": 8,
+          "weld_line -> water": 16,
+          "weld_line -> punch": 16,
+          "weld_line -> oil": 8,
+          "inclusion -> weld_line": 8,
+          "inclusion -> water": 8,
+          "inclusion -> punch": 8,
+          "inclusion -> oil": 8,
+          "water -> weld_line": 16,
+          "water -> inclusion": 8,
+          "water -> punch": 16,
+          "water -> oil": 8,
+          "punch -> weld_line": 16,
+          "punch -> inclusion": 8,
+          "punch -> water": 16,
+          "punch -> oil": 8,
+          "oil -> weld_line": 8,
+          "oil -> inclusion": 8,
+          "oil -> water": 8,
+          "oil -> punch": 8,
+          "water -> fold_wrinkle": 8,
+          "water -> crescent": 8,
+          "fold_wrinkle -> water": 8,
+          "fold_wrinkle -> crescent": 8,
+          "fold_wrinkle -> punch": 8,
+          "fold_wrinkle -> weld_line": 8,
+          "crescent -> water": 8,
+          "crescent -> fold_wrinkle": 8,
+          "crescent -> punch": 8,
+          "crescent -> weld_line": 8,
+          "punch -> fold_wrinkle": 8,
+          "punch -> crescent": 8,
+          "weld_line -> fold_wrinkle": 8,
+          "weld_line -> crescent": 8
+        },
+        "episodes": 2
+      }
+    },
+    "group_failures": {},
+    "source_attempts": {
+      "GC10": 2
+    },
+    "source_successes": {
+      "GC10": 2
+    }
+  }
+}

@@ -1,0 +1,22 @@
+job,holdout,target,status,training_hosts,ever_in_buffer,changed_count,applied_old_semantics_count,appearance_count,injected_new_count,note
+B_NEU_s0,NEU,CR7:oil-inclusion,structurally_injectable_but_REAL_CHAIN_UNVERIFIED_post_fix,CR7|GC10,False,0,0,NA,0,"val_feas=['CR7', 'GC10'] train_can_change=['CR7', 'GC10']; 修复后真实混淆未观测; appearance=NA"
+B_NEU_s0,NEU,CR7:linear-pit_local,structurally_limited,CR7,False,0,0,NA,0,val_feas=[] train_can_change=['CR7']; appearance=NA
+B_NEU_s0,NEU,CR7:pit_local-inclusion,structurally_injectable_but_REAL_CHAIN_UNVERIFIED_post_fix,CR7,False,0,0,NA,0,val_feas=['CR7'] train_can_change=['CR7']; 修复后真实混淆未观测; appearance=NA
+B_NEU_s0,NEU,GC10:oil-inclusion,structurally_injectable_but_REAL_CHAIN_UNVERIFIED_post_fix,CR7|GC10,False,0,0,NA,0,"val_feas=['CR7', 'GC10'] train_can_change=['CR7', 'GC10']; 修复后真实混淆未观测; appearance=NA"
+B_NEU_s0,NEU,GC10:oil-water,structurally_injectable_but_REAL_CHAIN_UNVERIFIED_post_fix,GC10,False,0,0,NA,0,val_feas=['GC10'] train_can_change=['GC10']; 修复后真实混淆未观测; appearance=NA
+B_NEU_s0,NEU,GC10:punch-weld_line,historically_observed_injectable,GC10,True,2,2,NA,2,ever_buffer=True ever_changed=2 ever_applied_old=2; appearance=NA
+B_NEU_s0,NEU,NEU:inclusion-pit_texture,unavailable_same_source_pair,,False,0,0,NA,0,训练来源上不同时共存；不是采样失败，不强造; appearance=NA
+B_CR7_s0,CR7,CR7:oil-inclusion,historically_observed_injectable,GC10,True,1,2,NA,1,ever_buffer=True ever_changed=1 ever_applied_old=2; appearance=NA
+B_CR7_s0,CR7,CR7:linear-pit_local,unavailable_same_source_pair,,False,0,0,NA,0,训练来源上不同时共存；不是采样失败，不强造; appearance=NA
+B_CR7_s0,CR7,CR7:pit_local-inclusion,unavailable_same_source_pair,,False,0,0,NA,0,训练来源上不同时共存；不是采样失败，不强造; appearance=NA
+B_CR7_s0,CR7,GC10:oil-inclusion,historically_observed_injectable,GC10,True,1,2,NA,1,ever_buffer=True ever_changed=1 ever_applied_old=2; appearance=NA
+B_CR7_s0,CR7,GC10:oil-water,structurally_injectable_but_REAL_CHAIN_UNVERIFIED_post_fix,GC10,False,0,0,NA,0,val_feas=['GC10'] train_can_change=['GC10']; 修复后真实混淆未观测; appearance=NA
+B_CR7_s0,CR7,GC10:punch-weld_line,historically_observed_injectable,GC10,True,2,2,NA,2,ever_buffer=True ever_changed=2 ever_applied_old=2; appearance=NA
+B_CR7_s0,CR7,NEU:inclusion-pit_texture,structurally_injectable_but_REAL_CHAIN_UNVERIFIED_post_fix,NEU,False,0,0,NA,0,val_feas=['NEU'] train_can_change=['NEU']; 修复后真实混淆未观测; appearance=NA
+B_GC10_s0,GC10,CR7:oil-inclusion,structurally_injectable_but_REAL_CHAIN_UNVERIFIED_post_fix,CR7,False,0,0,NA,0,val_feas=['CR7'] train_can_change=['CR7']; 修复后真实混淆未观测; appearance=NA
+B_GC10_s0,GC10,CR7:linear-pit_local,structurally_limited,CR7,False,0,0,NA,0,val_feas=[] train_can_change=['CR7']; appearance=NA
+B_GC10_s0,GC10,CR7:pit_local-inclusion,structurally_injectable_but_REAL_CHAIN_UNVERIFIED_post_fix,CR7,False,0,0,NA,0,val_feas=['CR7'] train_can_change=['CR7']; 修复后真实混淆未观测; appearance=NA
+B_GC10_s0,GC10,GC10:oil-inclusion,structurally_injectable_but_REAL_CHAIN_UNVERIFIED_post_fix,CR7,False,0,0,NA,0,val_feas=['CR7'] train_can_change=['CR7']; 修复后真实混淆未观测; appearance=NA
+B_GC10_s0,GC10,GC10:oil-water,unavailable_same_source_pair,,False,0,0,NA,0,训练来源上不同时共存；不是采样失败，不强造; appearance=NA
+B_GC10_s0,GC10,GC10:punch-weld_line,unavailable_same_source_pair,,False,0,0,NA,0,训练来源上不同时共存；不是采样失败，不强造; appearance=NA
+B_GC10_s0,GC10,NEU:inclusion-pit_texture,historically_observed_injectable,NEU,True,0,1,NA,0,ever_buffer=True ever_changed=0 ever_applied_old=1; appearance=NA

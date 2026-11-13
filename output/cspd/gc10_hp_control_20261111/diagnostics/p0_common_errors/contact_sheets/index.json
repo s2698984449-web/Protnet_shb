@@ -1,0 +1,30 @@
+[
+  {
+    "direction": "oil->punch",
+    "episode_id": 0,
+    "query_index": 24,
+    "k_shot": 3,
+    "path": "D:\\元强化学习\\代码\\output\\cspd\\gc10_hp_control_20261111\\diagnostics\\p0_common_errors\\contact_sheets\\first_oil_to_punch_ep0_q24.jpg"
+  },
+  {
+    "direction": "punch->weld_line",
+    "episode_id": 6,
+    "query_index": 0,
+    "k_shot": 5,
+    "path": "D:\\元强化学习\\代码\\output\\cspd\\gc10_hp_control_20261111\\diagnostics\\p0_common_errors\\contact_sheets\\first_punch_to_weld_line_ep6_q0.jpg"
+  },
+  {
+    "direction": "rolled_pit->fold_wrinkle",
+    "episode_id": 0,
+    "query_index": 8,
+    "k_shot": 3,
+    "path": "D:\\元强化学习\\代码\\output\\cspd\\gc10_hp_control_20261111\\diagnostics\\p0_common_errors\\contact_sheets\\first_rolled_pit_to_fold_wrinkle_ep0_q8.jpg"
+  },
+  {
+    "direction": "inclusion->silk_spot",
+    "episode_id": 2,
+    "query_index": 8,
+    "k_shot": 5,
+    "path": "D:\\元强化学习\\代码\\output\\cspd\\gc10_hp_control_20261111\\diagnostics\\p0_common_errors\\contact_sheets\\first_inclusion_to_silk_spot_ep2_q8.jpg"
+  }
+]

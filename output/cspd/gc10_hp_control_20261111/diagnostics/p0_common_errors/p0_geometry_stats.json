@@ -1,0 +1,94 @@
+{
+  "score_definition": "s = cos_core + beta * cos_ring, beta=fixed 0.25, prototypes = L2-normalized class means of support core/ring (same as DualRegionBetaDetector.forward)",
+  "margin_definition": "s_true - max_{c != true} s_c",
+  "mismatches_A": 0,
+  "mismatches_B": 0,
+  "kept_common_error_set": "saved predictions.json both-wrong membership; not replaced",
+  "A_all": {
+    "n": 800,
+    "mean_margin": 0.055341918694903146,
+    "mean_cos_core_true": 0.4830376129678916,
+    "mean_cos_ring_true": 0.5701067951694131,
+    "mean_cos_core_pred": 0.6021541906159836,
+    "mean_cos_ring_pred": 0.6118624061206356
+  },
+  "A_both_correct": {
+    "n": 471,
+    "mean_margin": 0.3132407354337268,
+    "mean_cos_core_true": 0.6823782347174334,
+    "mean_cos_ring_true": 0.6546087444477147,
+    "mean_cos_core_pred": 0.6823782347174334,
+    "mean_cos_ring_pred": 0.6546087444477147
+  },
+  "A_common_wrong": {
+    "n": 299,
+    "mean_margin": -0.34395812499028533,
+    "mean_cos_core_true": 0.17967629637320007,
+    "mean_cos_ring_true": 0.43798675224882705,
+    "mean_cos_core_pred": 0.4955554500029089,
+    "mean_cos_ring_pred": 0.5503026395537781
+  },
+  "B_all": {
+    "n": 800,
+    "mean_margin": 0.08129283538903109,
+    "mean_cos_core_true": 0.5016452664602548,
+    "mean_cos_ring_true": 0.5624917960190214,
+    "mean_cos_core_pred": 0.6096358977013733,
+    "mean_cos_ring_pred": 0.6001236890954896
+  },
+  "B_both_correct": {
+    "n": 471,
+    "mean_margin": 0.3355552307814518,
+    "mean_cos_core_true": 0.682153820200584,
+    "mean_cos_ring_true": 0.6369494750399751,
+    "mean_cos_core_pred": 0.682153820200584,
+    "mean_cos_ring_pred": 0.6369494750399751
+  },
+  "B_common_wrong": {
+    "n": 299,
+    "mean_margin": -0.3129545114809853,
+    "mean_cos_core_true": 0.22613503315476668,
+    "mean_cos_ring_true": 0.4462853287686173,
+    "mean_cos_core_pred": 0.5138301370279197,
+    "mean_cos_ring_pred": 0.5473229620094882
+  },
+  "focus_common_same": {
+    "oil->punch": {
+      "n": 11,
+      "A_mean_margin": -0.6766925660723989,
+      "B_mean_margin": -0.5916096297177401,
+      "A_mean_cos_core_true": -0.04172812876376239,
+      "A_mean_cos_core_pred": 0.5957160510800101,
+      "B_mean_cos_core_true": -0.03818944502960552,
+      "B_mean_cos_core_pred": 0.5443790853023529
+    },
+    "punch->weld_line": {
+      "n": 15,
+      "A_mean_margin": -0.37527722120285034,
+      "B_mean_margin": -0.38518605530261996,
+      "A_mean_cos_core_true": 0.3721538459261258,
+      "A_mean_cos_core_pred": 0.7397796630859375,
+      "B_mean_cos_core_true": 0.3344848722219467,
+      "B_mean_cos_core_pred": 0.7128541727860769
+    },
+    "rolled_pit->fold_wrinkle": {
+      "n": 14,
+      "A_mean_margin": -0.5082704259880951,
+      "B_mean_margin": -0.4112496647451605,
+      "A_mean_cos_core_true": 0.09350625319140297,
+      "A_mean_cos_core_pred": 0.5473742740494865,
+      "B_mean_cos_core_true": 0.1743234670055764,
+      "B_mean_cos_core_pred": 0.5384682161467416
+    },
+    "inclusion->silk_spot": {
+      "n": 28,
+      "A_mean_margin": -0.26517381093331743,
+      "B_mean_margin": -0.21031501623136656,
+      "A_mean_cos_core_true": 0.28732597794649856,
+      "A_mean_cos_core_pred": 0.5079433963234935,
+      "B_mean_cos_core_true": 0.3877462297677994,
+      "B_mean_cos_core_pred": 0.5552355722923364
+    }
+  },
+  "note": "Group-mean cosine to class mean is a geometric offset, not proof that a batch pulled the prototype or caused the error."
+}

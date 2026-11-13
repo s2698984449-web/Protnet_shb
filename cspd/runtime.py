@@ -74,6 +74,7 @@ def build_model(cfg):
             feat_dim=int(cfg.get('feat_dim', 128)),
             cond_dim=int(cfg.get('cond_dim', 6)),
             dilate_px=int(cfg.get('context_dilate_px', 16)),
+            feature_layer=int(cfg.get('feature_layer', 3)),
             pretrained_backbone=bool(cfg.get('pretrained_backbone', True)),
             freeze_backbone=bool(cfg.get('freeze_backbone', True)),
             use_policy=bool(cfg.get('use_policy', True)),
@@ -141,7 +142,7 @@ def apply_freeze(model, freeze):
             param.requires_grad = True
 
 
-def output_dir(cfg, project_root):
+def output_dir(cfg, project_root, *, fresh=False):
     name = str(cfg.get('exp_name', '')).strip()
     group = str(cfg.get('output_group') or '').strip()
     if not name or Path(name).name != name or name in {'.', '..'}:
@@ -152,7 +153,8 @@ def output_dir(cfg, project_root):
     if group:
         out = out / group
     out = out / name
-    out.mkdir(parents=True, exist_ok=True)
+    # Training uses fresh=True; legacy read/inference helpers retain their API.
+    out.mkdir(parents=True, exist_ok=not fresh)
     return out
 
 

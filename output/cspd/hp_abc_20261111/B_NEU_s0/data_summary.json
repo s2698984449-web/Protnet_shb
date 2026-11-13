@@ -1,0 +1,80 @@
+{
+  "train_sources": [
+    "CAST",
+    "CR7",
+    "CSU",
+    "GC10",
+    "PIPE",
+    "PLATE",
+    "S3D"
+  ],
+  "train_classes": [
+    "crack_long",
+    "crescent",
+    "cutting_opening",
+    "dent",
+    "fold_wrinkle",
+    "foreign_embed",
+    "inclusion",
+    "linear",
+    "macular",
+    "oil",
+    "oxide_scale",
+    "oxide_scale_csu",
+    "pit_local",
+    "punch",
+    "rolled_pit",
+    "scratch",
+    "short_gouge",
+    "silk_spot",
+    "slag_skin",
+    "warp",
+    "water",
+    "water_slag_mark",
+    "weld_line",
+    "weld_slag"
+  ],
+  "cross_ok": [
+    "fold_wrinkle",
+    "inclusion",
+    "oil",
+    "oxide_scale",
+    "punch",
+    "scratch"
+  ],
+  "val_sources": [
+    "CAST",
+    "CR7",
+    "CSU",
+    "GC10",
+    "PIPE",
+    "PLATE",
+    "S3D"
+  ],
+  "test_sources": [
+    "CAST",
+    "CR7",
+    "CSU",
+    "GC10",
+    "PIPE",
+    "PLATE",
+    "S3D"
+  ],
+  "source_class_counts": {
+    "CAST": 6,
+    "CR7": 7,
+    "CSU": 3,
+    "GC10": 9,
+    "PIPE": 3,
+    "PLATE": 3,
+    "S3D": 2
+  },
+  "n_way_cap": 5,
+  "composition_saturated_sources": [
+    "CSU",
+    "PIPE",
+    "PLATE",
+    "S3D"
+  ],
+  "strict_groups": true
+}

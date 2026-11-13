@@ -1,0 +1,249 @@
+{
+  "checked_at": "2026-11-11 20:50 Asia/Shanghai (UTC+8)",
+  "scope": [
+    "output/cspd/gc10_hp_control_20261111/A_GC10_s0",
+    "output/cspd/gc10_hp_control_20261111/paired_eval"
+  ],
+  "weights_loaded": false,
+  "code_or_config_changed": false,
+  "A_run": {
+    "run_complete": true,
+    "status": "complete",
+    "finished_at_local": "2026-11-11 20:45:13 Asia/Shanghai",
+    "last_pt_bytes": 44936306,
+    "config": {
+      "exp_name": "A_GC10_s0",
+      "hard_pair_protocol": true,
+      "same_hard_pairs": false,
+      "strict_groups": true,
+      "feature_layer": 3,
+      "fixed_beta": 0.25,
+      "rho_schedule": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          1.0,
+          0.0
+        ]
+      ],
+      "seed": 0,
+      "iters": 100,
+      "eval_tasks": 20,
+      "holdout_source": "GC10",
+      "holdout_eval": "same",
+      "holdout_pool": "all",
+      "output_group": "gc10_hp_control_20261111"
+    },
+    "injection": {
+      "hard_probability_always_0": true,
+      "jsonl_episode_events": 0,
+      "requested": 0,
+      "applied": 0,
+      "changed": 0,
+      "fallback": 0,
+      "hard_sampling_in_metrics": {},
+      "buffer_still_updated_from_val": true,
+      "note": "Protocol logging retained; injection fully off."
+    },
+    "train_sources": [
+      "CAST",
+      "CR7",
+      "CSU",
+      "NEU",
+      "PIPE",
+      "PLATE",
+      "S3D"
+    ],
+    "train_source_successes_equals_attempts": true,
+    "train_group_failures": {},
+    "cr7_val_cumulative_end": {
+      "attempts": 110,
+      "successes": 110
+    },
+    "official_holdout_NOT_paired": {
+      "acc": 0.615,
+      "hits": 492,
+      "query_count": 800,
+      "skipped": 0,
+      "loss": 1.3539134681224823,
+      "oil": {
+        "hit": 32,
+        "denominator": 104,
+        "recall": 0.3076923076923077
+      },
+      "punch": {
+        "hit": 52,
+        "denominator": 104,
+        "recall": 0.5
+      }
+    },
+    "test_same_acc": 0.8993506493506493,
+    "test_cross_acc": 0.7467105263157895
+  },
+  "B_official_descriptive_only": {
+    "note": "Different official 20-task draw; not a strict pair with A official or with the new manifest.",
+    "acc": 0.64625,
+    "query_count": 800,
+    "oil": {
+      "hit": 35,
+      "denominator": 104
+    },
+    "punch": {
+      "hit": 55,
+      "denominator": 104
+    },
+    "historical_mixed": 0.665
+  },
+  "manifest": {
+    "path": "output/cspd/gc10_hp_control_20261111/paired_eval/manifest.json",
+    "schema": "holdout_eval_manifest_v1",
+    "seed": 20261111,
+    "created_at": "2026-11-11T20:47:33",
+    "n_tasks": 20,
+    "n_attempts_used": 20,
+    "ways": {
+      "5": 20
+    },
+    "k_shot": {
+      "3": 11,
+      "5": 9
+    },
+    "support_items": 390,
+    "query_items": 800,
+    "sources": {
+      "GC10": 1190
+    },
+    "splits_under_holdout_pool_all": {
+      "train": 706,
+      "val": 242,
+      "test": 242
+    },
+    "missing_paths": 0,
+    "path_escape": 0,
+    "non_gc10": 0,
+    "group_overlap": 0,
+    "group_missing": 0,
+    "cross_source": false,
+    "leakage_evidence": "none_found: all items GC10; support/query groups disjoint; paths exist under data_root. GC10 train/val/test mix is holdout_pool=all protocol, not other-source leak."
+  },
+  "paired": {
+    "baseline_ckpt": "D:\\元强化学习\\代码\\output\\cspd\\hp_b_samplerfix_20261111_v2\\B_GC10_s0\\last.pt",
+    "candidate_ckpt": "D:\\元强化学习\\代码\\output\\cspd\\gc10_hp_control_20261111\\A_GC10_s0\\last.pt",
+    "label_check": "baseline=B hardpair ON; candidate=A hardpair OFF; not swapped",
+    "finished_at_local": "2026-11-11 20:49:21 Asia/Shanghai",
+    "device": "cuda",
+    "query_count": 800,
+    "episodes": 20,
+    "skips": 0,
+    "A_off": {
+      "acc": 0.6025,
+      "hits": 482,
+      "loss": 1.3481810927391051
+    },
+    "B_on": {
+      "acc": 0.6125,
+      "hits": 490,
+      "loss": 1.3232856512069702
+    },
+    "delta_B_minus_A": {
+      "acc": 0.01,
+      "hits": 8,
+      "loss": -0.0249
+    },
+    "paired_counts": {
+      "both_correct": 471,
+      "both_wrong": 299,
+      "A_correct_B_wrong": 11,
+      "B_correct_A_wrong": 19
+    },
+    "per_class": {
+      "crescent": {
+        "den": 112,
+        "A": 110,
+        "B": 110,
+        "Aok_Bbad": 0,
+        "Bok_Abad": 0,
+        "both_wrong": 2
+      },
+      "fold_wrinkle": {
+        "den": 96,
+        "A": 81,
+        "B": 83,
+        "Aok_Bbad": 1,
+        "Bok_Abad": 3,
+        "both_wrong": 12
+      },
+      "inclusion": {
+        "den": 104,
+        "A": 34,
+        "B": 33,
+        "Aok_Bbad": 3,
+        "Bok_Abad": 2,
+        "both_wrong": 68
+      },
+      "oil": {
+        "den": 96,
+        "A": 31,
+        "B": 34,
+        "Aok_Bbad": 0,
+        "Bok_Abad": 3,
+        "both_wrong": 62
+      },
+      "punch": {
+        "den": 80,
+        "A": 37,
+        "B": 37,
+        "Aok_Bbad": 0,
+        "Bok_Abad": 0,
+        "both_wrong": 43
+      },
+      "rolled_pit": {
+        "den": 96,
+        "A": 36,
+        "B": 41,
+        "Aok_Bbad": 2,
+        "Bok_Abad": 7,
+        "both_wrong": 53
+      },
+      "silk_spot": {
+        "den": 88,
+        "A": 58,
+        "B": 57,
+        "Aok_Bbad": 4,
+        "Bok_Abad": 3,
+        "both_wrong": 27
+      },
+      "water": {
+        "den": 48,
+        "A": 30,
+        "B": 31,
+        "Aok_Bbad": 0,
+        "Bok_Abad": 1,
+        "both_wrong": 17
+      },
+      "weld_line": {
+        "den": 80,
+        "A": 65,
+        "B": 64,
+        "Aok_Bbad": 1,
+        "Bok_Abad": 0,
+        "both_wrong": 15
+      }
+    },
+    "main_confusion_A": [
+      "inclusion|silk_spot 28",
+      "punch|weld_line 16",
+      "rolled_pit|fold_wrinkle 15",
+      "oil|punch 15"
+    ],
+    "main_confusion_B": [
+      "inclusion|silk_spot 29",
+      "rolled_pit|fold_wrinkle 16",
+      "rolled_pit|oil 15",
+      "punch|weld_line 15"
+    ],
+    "significance": "Single seed, 20 tasks, 800 queries. Exact pairing still cannot support statistical significance or general effectiveness."
+  }
+}

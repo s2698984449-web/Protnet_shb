@@ -22,6 +22,8 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from cspd.data import curriculum_rho, describe_config, make_curriculum, make_episodes
+from cspd.hard_pairs import (HardPairBuffer, hard_probability, metric_bucket,
+                             record_predictions, serial_metrics)
 from cspd.runtime import (
     build_model,
     episode_loss,
@@ -109,14 +111,17 @@ def evaluate_curriculum(model, sampler, device, tasks, cross_source):
     per_class = {}
     confusion = {}
     skipped = 0
+    by_source = {}
+    skip_reasons = {}
     for _ in range(tasks):
         try:
             episode = move_episode(
                 sampler.sample(
                     cross_source=cross_source, stage_sources=False, allow_fallback=False), device)
-        except RuntimeError:
+        except RuntimeError as exc:
             # 例如 v3 留出 CR7 后冲孔只剩一家，跨来源抽不到。
             skipped += 1
+            skip_reasons[str(exc)] = skip_reasons.get(str(exc), 0) + 1
             continue
         ways = int(episode['n_way'])
         pred = forward_episode(model, episode, ways)
@@ -124,6 +129,9 @@ def evaluate_curriculum(model, sampler, device, tasks, cross_source):
         pred_y = pred['logits'].argmax(dim=-1)
         y = episode['query_y']
         names = list(episode['class_names'])
+        source_bucket = by_source.setdefault(episode['query_source'], metric_bucket())
+        record_predictions(source_bucket, names, y.detach().cpu().tolist(),
+                           pred_y.detach().cpu().tolist())
         hits = pred_y == y
         correct += int(hits.sum().item())
         total += int(y.numel())
@@ -148,6 +156,12 @@ def evaluate_curriculum(model, sampler, device, tasks, cross_source):
         'per_class': per_class,
         'confusion': confusion,
         'skipped': skipped,
+        'skip_reasons': skip_reasons,
+        'query_count': total,
+        'by_source': by_source,
+        'group_failures': dict(sampler.group_failures),
+        'source_attempts': dict(getattr(sampler, 'source_attempts', {})),
+        'source_successes': dict(getattr(sampler, 'source_successes', {})),
     }
 
 
@@ -166,6 +180,13 @@ def _take_hard_pairs(confusion, limit=3):
 
 def train_curriculum(cfg, log, out, device, seed):
     train_sampler = make_curriculum(cfg, 'train', seed)
+    new_protocol = bool(cfg.get('hard_pair_protocol', False))
+    buffer = HardPairBuffer(train_sampler.sources, str(cfg.get('holdout_source') or ''))
+    if new_protocol:
+        # Keep protocol val/buffer logs, but never arm the legacy hard_pairs hook.
+        train_sampler.hard_pairs = []
+    if new_protocol and (int(cfg['eval_every']) != 5 or bool(cfg.get('early_stop', False))):
+        raise ValueError('hard-pair protocol requires eval_every=5 and early_stop=false')
     val_sampler = make_curriculum(cfg, 'val', seed + 2)
     test_cfg = dict(cfg)
     # 测试：若 holdout，查询可含该来源；训练排除已在 sampler 内处理
@@ -177,6 +198,11 @@ def train_curriculum(cfg, log, out, device, seed):
         'cross_ok': sorted(train_sampler.cross_ok),
         'val_sources': val_sampler.sources,
         'test_sources': test_sampler.sources,
+        'source_class_counts': {src: len(names) for src, names in train_sampler.source_classes.items()},
+        'n_way_cap': train_sampler.n_way_cap,
+        'composition_saturated_sources': [src for src, names in train_sampler.source_classes.items()
+                                          if len(names) <= train_sampler.n_way_cap],
+        'strict_groups': train_sampler.strict_groups,
     }
     (out / 'data_summary.json').write_text(
         json.dumps(summary, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
@@ -225,10 +251,15 @@ def train_curriculum(cfg, log, out, device, seed):
     best_iter = 0
     wait = 0
     policy_on = False
+    hard_totals = {}
+    validation_history = []
 
     for it in range(1, iters + 1):
         progress = (it - 1) / max(iters - 1, 1)
         rho = curriculum_rho(progress, schedule)
+        train_sampler.hard_probability = (
+            hard_probability(it) if (new_protocol and train_sampler.hard_pair_enabled) else 0.0)
+        hard_events = []
         if use_policy and (not policy_on) and progress >= freeze_policy_until:
             _set_policy_trainable(model, True)
             policy_on = True
@@ -248,7 +279,16 @@ def train_curriculum(cfg, log, out, device, seed):
                 avoid_sources=used_sources,
                 stage_sources=True,
             ), device)
-            used_sources.add(episode['query_source'])
+            source = episode['query_source']
+            info = episode.get('hard_pair')
+            if info is not None:
+                hard_events.append(dict(source=source, **info))
+                counts = hard_totals.setdefault(source, dict(episodes=0, requested=0, applied=0,
+                                                             changed=0, fallback=0, saturated=0))
+                counts['episodes'] += 1
+                for key in ('requested', 'applied', 'changed', 'fallback', 'saturated'):
+                    counts[key] += int(info[key])
+            used_sources.add(source)
             if len(used_sources) >= len(train_sampler.sources):
                 used_sources = set()
             ways = int(episode['n_way'])
@@ -278,11 +318,27 @@ def train_curriculum(cfg, log, out, device, seed):
                 sum(accs) / max(len(accs), 1),
                 beta_now,
                 int(policy_on and use_policy)))
+        if new_protocol:
+            with (out / 'hard_pairs.jsonl').open('a', encoding='utf-8') as handle:
+                handle.write(json.dumps({'iter': it, 'probability': train_sampler.hard_probability,
+                                         'episodes': hard_events,
+                                         'group_failures': train_sampler.group_failures,
+                                         'source_attempts': train_sampler.source_attempts,
+                                         'source_successes': train_sampler.source_successes}) + '\n')
         if it % eval_every == 0 or it == iters:
             tasks = int(cfg['eval_tasks'])
             same_m = evaluate_curriculum(model, val_sampler, device, tasks, False)
             cross_m = evaluate_curriculum(model, val_sampler, device, tasks, True)
-            train_sampler.hard_pairs = _take_hard_pairs(cross_m['confusion'])
+            if new_protocol:
+                report = buffer.update(same_m['by_source'])
+                train_sampler.same_hard_pairs = buffer.active if train_sampler.hard_pair_enabled else {}
+                row = {'iter': it, 'buffer': report,
+                       'same_validation': serial_metrics(same_m)}
+                validation_history.append(row)
+                with (out / 'hard_pairs.jsonl').open('a', encoding='utf-8') as handle:
+                    handle.write(json.dumps(serial_metrics(row)) + '\n')
+            else:
+                train_sampler.hard_pairs = _take_hard_pairs(cross_m['confusion'])
             log.line(
                 'eval val iter {:04d} same_acc {:.3f} same_loss {:.4f} cross_acc {:.3f} cross_loss {:.4f}'.format(
                     it, same_m['acc'], same_m['loss'], cross_m['acc'], cross_m['loss']))
@@ -342,6 +398,13 @@ def train_curriculum(cfg, log, out, device, seed):
         same_m['acc'], same_m['loss'], _recall_text(same_m['per_class'])))
     log.line('test cross acc {:.3f} loss {:.4f} recall {}'.format(
         cross_m['acc'], cross_m['loss'], _recall_text(cross_m['per_class'])))
+    result = {'config': cfg, 'train_sources': train_sampler.sources,
+              'test_same': serial_metrics(same_m), 'test_cross': serial_metrics(cross_m),
+              'hard_sampling': hard_totals, 'validation': validation_history,
+              'train_group_failures': train_sampler.group_failures,
+              'train_source_attempts': train_sampler.source_attempts,
+              'train_source_successes': train_sampler.source_successes,
+              'status': 'evaluated', 'holdout': None}
     hold_name = str(cfg.get('holdout_source') or '').strip()
     if hold_name:
         hold_cfg = dict(cfg)
@@ -350,10 +413,17 @@ def train_curriculum(cfg, log, out, device, seed):
         try:
             hold_sampler = make_curriculum(hold_cfg, 'test', seed + 3)
             hold_m = evaluate_curriculum(model, hold_sampler, device, tasks, hold_cross)
+            result['holdout'] = serial_metrics(hold_m)
+            if new_protocol and not hold_m['query_count']:
+                raise RuntimeError('no valid holdout queries under strict groups')
             log.line('test holdout {} acc {:.3f} loss {:.4f} recall {}'.format(
                 hold_name, hold_m['acc'], hold_m['loss'], _recall_text(hold_m['per_class'])))
         except RuntimeError as exc:
             log.line('test holdout {} skip {}'.format(hold_name, exc))
+            if new_protocol:
+                raise
+    (out / 'metrics.json').write_text(
+        json.dumps(result, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
 
 
 def train_legacy(cfg, log, out, device, seed):
@@ -504,10 +574,12 @@ def main():
     if args.eval_tasks is not None:
         cfg['eval_tasks'] = args.eval_tasks
 
+    # Pretrained downloads, if needed when the user starts training, stay in project.
+    torch.hub.set_dir(str(ROOT / '.cache/torch/hub'))
     device = pick_device(cfg.get('device', 'cuda'))
     seed = int(cfg.get('seed', 0))
     set_seed(seed)
-    out = output_dir(cfg, ROOT)
+    out = output_dir(cfg, ROOT, fresh=True)
     log = RunLog(out / 'train.log')
     log.line('===== {} ====='.format(datetime.now().isoformat(timespec='seconds')))
     config_text = write_config(cfg, out, args.config)
@@ -518,6 +590,9 @@ def main():
         train_curriculum(cfg, log, out, device, seed)
     else:
         train_legacy(cfg, log, out, device, seed)
+    (out / 'run_complete.json').write_text(
+        json.dumps({'config': cfg, 'status': 'complete'}, ensure_ascii=False, indent=2) + '\n',
+        encoding='utf-8')
 
 
 if __name__ == '__main__':

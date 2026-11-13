@@ -1,0 +1,1283 @@
+{
+  "run_id": "hp_b_samplerfix_20261111_v2",
+  "folds": {
+    "B_NEU_s0": {
+      "holdout": "NEU",
+      "config": {
+        "seed": 0,
+        "iters": 100,
+        "eval_every": 5,
+        "eval_tasks": 20,
+        "early_stop": false,
+        "feature_layer": 3,
+        "strict_groups": true,
+        "hard_pair_protocol": true,
+        "same_hard_pairs": true,
+        "fixed_beta": 0.25,
+        "holdout_source": "NEU",
+        "holdout_pool": "all",
+        "holdout_eval": "same",
+        "acceptance_neu_mde": null,
+        "experiment_variant": "B"
+      },
+      "holdout_metrics": {
+        "acc": 0.96375,
+        "loss": 1.0347811430692673,
+        "query_count": 800,
+        "skipped": 0,
+        "hits": 771,
+        "per_class": {
+          "pit_texture": {
+            "hit": 129,
+            "q": 136
+          },
+          "inclusion": {
+            "hit": 122,
+            "q": 136
+          },
+          "oxide_scale": {
+            "hit": 136,
+            "q": 136
+          },
+          "patch": {
+            "hit": 140,
+            "q": 144
+          },
+          "scratch": {
+            "hit": 142,
+            "q": 144
+          },
+          "crazing": {
+            "hit": 102,
+            "q": 104
+          }
+        },
+        "all_denoms_match_oldB": true,
+        "confusion_top": [
+          [
+            "inclusion -> scratch",
+            8
+          ],
+          [
+            "pit_texture -> crazing",
+            4
+          ],
+          [
+            "patch -> scratch",
+            3
+          ],
+          [
+            "inclusion -> oxide_scale",
+            2
+          ],
+          [
+            "inclusion -> crazing",
+            2
+          ],
+          [
+            "crazing -> oxide_scale",
+            2
+          ],
+          [
+            "inclusion -> pit_texture",
+            2
+          ],
+          [
+            "scratch -> patch",
+            1
+          ]
+        ],
+        "errors": 29,
+        "source_successes": {
+          "NEU": 20
+        },
+        "group_failures": {},
+        "oldB_acc": 0.96375,
+        "oldB_loss": 1.0474888265132904,
+        "oldB_per_class": {
+          "pit_texture": {
+            "hit": 127,
+            "q": 136
+          },
+          "inclusion": {
+            "hit": 124,
+            "q": 136
+          },
+          "oxide_scale": {
+            "hit": 135,
+            "q": 136
+          },
+          "patch": {
+            "hit": 141,
+            "q": 144
+          },
+          "scratch": {
+            "hit": 142,
+            "q": 144
+          },
+          "crazing": {
+            "hit": 102,
+            "q": 104
+          }
+        },
+        "oldB_confusion_top": [
+          [
+            "inclusion -> scratch",
+            6
+          ],
+          [
+            "pit_texture -> crazing",
+            5
+          ],
+          [
+            "inclusion -> pit_texture",
+            3
+          ],
+          [
+            "pit_texture -> oxide_scale",
+            3
+          ],
+          [
+            "inclusion -> crazing",
+            2
+          ],
+          [
+            "crazing -> oxide_scale",
+            2
+          ],
+          [
+            "patch -> scratch",
+            2
+          ],
+          [
+            "inclusion -> oxide_scale",
+            1
+          ]
+        ],
+        "oldB_errors": 29
+      },
+      "test_same": {
+        "acc": 0.8511904761904762,
+        "loss": 0.6518033377826213,
+        "query_count": 504
+      },
+      "test_cross": {
+        "acc": 0.7357594936708861,
+        "loss": 0.9399664223194122,
+        "query_count": 632
+      },
+      "val_last_cumulative": {
+        "iter": 100,
+        "source_attempts": {
+          "CSU": 93,
+          "GC10": 111,
+          "CAST": 131,
+          "PLATE": 113,
+          "S3D": 119,
+          "CR7": 132,
+          "PIPE": 130
+        },
+        "source_successes": {
+          "GC10": 111,
+          "CAST": 131,
+          "PLATE": 113,
+          "S3D": 119,
+          "CR7": 132,
+          "PIPE": 130,
+          "CSU": 44
+        },
+        "group_failures": {}
+      },
+      "CR7_val_same_source_coverage": {
+        "same_val_episodes_sum_over_snaps": 76,
+        "iters_with_CR7_same_val": [
+          5,
+          10,
+          15,
+          20,
+          25,
+          30,
+          35,
+          40,
+          45,
+          50,
+          55,
+          60,
+          65,
+          70,
+          75,
+          80,
+          85,
+          90,
+          95,
+          100
+        ],
+        "query_sum": 2432,
+        "class_query_sum": {
+          "pit_local": 608,
+          "punch": 608,
+          "oil": 608,
+          "inclusion": 608
+        },
+        "classes_ever": [
+          "inclusion",
+          "oil",
+          "pit_local",
+          "punch"
+        ],
+        "forbidden_present": [],
+        "class_set_sizes": {
+          "4": 20
+        }
+      },
+      "hard_pair_train": {
+        "n_episodes": 400,
+        "probability_levels": {
+          "0.0": 10,
+          "0.25": 40,
+          "0.35": 50
+        },
+        "max_p": 0.35,
+        "used_0_40": false,
+        "holdout_in_train_episodes": 0,
+        "applied_ne_changed": 0,
+        "request_pair_known": 30,
+        "request_pair_unknown": 93,
+        "fallback_reasons": {
+          "no_coexist": 51,
+          "already_in_base": 21,
+          "saturated": 21
+        },
+        "per_source": {
+          "PIPE": {
+            "episodes": 54,
+            "saturated": 54,
+            "requested": 16,
+            "fallback": 16,
+            "fr:saturated": 13,
+            "fr:no_coexist": 3
+          },
+          "GC10": {
+            "episodes": 68,
+            "requested": 24,
+            "fallback": 12,
+            "fr:no_coexist": 9,
+            "fr:already_in_base": 3,
+            "applied": 12,
+            "changed": 12
+          },
+          "CSU": {
+            "episodes": 53,
+            "saturated": 53,
+            "requested": 12,
+            "fallback": 12,
+            "fr:no_coexist": 12
+          },
+          "CR7": {
+            "episodes": 54,
+            "requested": 19,
+            "fallback": 6,
+            "fr:already_in_base": 6,
+            "applied": 13,
+            "changed": 13
+          },
+          "PLATE": {
+            "episodes": 56,
+            "saturated": 56,
+            "requested": 20,
+            "fallback": 20,
+            "fr:no_coexist": 13,
+            "fr:saturated": 7
+          },
+          "S3D": {
+            "episodes": 57,
+            "saturated": 57,
+            "requested": 14,
+            "fallback": 14,
+            "fr:no_coexist": 13,
+            "fr:saturated": 1
+          },
+          "CAST": {
+            "episodes": 58,
+            "requested": 18,
+            "applied": 5,
+            "changed": 5,
+            "fallback": 13,
+            "fr:already_in_base": 12,
+            "fr:no_coexist": 1
+          }
+        },
+        "changed_pairs": {
+          "CAST": {
+            "water_slag_mark | weld_slag": 2,
+            "slag_skin | weld_slag": 2,
+            "slag_skin | water_slag_mark": 1
+          },
+          "CR7": {
+            "inclusion | pit_local": 8,
+            "inclusion | oil": 3,
+            "oil | pit_local": 2
+          },
+          "GC10": {
+            "punch | weld_line": 11,
+            "silk_spot | water": 1
+          }
+        },
+        "changed_total": 30
+      },
+      "targets": {
+        "CR7:oil-inclusion": {
+          "ever_in_buffer": true,
+          "buffer_hosts": [
+            "CR7"
+          ],
+          "first_buffer_iter": 10,
+          "changed_count": 3,
+          "changed_hosts": [
+            "CR7"
+          ],
+          "first_changed_iter": 24,
+          "appearance_count": null
+        },
+        "CR7:linear-pit_local": {
+          "ever_in_buffer": false,
+          "buffer_hosts": [],
+          "first_buffer_iter": null,
+          "changed_count": 0,
+          "changed_hosts": [],
+          "first_changed_iter": null,
+          "appearance_count": null,
+          "val_can_generate": false
+        },
+        "CR7:pit_local-inclusion": {
+          "ever_in_buffer": true,
+          "buffer_hosts": [
+            "CR7"
+          ],
+          "first_buffer_iter": 10,
+          "changed_count": 8,
+          "changed_hosts": [
+            "CR7"
+          ],
+          "first_changed_iter": 20,
+          "appearance_count": null
+        },
+        "GC10:oil-inclusion": {
+          "ever_in_buffer": true,
+          "buffer_hosts": [
+            "CR7"
+          ],
+          "first_buffer_iter": 10,
+          "changed_count": 3,
+          "changed_hosts": [
+            "CR7"
+          ],
+          "first_changed_iter": 24,
+          "appearance_count": null
+        },
+        "GC10:oil-water": {
+          "ever_in_buffer": false,
+          "buffer_hosts": [],
+          "first_buffer_iter": null,
+          "changed_count": 0,
+          "changed_hosts": [],
+          "first_changed_iter": null,
+          "appearance_count": null
+        },
+        "GC10:punch-weld_line": {
+          "ever_in_buffer": true,
+          "buffer_hosts": [
+            "GC10"
+          ],
+          "first_buffer_iter": 65,
+          "changed_count": 11,
+          "changed_hosts": [
+            "GC10"
+          ],
+          "first_changed_iter": 67,
+          "appearance_count": null
+        },
+        "NEU:inclusion-pit_texture": {
+          "ever_in_buffer": false,
+          "buffer_hosts": [],
+          "first_buffer_iter": null,
+          "changed_count": 0,
+          "changed_hosts": [],
+          "first_changed_iter": null,
+          "appearance_count": null
+        }
+      },
+      "train_group_failures": {},
+      "train_source_attempts": {
+        "PIPE": 54,
+        "GC10": 68,
+        "CSU": 53,
+        "CR7": 54,
+        "PLATE": 56,
+        "S3D": 57,
+        "CAST": 58
+      },
+      "train_source_successes": {
+        "PIPE": 54,
+        "GC10": 68,
+        "CSU": 53,
+        "CR7": 54,
+        "PLATE": 56,
+        "S3D": 57,
+        "CAST": 58
+      },
+      "train_sources": [
+        "CAST",
+        "CR7",
+        "CSU",
+        "GC10",
+        "PIPE",
+        "PLATE",
+        "S3D"
+      ]
+    },
+    "B_CR7_s0": {
+      "holdout": "CR7",
+      "config": {
+        "seed": 0,
+        "iters": 100,
+        "eval_every": 5,
+        "eval_tasks": 20,
+        "early_stop": false,
+        "feature_layer": 3,
+        "strict_groups": true,
+        "hard_pair_protocol": true,
+        "same_hard_pairs": true,
+        "fixed_beta": 0.25,
+        "holdout_source": "CR7",
+        "holdout_pool": "all",
+        "holdout_eval": "same",
+        "acceptance_neu_mde": null,
+        "experiment_variant": "B"
+      },
+      "holdout_metrics": {
+        "acc": 0.73375,
+        "loss": 1.2452037513256073,
+        "query_count": 800,
+        "skipped": 0,
+        "hits": 587,
+        "per_class": {
+          "oil": {
+            "hit": 50,
+            "q": 112
+          },
+          "inclusion": {
+            "hit": 83,
+            "q": 120
+          },
+          "linear": {
+            "hit": 99,
+            "q": 144
+          },
+          "macular": {
+            "hit": 95,
+            "q": 112
+          },
+          "punch": {
+            "hit": 112,
+            "q": 112
+          },
+          "dent": {
+            "hit": 79,
+            "q": 96
+          },
+          "pit_local": {
+            "hit": 69,
+            "q": 104
+          }
+        },
+        "all_denoms_match_oldB": true,
+        "confusion_top": [
+          [
+            "inclusion -> pit_local",
+            28
+          ],
+          [
+            "oil -> inclusion",
+            25
+          ],
+          [
+            "oil -> pit_local",
+            18
+          ],
+          [
+            "pit_local -> inclusion",
+            16
+          ],
+          [
+            "linear -> pit_local",
+            14
+          ],
+          [
+            "linear -> macular",
+            11
+          ],
+          [
+            "pit_local -> dent",
+            10
+          ],
+          [
+            "oil -> linear",
+            9
+          ]
+        ],
+        "errors": 213,
+        "source_successes": {
+          "CR7": 20
+        },
+        "group_failures": {},
+        "oldB_acc": 0.72875,
+        "oldB_loss": 1.2376692354679109,
+        "oldB_per_class": {
+          "oil": {
+            "hit": 51,
+            "q": 112
+          },
+          "inclusion": {
+            "hit": 84,
+            "q": 120
+          },
+          "linear": {
+            "hit": 98,
+            "q": 144
+          },
+          "macular": {
+            "hit": 95,
+            "q": 112
+          },
+          "punch": {
+            "hit": 112,
+            "q": 112
+          },
+          "dent": {
+            "hit": 79,
+            "q": 96
+          },
+          "pit_local": {
+            "hit": 64,
+            "q": 104
+          }
+        },
+        "oldB_confusion_top": [
+          [
+            "inclusion -> pit_local",
+            29
+          ],
+          [
+            "oil -> inclusion",
+            22
+          ],
+          [
+            "oil -> pit_local",
+            19
+          ],
+          [
+            "pit_local -> inclusion",
+            17
+          ],
+          [
+            "linear -> pit_local",
+            14
+          ],
+          [
+            "linear -> macular",
+            13
+          ],
+          [
+            "oil -> linear",
+            11
+          ],
+          [
+            "pit_local -> linear",
+            9
+          ]
+        ],
+        "oldB_errors": 217
+      },
+      "test_same": {
+        "acc": 0.8549382716049383,
+        "loss": 0.8136853598058224,
+        "query_count": 648
+      },
+      "test_cross": {
+        "acc": 0.722972972972973,
+        "loss": 0.9004295632243157,
+        "query_count": 592
+      },
+      "val_last_cumulative": {
+        "iter": 100,
+        "source_attempts": {
+          "GC10": 148,
+          "PIPE": 130,
+          "PLATE": 117,
+          "CAST": 117,
+          "NEU": 119,
+          "S3D": 105,
+          "CSU": 90
+        },
+        "source_successes": {
+          "GC10": 148,
+          "PIPE": 130,
+          "PLATE": 117,
+          "CAST": 117,
+          "NEU": 119,
+          "S3D": 105,
+          "CSU": 44
+        },
+        "group_failures": {}
+      },
+      "CR7_val_same_source_coverage": {
+        "same_val_episodes_sum_over_snaps": 0,
+        "iters_with_CR7_same_val": [],
+        "query_sum": 0,
+        "class_query_sum": {},
+        "classes_ever": [],
+        "forbidden_present": [],
+        "class_set_sizes": {}
+      },
+      "hard_pair_train": {
+        "n_episodes": 400,
+        "probability_levels": {
+          "0.0": 10,
+          "0.25": 40,
+          "0.35": 50
+        },
+        "max_p": 0.35,
+        "used_0_40": false,
+        "holdout_in_train_episodes": 0,
+        "applied_ne_changed": 0,
+        "request_pair_known": 19,
+        "request_pair_unknown": 99,
+        "fallback_reasons": {
+          "already_in_base": 12,
+          "no_coexist": 58,
+          "saturated": 29
+        },
+        "per_source": {
+          "PIPE": {
+            "episodes": 60,
+            "saturated": 60,
+            "requested": 13,
+            "fallback": 13,
+            "fr:saturated": 13
+          },
+          "NEU": {
+            "episodes": 66,
+            "requested": 23,
+            "fallback": 23,
+            "fr:no_coexist": 23
+          },
+          "CSU": {
+            "episodes": 57,
+            "saturated": 57,
+            "requested": 14,
+            "fallback": 14,
+            "fr:no_coexist": 14
+          },
+          "S3D": {
+            "episodes": 57,
+            "saturated": 57,
+            "requested": 19,
+            "fallback": 19,
+            "fr:no_coexist": 19
+          },
+          "CAST": {
+            "episodes": 55,
+            "requested": 18,
+            "fallback": 10,
+            "fr:already_in_base": 10,
+            "applied": 8,
+            "changed": 8
+          },
+          "PLATE": {
+            "episodes": 50,
+            "saturated": 50,
+            "requested": 16,
+            "fallback": 16,
+            "fr:saturated": 16
+          },
+          "GC10": {
+            "episodes": 55,
+            "requested": 15,
+            "fallback": 4,
+            "fr:already_in_base": 2,
+            "applied": 11,
+            "changed": 11,
+            "fr:no_coexist": 2
+          }
+        },
+        "changed_pairs": {
+          "GC10": {
+            "inclusion | water": 6,
+            "inclusion | silk_spot": 3,
+            "fold_wrinkle | weld_line": 1,
+            "punch | weld_line": 1
+          },
+          "CAST": {
+            "slag_skin | water_slag_mark": 4,
+            "slag_skin | weld_slag": 2,
+            "crack_long | weld_slag": 1,
+            "water_slag_mark | weld_slag": 1
+          }
+        },
+        "changed_total": 19
+      },
+      "targets": {
+        "CR7:oil-inclusion": {
+          "ever_in_buffer": true,
+          "buffer_hosts": [
+            "GC10"
+          ],
+          "first_buffer_iter": 30,
+          "changed_count": 0,
+          "changed_hosts": [],
+          "first_changed_iter": null,
+          "appearance_count": null
+        },
+        "CR7:linear-pit_local": {
+          "ever_in_buffer": false,
+          "buffer_hosts": [],
+          "first_buffer_iter": null,
+          "changed_count": 0,
+          "changed_hosts": [],
+          "first_changed_iter": null,
+          "appearance_count": null,
+          "structural": "unavailable_same_source_pair"
+        },
+        "CR7:pit_local-inclusion": {
+          "ever_in_buffer": false,
+          "buffer_hosts": [],
+          "first_buffer_iter": null,
+          "changed_count": 0,
+          "changed_hosts": [],
+          "first_changed_iter": null,
+          "appearance_count": null,
+          "structural": "unavailable_same_source_pair"
+        },
+        "GC10:oil-inclusion": {
+          "ever_in_buffer": true,
+          "buffer_hosts": [
+            "GC10"
+          ],
+          "first_buffer_iter": 30,
+          "changed_count": 0,
+          "changed_hosts": [],
+          "first_changed_iter": null,
+          "appearance_count": null
+        },
+        "GC10:oil-water": {
+          "ever_in_buffer": false,
+          "buffer_hosts": [],
+          "first_buffer_iter": null,
+          "changed_count": 0,
+          "changed_hosts": [],
+          "first_changed_iter": null,
+          "appearance_count": null
+        },
+        "GC10:punch-weld_line": {
+          "ever_in_buffer": true,
+          "buffer_hosts": [
+            "GC10"
+          ],
+          "first_buffer_iter": 20,
+          "changed_count": 1,
+          "changed_hosts": [
+            "GC10"
+          ],
+          "first_changed_iter": 97,
+          "appearance_count": null
+        },
+        "NEU:inclusion-pit_texture": {
+          "ever_in_buffer": false,
+          "buffer_hosts": [],
+          "first_buffer_iter": null,
+          "changed_count": 0,
+          "changed_hosts": [],
+          "first_changed_iter": null,
+          "appearance_count": null
+        }
+      },
+      "train_group_failures": {},
+      "train_source_attempts": {
+        "PIPE": 60,
+        "NEU": 66,
+        "CSU": 57,
+        "S3D": 57,
+        "CAST": 55,
+        "PLATE": 50,
+        "GC10": 55
+      },
+      "train_source_successes": {
+        "PIPE": 60,
+        "NEU": 66,
+        "CSU": 57,
+        "S3D": 57,
+        "CAST": 55,
+        "PLATE": 50,
+        "GC10": 55
+      },
+      "train_sources": [
+        "CAST",
+        "CSU",
+        "GC10",
+        "NEU",
+        "PIPE",
+        "PLATE",
+        "S3D"
+      ]
+    },
+    "B_GC10_s0": {
+      "holdout": "GC10",
+      "config": {
+        "seed": 0,
+        "iters": 100,
+        "eval_every": 5,
+        "eval_tasks": 20,
+        "early_stop": false,
+        "feature_layer": 3,
+        "strict_groups": true,
+        "hard_pair_protocol": true,
+        "same_hard_pairs": true,
+        "fixed_beta": 0.25,
+        "holdout_source": "GC10",
+        "holdout_pool": "all",
+        "holdout_eval": "same",
+        "acceptance_neu_mde": null,
+        "experiment_variant": "B"
+      },
+      "holdout_metrics": {
+        "acc": 0.64625,
+        "loss": 1.3308936059474945,
+        "query_count": 800,
+        "skipped": 0,
+        "hits": 517,
+        "per_class": {
+          "weld_line": {
+            "hit": 86,
+            "q": 96
+          },
+          "inclusion": {
+            "hit": 35,
+            "q": 64
+          },
+          "water": {
+            "hit": 65,
+            "q": 112
+          },
+          "punch": {
+            "hit": 55,
+            "q": 104
+          },
+          "oil": {
+            "hit": 35,
+            "q": 104
+          },
+          "fold_wrinkle": {
+            "hit": 37,
+            "q": 48
+          },
+          "crescent": {
+            "hit": 107,
+            "q": 112
+          },
+          "rolled_pit": {
+            "hit": 37,
+            "q": 80
+          },
+          "silk_spot": {
+            "hit": 60,
+            "q": 80
+          }
+        },
+        "all_denoms_match_oldB": true,
+        "confusion_top": [
+          [
+            "punch -> weld_line",
+            23
+          ],
+          [
+            "oil -> punch",
+            16
+          ],
+          [
+            "oil -> water",
+            13
+          ],
+          [
+            "rolled_pit -> oil",
+            12
+          ],
+          [
+            "water -> oil",
+            12
+          ],
+          [
+            "water -> inclusion",
+            11
+          ],
+          [
+            "oil -> crescent",
+            11
+          ],
+          [
+            "water -> silk_spot",
+            11
+          ]
+        ],
+        "errors": 283,
+        "source_successes": {
+          "GC10": 20
+        },
+        "group_failures": {},
+        "oldB_acc": 0.63125,
+        "oldB_loss": 1.328169083595276,
+        "oldB_per_class": {
+          "weld_line": {
+            "hit": 86,
+            "q": 96
+          },
+          "inclusion": {
+            "hit": 34,
+            "q": 64
+          },
+          "water": {
+            "hit": 62,
+            "q": 112
+          },
+          "punch": {
+            "hit": 50,
+            "q": 104
+          },
+          "oil": {
+            "hit": 36,
+            "q": 104
+          },
+          "fold_wrinkle": {
+            "hit": 36,
+            "q": 48
+          },
+          "crescent": {
+            "hit": 109,
+            "q": 112
+          },
+          "rolled_pit": {
+            "hit": 37,
+            "q": 80
+          },
+          "silk_spot": {
+            "hit": 55,
+            "q": 80
+          }
+        },
+        "oldB_confusion_top": [
+          [
+            "punch -> weld_line",
+            25
+          ],
+          [
+            "water -> oil",
+            17
+          ],
+          [
+            "oil -> punch",
+            13
+          ],
+          [
+            "oil -> water",
+            12
+          ],
+          [
+            "rolled_pit -> oil",
+            12
+          ],
+          [
+            "oil -> crescent",
+            12
+          ],
+          [
+            "rolled_pit -> water",
+            12
+          ],
+          [
+            "inclusion -> oil",
+            11
+          ]
+        ],
+        "oldB_errors": 295
+      },
+      "test_same": {
+        "acc": 0.9058441558441559,
+        "loss": 0.787723733484745,
+        "query_count": 616
+      },
+      "test_cross": {
+        "acc": 0.756578947368421,
+        "loss": 0.8861721947789192,
+        "query_count": 608
+      },
+      "val_last_cumulative": {
+        "iter": 100,
+        "source_attempts": {
+          "CSU": 137,
+          "NEU": 121,
+          "CR7": 110,
+          "CAST": 126,
+          "S3D": 137,
+          "PIPE": 75,
+          "PLATE": 135
+        },
+        "source_successes": {
+          "NEU": 121,
+          "CR7": 110,
+          "CAST": 126,
+          "S3D": 137,
+          "PIPE": 75,
+          "CSU": 76,
+          "PLATE": 135
+        },
+        "group_failures": {}
+      },
+      "CR7_val_same_source_coverage": {
+        "same_val_episodes_sum_over_snaps": 58,
+        "iters_with_CR7_same_val": [
+          5,
+          10,
+          15,
+          20,
+          30,
+          35,
+          40,
+          45,
+          50,
+          55,
+          60,
+          65,
+          70,
+          75,
+          80,
+          85,
+          90,
+          95,
+          100
+        ],
+        "query_sum": 1856,
+        "class_query_sum": {
+          "inclusion": 464,
+          "pit_local": 464,
+          "punch": 464,
+          "oil": 464
+        },
+        "classes_ever": [
+          "inclusion",
+          "oil",
+          "pit_local",
+          "punch"
+        ],
+        "forbidden_present": [],
+        "class_set_sizes": {
+          "4": 19
+        }
+      },
+      "hard_pair_train": {
+        "n_episodes": 400,
+        "probability_levels": {
+          "0.0": 10,
+          "0.25": 40,
+          "0.35": 50
+        },
+        "max_p": 0.35,
+        "used_0_40": false,
+        "holdout_in_train_episodes": 0,
+        "applied_ne_changed": 0,
+        "request_pair_known": 17,
+        "request_pair_unknown": 112,
+        "fallback_reasons": {
+          "no_coexist": 58,
+          "saturated": 37,
+          "already_in_base": 17
+        },
+        "per_source": {
+          "PIPE": {
+            "episodes": 60,
+            "saturated": 60,
+            "requested": 19,
+            "fallback": 19,
+            "fr:saturated": 19
+          },
+          "NEU": {
+            "episodes": 54,
+            "requested": 11,
+            "fallback": 11,
+            "fr:no_coexist": 11
+          },
+          "CR7": {
+            "episodes": 54,
+            "requested": 22,
+            "fallback": 11,
+            "fr:already_in_base": 8,
+            "applied": 11,
+            "changed": 11,
+            "fr:no_coexist": 3
+          },
+          "S3D": {
+            "episodes": 61,
+            "saturated": 61,
+            "requested": 23,
+            "fallback": 23,
+            "fr:no_coexist": 20,
+            "fr:saturated": 3
+          },
+          "CSU": {
+            "episodes": 62,
+            "saturated": 62,
+            "requested": 20,
+            "fallback": 20,
+            "fr:no_coexist": 20
+          },
+          "PLATE": {
+            "episodes": 55,
+            "saturated": 55,
+            "requested": 17,
+            "fallback": 17,
+            "fr:no_coexist": 2,
+            "fr:saturated": 15
+          },
+          "CAST": {
+            "episodes": 54,
+            "requested": 17,
+            "applied": 6,
+            "changed": 6,
+            "fallback": 11,
+            "fr:already_in_base": 9,
+            "fr:no_coexist": 2
+          }
+        },
+        "changed_pairs": {
+          "CAST": {
+            "slag_skin | water_slag_mark": 3,
+            "slag_skin | weld_slag": 3
+          },
+          "CR7": {
+            "inclusion | oil": 5,
+            "inclusion | pit_local": 4,
+            "oil | pit_local": 2
+          }
+        },
+        "changed_total": 17
+      },
+      "targets": {
+        "CR7:oil-inclusion": {
+          "ever_in_buffer": true,
+          "buffer_hosts": [
+            "CR7"
+          ],
+          "first_buffer_iter": 10,
+          "changed_count": 5,
+          "changed_hosts": [
+            "CR7"
+          ],
+          "first_changed_iter": 25,
+          "appearance_count": null
+        },
+        "CR7:linear-pit_local": {
+          "ever_in_buffer": false,
+          "buffer_hosts": [],
+          "first_buffer_iter": null,
+          "changed_count": 0,
+          "changed_hosts": [],
+          "first_changed_iter": null,
+          "appearance_count": null,
+          "val_can_generate": false
+        },
+        "CR7:pit_local-inclusion": {
+          "ever_in_buffer": true,
+          "buffer_hosts": [
+            "CR7"
+          ],
+          "first_buffer_iter": 10,
+          "changed_count": 4,
+          "changed_hosts": [
+            "CR7"
+          ],
+          "first_changed_iter": 63,
+          "appearance_count": null
+        },
+        "GC10:oil-inclusion": {
+          "ever_in_buffer": true,
+          "buffer_hosts": [
+            "CR7"
+          ],
+          "first_buffer_iter": 10,
+          "changed_count": 5,
+          "changed_hosts": [
+            "CR7"
+          ],
+          "first_changed_iter": 25,
+          "appearance_count": null
+        },
+        "GC10:oil-water": {
+          "ever_in_buffer": false,
+          "buffer_hosts": [],
+          "first_buffer_iter": null,
+          "changed_count": 0,
+          "changed_hosts": [],
+          "first_changed_iter": null,
+          "appearance_count": null,
+          "structural": "unavailable_same_source_pair"
+        },
+        "GC10:punch-weld_line": {
+          "ever_in_buffer": false,
+          "buffer_hosts": [],
+          "first_buffer_iter": null,
+          "changed_count": 0,
+          "changed_hosts": [],
+          "first_changed_iter": null,
+          "appearance_count": null,
+          "structural": "unavailable_same_source_pair"
+        },
+        "NEU:inclusion-pit_texture": {
+          "ever_in_buffer": false,
+          "buffer_hosts": [],
+          "first_buffer_iter": null,
+          "changed_count": 0,
+          "changed_hosts": [],
+          "first_changed_iter": null,
+          "appearance_count": null
+        }
+      },
+      "train_group_failures": {},
+      "train_source_attempts": {
+        "PIPE": 60,
+        "NEU": 54,
+        "CR7": 54,
+        "S3D": 61,
+        "CSU": 62,
+        "PLATE": 55,
+        "CAST": 54
+      },
+      "train_source_successes": {
+        "PIPE": 60,
+        "NEU": 54,
+        "CR7": 54,
+        "S3D": 61,
+        "CSU": 62,
+        "PLATE": 55,
+        "CAST": 54
+      },
+      "train_sources": [
+        "CAST",
+        "CR7",
+        "CSU",
+        "NEU",
+        "PIPE",
+        "PLATE",
+        "S3D"
+      ]
+    }
+  }
+}

@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="2700" height="630" viewBox="0 0 2700 630" role="img">
+<title>双区域表征细节</title>
+<rect width="100%" height="100%" fill="#FFFFFF"/>
+<rect x="80.0" y="287.5" width="500.0" height="135.0" rx="18" ry="18" fill="#EFF6FF" stroke="#1D4ED8" stroke-width="2.6"/>
+<rect x="660.0" y="200.0" width="560.0" height="135.0" rx="18" ry="18" fill="#FAFAFA" stroke="#D1D5DB" stroke-width="2.0"/>
+<rect x="660.0" y="375.0" width="560.0" height="135.0" rx="18" ry="18" fill="#FAFAFA" stroke="#D1D5DB" stroke-width="2.0"/>
+<rect x="1300.0" y="200.0" width="620.0" height="162.0" rx="18" ry="18" fill="#FAFAFA" stroke="#D1D5DB" stroke-width="2.0"/>
+<rect x="2000.0" y="200.0" width="620.0" height="162.0" rx="18" ry="18" fill="#ECFDF5" stroke="#047857" stroke-width="2.6"/>
+<line x1="580.0" y1="338.8" x2="650.3" y2="276.1" stroke="#1D4ED8" stroke-width="2.8" stroke-linecap="round"/>
+<polygon points="660.0,267.5 656.7,279.0 648.2,269.4" fill="#1D4ED8" stroke="none"/>
+<line x1="580.0" y1="384.7" x2="649.5" y2="434.9" stroke="#1D4ED8" stroke-width="2.8" stroke-linecap="round"/>
+<polygon points="660.0,442.5 648.0,441.8 655.6,431.4" fill="#1D4ED8" stroke="none"/>
+<line x1="1220.0" y1="267.5" x2="1287.0" y2="269.6" stroke="#111827" stroke-width="2.8" stroke-linecap="round"/>
+<polygon points="1300.0,270.0 1289.7,276.1 1290.1,263.3" fill="#111827" stroke="none"/>
+<line x1="1220.0" y1="442.5" x2="1293.9" y2="303.5" stroke="#111827" stroke-width="2.8" stroke-linecap="round"/>
+<polygon points="1300.0,292.0 1300.9,304.0 1289.6,297.9" fill="#111827" stroke="none"/>
+<line x1="1920.0" y1="281.0" x2="1987.0" y2="281.0" stroke="#047857" stroke-width="2.8" stroke-linecap="round"/>
+<polygon points="2000.0,281.0 1989.9,287.4 1989.9,274.6" fill="#047857" stroke="none"/>
+<rect x="1560.0" y="46.0" width="22" height="16" rx="4" fill="#EFF6FF" stroke="#1D4ED8" stroke-width="2"/>
+<text x="1590.0" y="60.0" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="15">数据与给定掩码</text>
+<rect x="1729.0" y="46.0" width="22" height="16" rx="4" fill="#F3F4F6" stroke="#6B7280" stroke-width="2"/>
+<text x="1759.0" y="60.0" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="15">冻结</text>
+<rect x="1823.0" y="46.0" width="22" height="16" rx="4" fill="#ECFDF5" stroke="#047857" stroke-width="2"/>
+<text x="1853.0" y="60.0" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="15">可训练 / 更新</text>
+<rect x="1976.0" y="46.0" width="22" height="16" rx="4" fill="#FFF7ED" stroke="#C2410C" stroke-width="2" stroke-dasharray="7 5"/>
+<text x="2006.0" y="60.0" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="15">验证反馈</text>
+<text x="80" y="62" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="38" font-weight="700">双区域表征细节</text>
+<text x="80" y="108" fill="#4B5563" font-family="Microsoft YaHei, sans-serif" font-size="20">给定掩码如何划出 core / ring，以及原型的归一化顺序</text>
+<text x="104.0" y="315.5" text-anchor="start" fill="#1D4ED8" font-family="Microsoft YaHei, sans-serif" font-size="21" font-weight="700">给定掩码（输入分辨率）</text>
+<text x="104.0" y="351.5" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">来自数据集掩码文件，不是模型预测</text>
+<text x="104.0" y="378.5" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">支持集与查询集都必须提供；也用于按掩码裁切</text>
+<text x="684.0" y="228.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="21" font-weight="700">core 候选</text>
+<text x="684.0" y="264.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">将给定掩码最近邻缩放到 14×14</text>
+<text x="684.0" y="291.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">core 为落到特征图上的掩码内格子</text>
+<text x="684.0" y="403.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="21" font-weight="700">膨胀区</text>
+<text x="684.0" y="439.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">先在输入分辨率做最大池化膨胀（核 2×16+1）</text>
+<text x="684.0" y="466.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">再最近邻到 14×14，而不是在 14×14 上直接膨胀</text>
+<text x="1324.0" y="228.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="21" font-weight="700">划分与空区回退</text>
+<text x="1324.0" y="264.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">ring = 膨胀区减去 core</text>
+<text x="1324.0" y="291.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">core 或 ring 为空时，用膨胀区顶替，而不是首先用整图均值</text>
+<text x="1324.0" y="318.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">仅当膨胀区仍为空，池化才退回特征图全局均值</text>
+<text x="2024.0" y="228.0" text-anchor="start" fill="#047857" font-family="Microsoft YaHei, sans-serif" font-size="21" font-weight="700">聚合与打分顺序</text>
+<text x="2024.0" y="264.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">原型 p：先对同类 support 取平均，再 L2 归一化</text>
+<text x="2024.0" y="291.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">查询 q：逐样本 L2 归一化，不在查询集上聚合</text>
+<text x="2024.0" y="318.0" text-anchor="start" fill="#111827" font-family="Microsoft YaHei, sans-serif" font-size="17" font-weight="400">logit = cos(q_core, p_core) + 0.25 · cos(q_ring, p_ring)</text>
+<text x="80" y="594.0" fill="#4B5563" font-family="Microsoft YaHei, sans-serif" font-size="15">公式对应 cspd/model.py 的 _core_ring、_masked_mean、_unit_rows 与 forward。掩码不是网络输出。</text>
+<text x="2620.0" y="602.0" text-anchor="end" fill="#6B7280" font-family="Microsoft YaHei, sans-serif" font-size="15">bot · cspd</text>
+</svg>

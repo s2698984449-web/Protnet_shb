@@ -1,0 +1,347 @@
+{
+  "created_at": "2026-11-11T21:05:22",
+  "zone": "Asia/Shanghai (UTC+8)",
+  "sources": {
+    "manifest": "D:\\元强化学习\\代码\\output\\cspd\\gc10_hp_control_20261111\\paired_eval\\manifest.json",
+    "predictions": "D:\\元强化学习\\代码\\output\\cspd\\gc10_hp_control_20261111\\paired_eval\\predictions.json",
+    "paired_metrics": "D:\\元强化学习\\代码\\output\\cspd\\gc10_hp_control_20261111\\paired_eval\\paired_metrics.json",
+    "baseline_ckpt": "D:\\元强化学习\\代码\\output\\cspd\\hp_b_samplerfix_20261111_v2\\B_GC10_s0\\last.pt",
+    "candidate_ckpt": "D:\\元强化学习\\代码\\output\\cspd\\gc10_hp_control_20261111\\A_GC10_s0\\last.pt",
+    "label_check": "baseline=B (hardpair on), candidate=A (hardpair off)"
+  },
+  "group_rule": {
+    "GC10": "groups.json IDs are extracted by regex img_\\d+_(\\d+)_\\d+ from the filename stem (steel_sources_v3.yaml / merge_sources.group_ids_for, mode=regex). The documented generation method calls this a filename batch number (批次号), not a 32x32 histogram cluster (that mode is for other sources). IDs are namespaced as source::class::id in this report; the same numeric token in two classes is not treated as one batch.",
+    "mask_role": "Dataset masks are used only to crop around the annotated defect, not as a model-predicted mask."
+  },
+  "common_errors": {
+    "n_observations": 299,
+    "n_unique_query_paths": 241,
+    "repeat_freq_dist": {
+      "1": 200,
+      "2": 30,
+      "3": 8,
+      "4": 1,
+      "5": 1,
+      "6": 1
+    },
+    "max_repeat": 6,
+    "same_wrong_class": 280,
+    "different_wrong_class": 19,
+    "top_common_same_directions": [
+      {
+        "true": "inclusion",
+        "pred": "silk_spot",
+        "n": 28
+      },
+      {
+        "true": "punch",
+        "pred": "weld_line",
+        "n": 15
+      },
+      {
+        "true": "rolled_pit",
+        "pred": "fold_wrinkle",
+        "n": 14
+      },
+      {
+        "true": "punch",
+        "pred": "fold_wrinkle",
+        "n": 12
+      },
+      {
+        "true": "rolled_pit",
+        "pred": "oil",
+        "n": 12
+      },
+      {
+        "true": "oil",
+        "pred": "inclusion",
+        "n": 12
+      },
+      {
+        "true": "oil",
+        "pred": "punch",
+        "n": 11
+      },
+      {
+        "true": "oil",
+        "pred": "fold_wrinkle",
+        "n": 11
+      },
+      {
+        "true": "oil",
+        "pred": "silk_spot",
+        "n": 10
+      },
+      {
+        "true": "oil",
+        "pred": "rolled_pit",
+        "n": 9
+      },
+      {
+        "true": "inclusion",
+        "pred": "oil",
+        "n": 9
+      },
+      {
+        "true": "silk_spot",
+        "pred": "inclusion",
+        "n": 9
+      },
+      {
+        "true": "inclusion",
+        "pred": "water",
+        "n": 8
+      },
+      {
+        "true": "water",
+        "pred": "silk_spot",
+        "n": 7
+      },
+      {
+        "true": "weld_line",
+        "pred": "punch",
+        "n": 7
+      }
+    ],
+    "common_diff_directions": [
+      {
+        "true": "inclusion",
+        "A_pred": "punch",
+        "B_pred": "oil",
+        "n": 2
+      },
+      {
+        "true": "silk_spot",
+        "A_pred": "water",
+        "B_pred": "inclusion",
+        "n": 2
+      },
+      {
+        "true": "rolled_pit",
+        "A_pred": "crescent",
+        "B_pred": "water",
+        "n": 2
+      },
+      {
+        "true": "rolled_pit",
+        "A_pred": "inclusion",
+        "B_pred": "oil",
+        "n": 1
+      },
+      {
+        "true": "punch",
+        "A_pred": "inclusion",
+        "B_pred": "oil",
+        "n": 1
+      },
+      {
+        "true": "rolled_pit",
+        "A_pred": "weld_line",
+        "B_pred": "inclusion",
+        "n": 1
+      },
+      {
+        "true": "rolled_pit",
+        "A_pred": "punch",
+        "B_pred": "fold_wrinkle",
+        "n": 1
+      },
+      {
+        "true": "punch",
+        "A_pred": "weld_line",
+        "B_pred": "silk_spot",
+        "n": 1
+      },
+      {
+        "true": "oil",
+        "A_pred": "fold_wrinkle",
+        "B_pred": "rolled_pit",
+        "n": 1
+      },
+      {
+        "true": "oil",
+        "A_pred": "punch",
+        "B_pred": "silk_spot",
+        "n": 1
+      },
+      {
+        "true": "silk_spot",
+        "A_pred": "crescent",
+        "B_pred": "water",
+        "n": 1
+      },
+      {
+        "true": "water",
+        "A_pred": "crescent",
+        "B_pred": "inclusion",
+        "n": 1
+      },
+      {
+        "true": "inclusion",
+        "A_pred": "punch",
+        "B_pred": "rolled_pit",
+        "n": 1
+      },
+      {
+        "true": "inclusion",
+        "A_pred": "punch",
+        "B_pred": "silk_spot",
+        "n": 1
+      },
+      {
+        "true": "rolled_pit",
+        "A_pred": "weld_line",
+        "B_pred": "fold_wrinkle",
+        "n": 1
+      },
+      {
+        "true": "rolled_pit",
+        "A_pred": "silk_spot",
+        "B_pred": "oil",
+        "n": 1
+      }
+    ],
+    "focus_counts": {
+      "oil->punch": {
+        "A": 15,
+        "B": 11,
+        "common_same": 11,
+        "common_diff_involving": 1
+      },
+      "punch->weld_line": {
+        "A": 16,
+        "B": 15,
+        "common_same": 15,
+        "common_diff_involving": 1
+      },
+      "rolled_pit->fold_wrinkle": {
+        "A": 15,
+        "B": 16,
+        "common_same": 14,
+        "common_diff_involving": 2
+      },
+      "inclusion->silk_spot": {
+        "A": 28,
+        "B": 29,
+        "common_same": 28,
+        "common_diff_involving": 1
+      }
+    }
+  },
+  "pooling_possibility_100_class_supports": {
+    "n": 100,
+    "counts": {
+      "equal_multi": 19,
+      "uneven_multi": 34,
+      "singleton": 47
+    },
+    "by_k": {
+      "3": {
+        "equal_multi": 11,
+        "uneven_multi": 11,
+        "singleton": 33
+      },
+      "5": {
+        "equal_multi": 8,
+        "uneven_multi": 23,
+        "singleton": 14
+      }
+    },
+    "frac_pooling_can_differ": 0.34,
+    "note": "Group-equal-weight equals the ordinary mean when the class support has one group, or when every group has the same shot count. Only uneven_multi supports can change under P1. This is a mathematical possibility, not an effect estimate. P1 was not run."
+  },
+  "true_support_dominance_reference": {
+    "threshold_note": "max_share>=2/3 is a descriptive cutoff, not a causal test.",
+    "all_queries": {
+      "n": 800,
+      "mean_max_share": 0.7400000000000005,
+      "frac_max_share_ge_0p67": 0.55,
+      "frac_singleton_true_support": 0.47
+    },
+    "both_correct": {
+      "n": 471,
+      "mean_max_share": 0.7602269639065831,
+      "frac_max_share_ge_0p67": 0.5817409766454352,
+      "frac_singleton_true_support": 0.4819532908704883
+    },
+    "common_errors": {
+      "n": 299,
+      "mean_max_share": 0.7074682274247486,
+      "frac_max_share_ge_0p67": 0.5016722408026756,
+      "frac_singleton_true_support": 0.44481605351170567
+    },
+    "by_k_common": {
+      "3": {
+        "n": 161,
+        "mean_max_share": 0.7722546583850929,
+        "frac_max_share_ge_0p67": 0.5652173913043478,
+        "frac_singleton_true_support": 0.5652173913043478
+      },
+      "5": {
+        "n": 138,
+        "mean_max_share": 0.6318840579710143,
+        "frac_max_share_ge_0p67": 0.427536231884058,
+        "frac_singleton_true_support": 0.30434782608695654
+      }
+    },
+    "by_k_both_correct": {
+      "3": {
+        "n": 260,
+        "mean_max_share": 0.8141034615384614,
+        "frac_max_share_ge_0p67": 0.6192307692307693,
+        "frac_singleton_true_support": 0.6192307692307693
+      },
+      "5": {
+        "n": 211,
+        "mean_max_share": 0.6938388625592414,
+        "frac_max_share_ge_0p67": 0.5355450236966824,
+        "frac_singleton_true_support": 0.3127962085308057
+      }
+    }
+  },
+  "first_pre_registered_examples": {
+    "oil->punch": {
+      "episode_id": 0,
+      "query_index": 24,
+      "k_shot": 3,
+      "query_path": "oil/GC10/train/GC10_img_07_435974600_00213.jpg",
+      "query_group_ns": "GC10::oil::435974600",
+      "true_support_counts": "{\"425507400\": 3}",
+      "pred_support_counts": "{\"424992300\": 1, \"425644100\": 1, \"3403399600\": 1}"
+    },
+    "punch->weld_line": {
+      "episode_id": 6,
+      "query_index": 0,
+      "k_shot": 5,
+      "query_path": "punch/GC10/train/GC10_img_06_425504800_00053.jpg",
+      "query_group_ns": "GC10::punch::425504800",
+      "true_support_counts": "{\"425502300\": 3, \"425506600\": 1, \"3403400800\": 1}",
+      "pred_support_counts": "{\"425506800\": 2, \"3403405800\": 1, \"427199900\": 1, \"4405228000\": 1}"
+    },
+    "rolled_pit->fold_wrinkle": {
+      "episode_id": 0,
+      "query_index": 8,
+      "k_shot": 3,
+      "query_path": "rolled_pit/GC10/test/GC10_img_06_425505500_00052.jpg",
+      "query_group_ns": "GC10::rolled_pit::425505500",
+      "true_support_counts": "{\"427199900\": 2, \"3436787300\": 1}",
+      "pred_support_counts": "{\"3402618000\": 3}"
+    },
+    "inclusion->silk_spot": {
+      "episode_id": 2,
+      "query_index": 8,
+      "k_shot": 5,
+      "query_path": "inclusion/GC10/val/GC10_img_07_425508700_01012.jpg",
+      "query_group_ns": "GC10::inclusion::425508700",
+      "true_support_counts": "{\"4402623300\": 4, \"4406742400\": 1}",
+      "pred_support_counts": "{\"431854700\": 1, \"425243100\": 1, \"img_02_SIS001522_00568\": 1, \"img_02_SIS001533_00311\": 1, \"img_01_SIS001577_00012\": 1}"
+    }
+  },
+  "paired_acc_reminder": {
+    "A_off": 0.6025,
+    "B_on": 0.6125,
+    "both_wrong": 299
+  },
+  "geometry": "not_run_in_data_phase"
+}

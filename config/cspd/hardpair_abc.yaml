@@ -1,0 +1,26 @@
+# Default suite: B only, seed 0, folds NEU/CR7/GC10 = 3 jobs.
+# A/C and extra seeds are opt-in via --experiments / --seeds; they are never the default.
+base_config: config/cspd/curriculum_p1.yaml
+defaults:
+  hard_pair_protocol: true
+  same_hard_pairs: false
+  feature_layer: 3
+  strict_groups: true
+  iters: 100
+  eval_every: 5
+  early_stop: false
+  holdout_eval: same
+  holdout_pool: all
+  use_policy: false
+  freeze_policy: true
+  fixed_beta: 0.25
+  rho_schedule: [[0.0, 0.0], [1.0, 0.0]]
+  acceptance_neu_mde: null  # NOT preregistered: no full acceptance claim until set BEFORE running.
+  historical_holdout: {NEU: 0.951, CR7: 0.706, GC10: 0.665}
+default_experiments: [B]
+default_seeds: [0]
+variants:
+  A: {feature_layer: 3, same_hard_pairs: false, seeds: [0, 1, 2]}  # opt-in
+  B: {feature_layer: 3, same_hard_pairs: true, seeds: [0]}
+  C: {feature_layer: 4, same_hard_pairs: true, seeds: [0]}  # opt-in
+folds: [NEU, CR7, GC10]
