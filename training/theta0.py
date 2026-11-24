@@ -25,7 +25,9 @@ from math import isfinite
 from pathlib import Path
 from learn2learn.algorithms import MAML
 from common.io import file_sha256, json_sha256, load_config, named_config_path, project_root, read_jsonl
-from data_proc.fomaml_episodes import InsufficientEpisodeAnnotations, episode_records, load_fomaml_episodes
+from data_proc.fomaml_episodes import (
+    InsufficientEpisodeAnnotations, episode_records, load_fomaml_data_config, load_training_episodes,
+)
 from models.detector import b0_model_config, build_faster_rcnn
 from training.checkpoints import _atomic_output, b0_run_directory, load_checkpoint, save_checkpoint
 from training.fomaml_roi import (
@@ -596,6 +598,8 @@ def fomaml_resume_fingerprint(provenance: dict) -> dict:
         "fold_id": provenance["fold_id"],
         "settings": {key: settings[key] for key in kept if key in settings},
         "loss": settings["loss"],
+        "experience_bank": settings.get("experience_bank") or "",
+        "data_profile": provenance.get("fomaml_data_profile") or "",
     }
 
 
@@ -665,21 +669,35 @@ def borrow_off_ap50(detector, episodes, adapter, device, settings, seed: int) ->
     return ap50, query_loss, perf_counter() - started
 
 
-def _write_val_best(path: Path, state: dict, provenance: dict, epoch: int, ap50: float, selection: str) -> None:
+def _write_val_best(
+    path: Path, state: dict, provenance: dict, epoch: int, ap50: float, selection: str,
+    extras: dict | None = None,
+) -> None:
     copied = dict(provenance)
     copied["val_selection"] = selection
-    save_checkpoint(path, {
+    payload = {
         "model": state, "provenance": copied, "epoch": epoch,
         "selection": selection, "meta_val_ap50": ap50,
-    })
+    }
+    if extras:
+        payload.update(extras)
+    save_checkpoint(path, payload)
 
 
 def rehearse_holdout_load(supervised: Path, fomaml: Path) -> str:
     """只加载留出评价所需的权重和任务记忆，不跑检测。失败时保留已保存文件。"""
-    from training.meta_transfer import load_holdout
+    from training.checkpoints import load_checkpoint
+    from training.meta_transfer import _fold0_holdout_episodes, load_holdout, load_retrieval_holdout_state
 
     try:
-        load_holdout(Path(supervised), Path(fomaml))
+        fomaml = Path(fomaml)
+        query_best = fomaml.parent / "query_best.pt"
+        if query_best.is_file() and load_checkpoint(query_best).get("experience_bank_dir"):
+            load_retrieval_holdout_state(query_best)
+            _fold0_holdout_episodes()
+            print("留出加载演练通过（检索式）", flush=True)
+            return "留出加载演练通过（检索式）"
+        load_holdout(Path(supervised), fomaml)
     except Exception as error:
         message = f"留出加载演练失败：{error}"
         print(message, flush=True)
@@ -971,7 +989,10 @@ def _train(detector, adapter, episodes, provenance, run_dir, device, resume_stat
         )
     else:
         expected = fomaml_resume_fingerprint(provenance)
-        if json.dumps(resume_state["fingerprint"], sort_keys=True) != json.dumps(expected, sort_keys=True):
+        saved_fingerprint = dict(resume_state["fingerprint"])
+        saved_fingerprint.setdefault("experience_bank", "")
+        saved_fingerprint.setdefault("data_profile", "")
+        if json.dumps(saved_fingerprint, sort_keys=True) != json.dumps(expected, sort_keys=True):
             raise ValueError("断点的折、任务或训练开关和本次命令不一致")
         if resume_state.get("code") != provenance.get("code"):
             print("FOMAML 续训：代码与断点时不同，任务和开关一致，从上次完成的外更新继续", flush=True)
@@ -1055,6 +1076,32 @@ def _train(detector, adapter, episodes, provenance, run_dir, device, resume_stat
     start = perf_counter()
     stopped_epoch = meta["epochs"]
     _save_metrics(metrics_path, result)
+    retrieval_bank = None
+    gamma_controller = None
+    inner_lr_controller = None
+    theta0_weights = None
+    if meta.get("experience_bank"):
+        from training.experience_bank import (
+            GammaController, InnerLRController, _state_sha256, _state_snapshot, assert_compatible_inner_lr,
+            episode_allows_borrow, load_experience_bank, refresh_experience_cards, retrieval_fomaml_step,
+        )
+        from training.retrieval_memory import load_retrieval_config
+
+        retrieval_bank = load_experience_bank(meta["experience_bank"])
+        gamma_controller = GammaController()
+        inner_lr_controller = InnerLRController() if load_retrieval_config().get("learnable_inner_lr", False) else None
+        if resume_state is not None:
+            if not resume_state.get("gamma_state") or not resume_state.get("experience_bank_dir"):
+                raise RuntimeError("检索式续训缺少 γ 或本轮经验库路径")
+            gamma_controller.load_state_dict(resume_state["gamma_state"])
+            retrieval_bank = load_experience_bank(resume_state["experience_bank_dir"])
+            if inner_lr_controller is not None:
+                if not resume_state.get("inner_lr_state"):
+                    raise RuntimeError("检索式续训缺少模块学习率")
+                inner_lr_controller.load_state_dict(resume_state["inner_lr_state"])
+        held_theta0 = load_checkpoint(provenance["supervised_theta0"])
+        theta0_weights = held_theta0["model"]
+        del held_theta0
 
     def write_resume(epoch, index, pending_close, status="running"):
         nonlocal current, best_loss, best_epoch, stall
@@ -1093,6 +1140,11 @@ def _train(detector, adapter, episodes, provenance, run_dir, device, resume_stat
             "stall": stall,
             "elapsed_seconds": elapsed_base + perf_counter() - start,
             "peak_cuda_allocated_mib": peak,
+            "gamma_state": None if gamma_controller is None else gamma_controller.state_dict(),
+            "inner_lr_state": None if inner_lr_controller is None else inner_lr_controller.state_dict(),
+            "inner_lr_snapshot": None if inner_lr_controller is None else inner_lr_controller.current()[0],
+            "experience_bank_dir": None if retrieval_bank is None else retrieval_bank["directory"],
+            "experience_epoch_theta_sha256": None if retrieval_bank is None else retrieval_bank["theta_sha256"],
         })
         print(
             f"FOMAML 断点 epoch={cursor['epoch']} next_index={cursor['index']} "
@@ -1119,6 +1171,53 @@ def _train(detector, adapter, episodes, provenance, run_dir, device, resume_stat
                     current = {"epoch": epoch, "episodes": [], "skipped": []}
                 elif not isinstance(current, dict) or current.get("epoch") != epoch:
                     raise RuntimeError("断点缺少本轮已完成的任务记录")
+            if retrieval_bank is not None and start_index == 0:
+                import shutil
+
+                from training.experience_bank import refresh_deltas_complete
+
+                epoch_dir = run_dir / f"experience_epoch_{epoch}"
+                current_hash = _state_sha256(_state_snapshot(detector))
+                if inner_lr_controller is not None:
+                    values, hits = inner_lr_controller.current()
+                    meta["inner_lr_snapshot"] = values
+                    meta["inner_lr_source"] = "module_snapshot"
+                    touched = {name: hits[name] for name in hits if hits[name]}
+                    if touched:
+                        print(f"FOMAML 模块学习率触及边界 epoch={epoch} {touched}", flush=True)
+                resume_deltas = False
+                if epoch_dir.exists() and not (epoch_dir / "module_memory.pt").is_file():
+                    if refresh_deltas_complete(epoch_dir, retrieval_bank["assignments"]):
+                        resume_deltas = True
+                        print(
+                            f"FOMAML 复用未完成刷新目录中的任务增量 epoch={epoch} dir={epoch_dir.name}",
+                            flush=True,
+                        )
+                    else:
+                        shutil.rmtree(epoch_dir)
+                if (epoch_dir / "module_memory.pt").is_file():
+                    retrieval_bank = load_experience_bank(epoch_dir, current_hash)
+                else:
+                    # 刷新峰值前把家族 Feature Δ 卸到磁盘，避免与拼卡叠加占满内存。
+                    library_index = {family: entry["episode_id"] for family, entry in library.items()}
+                    for entry in library.values():
+                        row = module_memory[entry["episode_id"]]
+                        if isinstance(row.get("delta"), dict):
+                            _spill_episode_delta(memory_parts, entry["episode_id"], row, release=True)
+                        entry.pop("delta", None)
+                    library.clear()
+                    gc.collect()
+                    print(
+                        f"FOMAML 按当前共享参数重算经验卡片 epoch={epoch}"
+                        f"{'（续跑增量）' if resume_deltas else ''}",
+                        flush=True,
+                    )
+                    refresh_experience_cards(
+                        retrieval_bank["directory"], detector, epoch_dir, adapter, episodes, device, meta,
+                        resume_deltas=resume_deltas,
+                    )
+                    retrieval_bank = load_experience_bank(epoch_dir, current_hash)
+                    library = _hydrate_library(module_memory, library_index, memory_parts)
             for index, episode in enumerate(order):
                 if index < start_index:
                     continue
@@ -1165,33 +1264,52 @@ def _train(detector, adapter, episodes, provenance, run_dir, device, resume_stat
                     prescreen_k = int(meta["prescreen_k"])
                     audit_n = int(meta["prescreen_audit"])
                     auditing = False
-                    if prescreen_k > 0 and library:
-                        if audit_n > 0:
-                            others = _other_source_count(library, family_id)
-                            if others > 2 * prescreen_k:
-                                result["prescreen_audit"]["large_episodes"] += 1
-                                auditing = prescreen_audit_due(
-                                    others, prescreen_k, result["prescreen_audit"]["large_episodes"],
-                                    int(meta["prescreen_audit_every"]), result["prescreen_audit"]["episodes"], audit_n,
-                                )
-                        _fomaml_phase(trace, "预筛")
-                        started = perf_counter()
-                        grad_sketches = _prescreen_sketches(
-                            initializer.module, support_records, device, meta,
+                    if retrieval_bank is not None:
+                        _fomaml_phase(trace, "检索")
+                        allow_borrow = episode_allows_borrow(
+                            episode["episode_id"], float(meta["no_borrow_probability"]),
+                            int(provenance["seed"]) + int(epoch),
                         )
-                        ranking = _rank_sources(library, family_id, grad_sketches, int(meta["sketch_dim"]))
-                        prescreen_seconds = perf_counter() - started
-                        if not auditing:
-                            allowed = {
-                                name: set(ranking[name][:prescreen_k]) for name in ("Feature", "Where")
-                            }
-                    borrowed, choices, reuse_weights = select_module_initialization(
-                        initializer.module, library, family_id, support_records, device, meta,
-                        allowed, select_times, trace,
-                    )
-                    step = _meta_step(
-                        initializer, optimizer, support_records, query_records, device, meta, store, trace,
-                    )
+                        step = retrieval_fomaml_step(
+                            initializer.module, optimizer, support_records, query_records, episode,
+                            retrieval_bank, gamma_controller, device, meta, allow_borrow=allow_borrow,
+                            inner_lr_controller=inner_lr_controller,
+                            theta0_state=theta0_weights, adapter=adapter,
+                            writable_cache=run_dir / "feature_cache",
+                            extra_caches=[run_dir / "feature_cache"],
+                        )
+                        prescreen_seconds = step.pop("retrieval_seconds")
+                        borrowed = {}
+                        choices = step["module_choices"]
+                        reuse_weights = step["reuse_weights"]
+                    else:
+                        if prescreen_k > 0 and library:
+                            if audit_n > 0:
+                                others = _other_source_count(library, family_id)
+                                if others > 2 * prescreen_k:
+                                    result["prescreen_audit"]["large_episodes"] += 1
+                                    auditing = prescreen_audit_due(
+                                        others, prescreen_k, result["prescreen_audit"]["large_episodes"],
+                                        int(meta["prescreen_audit_every"]), result["prescreen_audit"]["episodes"], audit_n,
+                                    )
+                            _fomaml_phase(trace, "预筛")
+                            started = perf_counter()
+                            grad_sketches = _prescreen_sketches(
+                                initializer.module, support_records, device, meta,
+                            )
+                            ranking = _rank_sources(library, family_id, grad_sketches, int(meta["sketch_dim"]))
+                            prescreen_seconds = perf_counter() - started
+                            if not auditing:
+                                allowed = {
+                                    name: set(ranking[name][:prescreen_k]) for name in ("Feature", "Where")
+                                }
+                        borrowed, choices, reuse_weights = select_module_initialization(
+                            initializer.module, library, family_id, support_records, device, meta,
+                            allowed, select_times, trace,
+                        )
+                        step = _meta_step(
+                            initializer, optimizer, support_records, query_records, device, meta, store, trace,
+                        )
                 except InsufficientEpisodeAnnotations as error:
                     store.restore("primary")
                     print(
@@ -1271,6 +1389,16 @@ def _train(detector, adapter, episodes, provenance, run_dir, device, resume_stat
                         f"inner={seconds['inner']:.2f} outer={seconds['outer']:.2f}",
                         flush=True,
                     )
+                    bound_hits = step.get("inner_lr_bound_hits") or {}
+                    touched = {name: bound_hits[name] for name in bound_hits if bound_hits[name]}
+                    if touched:
+                        print(f"FOMAML 模块学习率触及边界 step={result['global_step']} {touched}", flush=True)
+                    if step.get("gamma_proxy_meaning") == "unborrowed_query_first_order_estimate":
+                        print(
+                            f"FOMAML step={result['global_step']} 前向借用量为零，"
+                            "Query 梯度只作为未来 γ 的局部一阶估计",
+                            flush=True,
+                        )
                 write_resume(epoch, index + 1, index + 1 == len(order))
             if not current["episodes"]:
                 raise RuntimeError(f"第 {epoch} 轮没有完成 FOMAML 外更新")
@@ -1283,9 +1411,15 @@ def _train(detector, adapter, episodes, provenance, run_dir, device, resume_stat
                 best_epoch = epoch
                 stall = 0
                 best_state = {key: value.detach().cpu().clone() for key, value in detector.state_dict().items()}
-                save_checkpoint(run_dir / "query_best.pt", {
-                    "model": best_state, "epoch": best_epoch, "loss": best_loss,
-                })
+                best_payload = {"model": best_state, "epoch": best_epoch, "loss": best_loss}
+                if gamma_controller is not None:
+                    best_payload["gamma_state"] = gamma_controller.state_dict()
+                    best_payload["experience_bank_dir"] = retrieval_bank["directory"]
+                    best_payload["theta_sha256"] = retrieval_bank["theta_sha256"]
+                if inner_lr_controller is not None:
+                    best_payload["inner_lr_state"] = inner_lr_controller.state_dict()
+                    best_payload["inner_lr_snapshot"] = inner_lr_controller.current()[0]
+                save_checkpoint(run_dir / "query_best.pt", best_payload)
             else:
                 stall += 1
             _save_metrics(metrics_path, result)
@@ -1314,8 +1448,17 @@ def _train(detector, adapter, episodes, provenance, run_dir, device, resume_stat
                     val_tracker["state"] = {
                         key: value.detach().cpu().clone() for key, value in detector.state_dict().items()
                     }
+                    extras = {}
+                    if gamma_controller is not None:
+                        extras["gamma_state"] = gamma_controller.state_dict()
+                        extras["experience_bank_dir"] = retrieval_bank["directory"]
+                        extras["theta_sha256"] = retrieval_bank["theta_sha256"]
+                    if inner_lr_controller is not None:
+                        extras["inner_lr_state"] = inner_lr_controller.state_dict()
+                        extras["inner_lr_snapshot"] = inner_lr_controller.current()[0]
                     _write_val_best(
                         run_dir / "val_best.pt", val_tracker["state"], provenance, epoch, ap50, "meta_val_ap50",
+                        extras or None,
                     )
             if patience > 0 and stall >= patience:
                 result["early_stopped"] = True
@@ -1407,7 +1550,7 @@ def backfill_module_sketches(path: Path) -> int:
 def train_theta0_fomaml(
     theta0: Path, run_name: str, pilot: bool, dry_run: bool, prescreen_k: int = 0, prescreen_audit: int = 0,
     prescreen_audit_every: int = 10, sketch_dim: int = SKETCH_DIM, val_ap50: bool = False, val_max_episodes: int = 0,
-    resume: bool = False,
+    resume: bool = False, experience_bank: Path | None = None, epochs: int | None = None,
 ) -> dict:
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{0,79}", run_name):
         raise ValueError("run-name 只能使用字母、数字、连字符和下划线")
@@ -1422,15 +1565,22 @@ def train_theta0_fomaml(
             or (not pilot and source["mode"] != "fold_train_full")):
         raise ValueError("FOMAML 需要同折监督 θ₀。正式运行须使用完成的正式折内监督权重")
 
-    adapter, episodes, scope = load_fomaml_episodes(source["fold_id"], source["train_family_ids"])
+    data_profile = load_fomaml_data_config()
+    adapter, episodes, scope = load_training_episodes(source["fold_id"], source["train_family_ids"])
     required = ("fold_id", "fold_sha256", "theta0_train_family_ids", "delta_source_family_ids",
                 "oof_target_family_ids", "meta_val_family_ids", "outer_test_family_ids",
                 "data_config_sha256", "manifest_sha256", "group_split_sha256", "train_index_sha256",
-                "split_manifest_sha256", "episode_manifest_sha256")
+                "split_manifest_sha256")
     if any(source.get(key) != scope[key] for key in required):
         raise ValueError("监督 θ₀ 的冻结折或数据来源与当前配置不一致")
-    if not pilot and scope["train_family_ids"] != scope["theta0_train_family_ids"]:
-        raise ValueError("正式 FOMAML 需要覆盖该折全部允许训练族的监督 θ₀")
+    if not set(scope["train_family_ids"]) <= set(scope["theta0_train_family_ids"]):
+        raise ValueError("当前数据分组超出了监督 θ₀ 允许的训练族")
+    if (
+        not pilot
+        and data_profile["episode_source"] == "frozen_oof_v1"
+        and scope["train_family_ids"] != scope["theta0_train_family_ids"]
+    ):
+        raise ValueError("三数据集正式 FOMAML 需要覆盖该折全部允许训练族")
     baseline_path = named_config_path("baseline.yaml")
     detector_path = named_config_path("b0_v3.yaml")
     if (source["config_sha256"] != file_sha256(baseline_path)
@@ -1473,11 +1623,26 @@ def train_theta0_fomaml(
         raise ValueError("sketch-dim 必须为正")
     if settings["val_max_episodes"] < 0:
         raise ValueError("val-max-episodes 不能为负")
+    from training.experience_bank import latest_experience_bank, load_experience_bank
+    from training.retrieval_memory import load_retrieval_config
+
+    bank_path = latest_experience_bank(source["fold_id"]) if experience_bank is None else Path(experience_bank)
+    bank_path = bank_path.resolve(strict=True)
+    load_experience_bank(bank_path)
+    retrieval = load_retrieval_config()
+    settings["experience_bank"] = str(bank_path)
+    settings["no_borrow_probability"] = float(retrieval["no_borrow_probability"])
+    if not 0 <= settings["no_borrow_probability"] < 1:
+        raise ValueError("整条任务不借用的概率必须在 [0, 1) 内")
     validate_detection_loss_settings(settings["loss"])
     if pilot:
         settings["epochs"] = config["pilot"]["epochs"]
         episodes = [item for item in episodes if item["dataset_id"] == config["pilot"]["dataset"]]
         episodes = sorted(episodes, key=lambda item: item["episode_id"])[:config["pilot"]["episodes"]]
+    if epochs is not None:
+        if int(epochs) < 1:
+            raise ValueError("epochs 必须为正")
+        settings["epochs"] = int(epochs)
     if (not episodes or any(settings[key] < 1 for key in ("epochs", "inner_steps", "log_every_steps"))
             or any(not isfinite(settings[key]) or settings[key] <= 0 for key in ("inner_lr", "outer_lr"))):
         raise ValueError("FOMAML 需要非空 Episode、正轮数、步数及学习率")
@@ -1490,14 +1655,24 @@ def train_theta0_fomaml(
     provenance = {**source, "mode": "pilot" if pilot else "fold_train_full",
                   "theta0_training_method": "supervised_warmup_and_fomaml_modules",
                   "fomaml_settings": settings, "fomaml_config_sha256": file_sha256(config_path),
+                  "fomaml_data_profile": scope["data_profile"],
+                  "fomaml_data_config_sha256": file_sha256(named_config_path("fomaml_data.yaml")),
                   "fomaml_scope": scope, "fomaml_episode_ids": episode_ids,
                   "fomaml_episode_sha256": json_sha256(episodes), "code": code,
                   "supervised_theta0": str(theta0), "supervised_theta0_sha256": theta0_hash}
     run_dir = project_root() / config["output_dir"] / f"fold_{source['fold_id']}" / run_name
-    summary = {"fold_id": source["fold_id"], "mode": provenance["mode"], "episodes_per_epoch": len(episodes),
+    summary = {"fold_id": source["fold_id"], "mode": provenance["mode"],
+               "data_profile": scope["data_profile"], "episode_source": scope["episode_source"],
+               "train_families": len(scope["train_family_ids"]),
+               "episodes_per_epoch": len(episodes),
                "planned_outer_steps": settings["epochs"] * len(episodes), "settings": settings,
                "output": str(run_dir), "first_episode": episode_ids[0]}
-    print(json.dumps(summary, ensure_ascii=False), flush=True)
+    print(
+        f"FOMAML 折 {source['fold_id']}，分组 {scope['data_profile']}，"
+        f"每轮 {len(episodes)} 条任务，族 {len(scope['train_family_ids'])}，"
+        f"经验库 {Path(settings['experience_bank']).name}",
+        flush=True,
+    )
     if dry_run:
         return summary
     device = _check_runtime(source["settings"])

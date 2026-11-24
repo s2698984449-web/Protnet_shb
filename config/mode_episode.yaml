@@ -1,0 +1,16 @@
+# 缺陷模式感知 Episode。只从冻结物理组池抽样，不覆盖 v1 固定 Episode。
+# dataset_id 为 mvtec 时只做单数据集受控验证，不替代三数据集研究协议。
+version: mode_v1
+seed: 20261124
+dataset_id: mvtec
+scope: controlled_validation
+same_query_ratio: 0.6
+other_query_ratio: 0.4
+k_shot: 5
+q_defect_groups: 5
+n_reference_groups: 5
+q_normal_groups: 5
+max_episodes_per_mode: 2
+output_dir: output/episodes/mode_v1
+manifest_name: mode_episode_manifest.jsonl
+report_name: mode_episode_report.json

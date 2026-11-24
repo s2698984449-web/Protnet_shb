@@ -1,0 +1,25 @@
+# FOMAML / 经验库读取哪一组 Episode，由 active_profile 决定。
+# 换分组只改这里，不改冻结划分，也不覆盖 output/episodes/v1。
+active_profile: mvtec_mode_v1
+
+profiles:
+  three_dataset_oof_v1:
+    description: 三数据集正式协议。读取冻结 OOF Episode Bank。
+    episode_source: frozen_oof_v1
+    dataset_ids: null
+    allow_degraded: false
+    bank_tasks_per_family: null
+    replaces_three_dataset_protocol: true
+    official_unsupervised_protocol: false
+
+  mvtec_mode_v1:
+    description: MVTec 受控验证。读取模式感知 60/40 Episode，仅 mvtec 源族。
+    episode_source: mode_manifest
+    mode_config: mode_episode.yaml
+    dataset_ids: [mvtec]
+    require_training_eligible: true
+    allow_degraded: true
+    only_exact: false
+    bank_tasks_per_family: 4
+    replaces_three_dataset_protocol: false
+    official_unsupervised_protocol: false

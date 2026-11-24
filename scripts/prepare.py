@@ -1,4 +1,4 @@
-"""数据准备。子命令：audit、annotations、split、episodes。"""
+"""数据准备。子命令：audit、annotations、split、episodes、mode-episodes。"""
 
 from __future__ import annotations
 
@@ -24,6 +24,7 @@ def main() -> None:
     commands.add_parser("annotations", help="核对标注并把 Mask 转成框")
     commands.add_parser("split", help="生成外层留出和内层折")
     commands.add_parser("episodes", help="生成固定 Episode")
+    commands.add_parser("mode-episodes", help="生成缺陷模式感知 Episode 清单")
     args = parser.parse_args()
     if args.command == "audit":
         audit_main(verify_images_override=args.verify_images)
@@ -31,6 +32,15 @@ def main() -> None:
         audit_annotation_pilot()
     elif args.command == "split":
         split_main()
+    elif args.command == "mode-episodes":
+        from data_proc.mode_episodes import write_mode_manifest
+
+        report = write_mode_manifest()
+        print(
+            f"模式 Episode {report['episodes']} 条，产品族 {report['families']}，"
+            f"缺陷模式 {report['defect_modes']}，降级 {report['degraded']}",
+            flush=True,
+        )
     else:
         episodes_main()
 

@@ -1,0 +1,40 @@
+# 检索式 FOMAML 的记忆与借用。内外循环轮数和学习率仍用 config/fomaml.yaml。
+experience_groups: 3
+tasks_per_family: 8
+clusters_per_module: 8
+fast_profile:
+  tasks_per_family: 4
+  clusters_per_module: 4
+top_k_initial: 2
+max_top_k: 4
+top_mass_threshold: 0.8
+temperature_after_zscore: 1.0
+pca_dim: 64
+train_projection: false
+trim_ratios: [0.10, 0.20, 0.40, 1.00]
+trim_sketch_dim: 8192
+trim_splits: 3
+trim_calibration_min_members: 8
+min_members_for_ties: 5
+gamma_max: 1.0
+g_init: -1.0
+beta_init: 10.0
+s0_window: 256
+no_borrow_probability: 0.30
+gamma_adam_lr: 0.01
+feature_dim: 256
+geometry_dim: 6
+cluster_seed: 20261124
+bank_seed: 20261124
+signature_version: fpn-mean-roialign7-gap-v1
+near_duplicate_cosine: 0.90
+output_dir: output/meta_transfer/experience_bank
+same_object_families:
+  - [mvtec:toothbrush, realiad:toothbrush]
+  - [mvtec:transistor, realiad:transistor1]
+learnable_inner_lr: true
+inner_lr_init: 0.01
+inner_lr_min: 0.00001
+inner_lr_max: 0.03
+inner_lr_optimizer: Adam
+inner_lr_meta_lr: 0.001

@@ -553,7 +553,16 @@ def _completed_theta0(path: Path) -> tuple[dict, str]:
     metrics = read_json(path.parent / "metrics.json")
     _check_metadata(metrics, {"complete": True, "provenance": state["provenance"],
                               "global_step": state["global_step"]}, str(path))
-    if len(metrics["history"]) != state["epoch"] or state["global_step"] < 1:
+    history = metrics.get("history") or []
+    epoch = int(state["epoch"])
+    if state["global_step"] < 1 or epoch < 1 or len(history) < epoch:
+        raise ValueError(f"θ₀ 训练历史和断点轮数不一致：{path}")
+    # 早停时 last.pt 的 epoch 是 best_epoch，history 会多出未改善的轮次。
+    if metrics.get("early_stopped"):
+        best_epoch = metrics.get("best_epoch")
+        if best_epoch is None or int(best_epoch) != epoch:
+            raise ValueError(f"早停权重的轮次和 metrics.best_epoch 不一致：{path}")
+    elif len(history) != epoch:
         raise ValueError(f"θ₀ 训练历史和断点轮数不一致：{path}")
     return state, digest
 
@@ -882,9 +891,15 @@ def load_holdout(supervised: Path, fomaml: Path):
     validate_detection_loss_settings(adaptation_loss)
     episodes_by_id = {episode["episode_id"]: episode for episode in episodes}
     fomaml_families = {episodes_by_id[episode_id]["family_id"] for episode_id in meta_source["fomaml_episode_ids"]}
+    metrics = read_json(fomaml.parent / "metrics.json")
+    expected_meta_epoch = (
+        int(metrics["best_epoch"])
+        if metrics.get("early_stopped") and metrics.get("best_epoch") is not None
+        else int(meta_settings["epochs"])
+    )
     if (
         fomaml_families != sources or not meta_settings["first_order"] or meta_settings["pilot"]
-        or warmup["epoch"] != warmup_source["settings"]["epochs"] or meta_weights["epoch"] != meta_settings["epochs"]
+        or warmup["epoch"] != warmup_source["settings"]["epochs"] or meta_weights["epoch"] != expected_meta_epoch
         or adaptation["inner_steps"] < 1 or not isfinite(adaptation["inner_lr"]) or adaptation["inner_lr"] <= 0
     ):
         raise ValueError("θ₀ 权重轮数、FOMAML 源族或适配预算与正式折内协议不一致")
@@ -1878,8 +1893,305 @@ def _shifted_state(base_state: dict, delta: dict) -> dict:
     return state
 
 
+def retrieval_holdout_plan(bank, episode, keys, controller, records=None):
+    """留出借用调用和训练相同的检索、融合与 γ。不更新参数，也不读取 Query。"""
+    from training.experience_bank import holdout_borrow_plan
+
+    return holdout_borrow_plan(bank, episode, keys, controller, records)
+
+
+def retrieval_holdout_pair(detector, support_records, episode, bank, keys, gamma, alpha, device, settings):
+    """留出的两臂和训练调用同一个 Support 适应函数。Query 不参与这一步。"""
+    from training.experience_bank import retrieval_holdout_pair as adapt_pair
+
+    return adapt_pair(detector, support_records, episode, bank, keys, gamma, alpha, device, settings)
+
+
+def retrieval_holdout_query_plan(episode: dict) -> dict:
+    """适应完成后再按模式拆 Query。这些标签不进入任务签名或经验选择。"""
+    from data_proc.mode_episodes import query_mode_slices
+
+    slices = query_mode_slices(episode)
+    return {
+        "query_used_for_retrieval": False,
+        "same_mode_ap50_group_ids": slices["same_mode_group_ids"],
+        "other_mode_ap50_group_ids": slices["other_mode_group_ids"],
+        "overall_ap50_group_ids": slices["overall_group_ids"],
+    }
+
+
+def load_retrieval_holdout_state(checkpoint: Path):
+    """加载最佳轮次的 θ、经验库、γ 和 α，并保持后两者冻结。"""
+    from training.experience_bank import (
+        InnerLRController, assert_compatible_inner_lr, load_experience_bank,
+    )
+    from training.experience_bank import GammaController
+
+    payload = load_checkpoint(checkpoint)
+    for key in ("model", "gamma_state", "inner_lr_state", "experience_bank_dir", "inner_lr_snapshot"):
+        if key not in payload:
+            raise KeyError(f"检索式留出检查点缺少 {key}")
+    bank = load_experience_bank(payload["experience_bank_dir"], payload.get("theta_sha256"))
+    assert_compatible_inner_lr(bank, payload["inner_lr_snapshot"], strict=False)
+    gamma = GammaController()
+    gamma.load_state_dict(payload["gamma_state"])
+    alpha = InnerLRController()
+    alpha.load_state_dict(payload["inner_lr_state"])
+    for parameter in list(gamma.gains.values()) + list(gamma.raw_betas.values()) + list(alpha.raw.values()):
+        parameter.requires_grad_(False)
+    return {
+        "model": payload["model"], "bank": bank, "gamma": gamma, "alpha": alpha,
+        "epoch": payload.get("epoch"), "theta_sha256": payload.get("theta_sha256"),
+        "experience_bank_dir": payload["experience_bank_dir"],
+    }
+
+
+def _fold0_holdout_episodes():
+    """只加载 fold 0 留出 Episode 与检测适配器，不打开 FOMAML 权重。"""
+    group_split = load_verified_group_split()
+    outer, meta, inner = load_verified_research_splits()
+    groups = load_verified_episode_groups()
+    artifacts = verify_frozen_episode_artifacts()
+    fold = next(item for item in inner["folds"] if item["fold_id"] == 0)
+    root = project_root()
+    baseline_path = named_config_path("baseline.yaml")
+    baseline = load_config(baseline_path)
+    adapter = UnifiedDetectionAdapter(baseline)
+    data_path = root / baseline["data_config"]
+    data = load_config(data_path)
+    ep_config = load_config(root / baseline["episode_config"])
+    ep_dir = root / ep_config["output_dir"]
+    bank_name = ep_config["artifacts"]["oof_bank"]
+    episodes = read_jsonl(ep_dir / bank_name)
+    validate_episode_bank(episodes, groups, outer, meta, inner)
+    excluded = (
+        set(group_split["excluded_official_train_image_ids"])
+        if group_split["conflict_policy"] == "preserve_official_test" else set()
+    )
+    holdout, audit = _holdout_episodes(
+        episodes, groups, adapter, fold, inner["source_universe_action_ids"], excluded,
+    )
+    return adapter, holdout, audit, fold, baseline, artifacts, bank_name
+
+
+def _score_adapted_episode(detector, episode, adapter, device, evaluation) -> dict:
+    from training.evaluation import evaluate_detector
+
+    metrics = evaluate_detector(detector, [episode], adapter, device, evaluation)
+    product = f"{episode['dataset_id']}:{episode['product_id']}"
+    row = metrics["per_product"][product]
+    return {
+        "family_id": episode["family_id"],
+        "product": product,
+        "ap50": float(row["ap50"]),
+        "normal_fp_per_image": None if row["normal_fp_per_image"] is None else float(row["normal_fp_per_image"]),
+        "precision": None if row["precision"] is None else float(row["precision"]),
+        "recall": None if row["recall"] is None else float(row["recall"]),
+    }
+
+
+def run_retrieval_holdout(
+    supervised: Path, checkpoint: Path, run_name: str,
+    device: str = "cuda", decode_workers: int | None = None,
+) -> dict:
+    """检索式 FOMAML 的留出：同一 Support 上比较无借用与检索借用，再报 Query AP50。"""
+    from training.evaluation import _product_macro
+    from training.experience_bank import (
+        _cache_directories, holdout_borrow_plan, retrieval_support_adapt, task_signature,
+    )
+
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{0,79}", run_name):
+        raise ValueError("run-name 只能使用字母、数字、连字符和下划线")
+    os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")
+    device = torch.device(device)
+    if device.type == "cuda" and not torch.cuda.is_available():
+        raise RuntimeError("CUDA 不可用，请使用 MAML 环境，或显式指定 --device cpu")
+    config_path = named_config_path("holdout_eval.yaml")
+    config = load_config(config_path)
+    workers = config["decode_workers"] if decode_workers is None else decode_workers
+    torch.set_num_threads(config["cpu_threads"])
+    torch.backends.cudnn.benchmark = False
+    torch.use_deterministic_algorithms(True)
+
+    supervised = Path(supervised).resolve(strict=True)
+    checkpoint = Path(checkpoint).resolve(strict=True)
+    last = checkpoint.parent / "last.pt"
+    if not last.is_file():
+        raise FileNotFoundError(f"检索式留出需要同目录 last.pt：{last}")
+    last_payload = load_checkpoint(last)
+    provenance_src = last_payload["provenance"]
+    settings = dict(provenance_src["fomaml_settings"])
+    settings["ignore_iou"] = float(load_config(named_config_path("baseline.yaml"))["evaluation"]["ignore_iou"])
+    retrieval = load_retrieval_holdout_state(checkpoint)
+    warmup, warmup_hash = _completed_theta0(supervised)
+    adapter, episodes, audit, fold, baseline, artifacts, bank_name = _fold0_holdout_episodes()
+    evaluation = dict(baseline["evaluation"])
+    evaluation.setdefault("batch_size", 1)
+    evaluation.setdefault("prefetch_images", False)
+    model_config = b0_model_config(warmup["provenance"]["settings"]["model"])
+    theta0_state = warmup["model"]
+    del warmup
+
+    root = project_root()
+    run_dir = root / config["output_dir"] / f"fold_{fold['fold_id']}" / run_name
+    code = _code_version()
+    for path in ("training/meta_transfer.py", "scripts/train.py", "training/experience_bank.py", "training/theta0.py"):
+        code["source_sha256"][path] = file_sha256(root / path)
+    result = {
+        "complete": False,
+        "protocol": "retrieval_fomaml_holdout",
+        "provenance": {
+            **audit,
+            "fold_id": int(fold["fold_id"]),
+            "supervised_theta0": str(supervised),
+            "supervised_theta0_sha256": warmup_hash,
+            "fomaml_checkpoint": str(checkpoint),
+            "fomaml_last": str(last),
+            "fomaml_epoch": retrieval["epoch"],
+            "experience_bank_dir": retrieval["experience_bank_dir"],
+            "theta_sha256": retrieval["theta_sha256"],
+            "fomaml_data_profile": provenance_src.get("fomaml_data_profile"),
+            "fomaml_trained_family_ids": list(provenance_src.get("fomaml_trained_family_ids") or []),
+            "episode_bank": bank_name,
+            "episode_bank_sha256": artifacts["artifacts"][bank_name],
+            "adaptation": {
+                "inner_steps": int(settings["inner_steps"]),
+                "inner_lr_source": "module_snapshot",
+            },
+        },
+        "evaluation": evaluation,
+        "code": code,
+        "config_sha256": file_sha256(config_path),
+        "device": str(device),
+        "decode_workers": workers,
+        "episodes": {},
+        "summary": {},
+    }
+    path = run_dir / "metrics.json"
+    bank = retrieval["bank"]
+    gamma = retrieval["gamma"]
+    alpha = retrieval["alpha"]
+    extra_caches = [item for item in _cache_directories(bank) if Path(item).is_dir()]
+    writable_cache = run_dir / "feature_cache"
+
+    with b0_run_directory(run_dir, resume=False):
+        _write_report(path, result)
+        start = perf_counter()
+        if device.type == "cuda":
+            torch.cuda.reset_peak_memory_stats(device)
+        detector = build_faster_rcnn(model_config, initialize_backbone=False).to(device)
+        detector.load_state_dict(retrieval["model"], strict=True)
+        print(
+            f"检索式留出：{len(episodes)} 条 Episode，经验库 {Path(retrieval['experience_bank_dir']).name}，"
+            f"epoch={retrieval['epoch']}",
+            flush=True,
+        )
+        null_rows, borrow_rows = [], []
+        for index, episode in enumerate(episodes, start=1):
+            signature = task_signature(
+                adapter, episode, bank, detector, device, settings, theta0_state,
+                writable_cache=writable_cache, read_only=False, extra_caches=extra_caches,
+            )
+            support = signature["support_records"]
+            keys = {
+                name: signature["keys"][name]
+                for name in ("Appearance", "Morphology", "Difference")
+            }
+            snapshot = {key: value.detach().cpu().clone() for key, value in detector.state_dict().items()}
+            values, _hits = alpha.current()
+            # A：无借用
+            detector.train()
+            retrieval_support_adapt(detector, support, device, settings, values, {})
+            detector.eval()
+            null_score = _score_adapted_episode(detector, episode, adapter, device, evaluation)
+            detector.load_state_dict(snapshot, strict=True)
+            # B：检索借用
+            plans = holdout_borrow_plan(bank, episode, keys, gamma, support)
+            borrow = {}
+            for plan in plans:
+                if plan["inject"]:
+                    borrow.update(plan["named"])
+            detector.train()
+            retrieval_support_adapt(detector, support, device, settings, values, borrow)
+            detector.eval()
+            borrow_score = _score_adapted_episode(detector, episode, adapter, device, evaluation)
+            detector.load_state_dict(snapshot, strict=True)
+            row = {
+                "episode_id": episode["episode_id"],
+                "family_id": episode["family_id"],
+                "null": null_score,
+                "borrow": borrow_score,
+                "ap50_delta": borrow_score["ap50"] - null_score["ap50"],
+                "borrow_injected": {plan["module"]: bool(plan["inject"]) for plan in plans},
+                "source_groups": {plan["module"]: list(plan.get("source_groups") or []) for plan in plans},
+            }
+            result["episodes"][episode["episode_id"]] = row
+            null_rows.append(null_score)
+            borrow_rows.append(borrow_score)
+            print(
+                f"留出 {index}/{len(episodes)} {episode['episode_id']} "
+                f"null_ap50={null_score['ap50']:.4f} borrow_ap50={borrow_score['ap50']:.4f} "
+                f"delta={row['ap50_delta']:+.4f}",
+                flush=True,
+            )
+            _write_report(path, result)
+
+        def _macro(rows):
+            products = {}
+            for row in rows:
+                products.setdefault(row["product"], []).append(row)
+            per_product = {}
+            for product, items in sorted(products.items()):
+                fps = [item["normal_fp_per_image"] for item in items if item["normal_fp_per_image"] is not None]
+                per_product[product] = {
+                    "ap50": float(sum(item["ap50"] for item in items) / len(items)),
+                    "ap": None,
+                    "precision": None,
+                    "recall": None,
+                    "normal_fp_per_image": float(sum(fps) / len(fps)) if fps else None,
+                }
+            return {
+                "product_macro": _product_macro(list(per_product.values())),
+                "per_product": per_product,
+                "episode_mean_ap50": float(sum(row["ap50"] for row in rows) / len(rows)),
+            }
+
+        null_summary = _macro(null_rows)
+        borrow_summary = _macro(borrow_rows)
+        deltas = [float(result["episodes"][eid]["ap50_delta"]) for eid in result["episodes"]]
+        result["summary"] = {
+            "null": null_summary,
+            "borrow": borrow_summary,
+            "ap50_product_macro_delta": (
+                float(borrow_summary["product_macro"]["ap50"]) - float(null_summary["product_macro"]["ap50"])
+            ),
+            "ap50_episode_mean_delta": float(sum(deltas) / len(deltas)),
+            "ap50_positive_episodes": sum(delta > 0 for delta in deltas),
+            "ap50_negative_episodes": sum(delta < 0 for delta in deltas),
+            "episodes": len(episodes),
+        }
+        result["elapsed_seconds"] = perf_counter() - start
+        if device.type == "cuda":
+            result["peak_cuda_allocated_mib"] = torch.cuda.max_memory_allocated(device) / 2**20
+        result["complete"] = True
+        _write_report(path, result)
+        print(
+            f"检索式留出完成：null_ap50={null_summary['product_macro']['ap50']:.6f} "
+            f"borrow_ap50={borrow_summary['product_macro']['ap50']:.6f} "
+            f"delta={result['summary']['ap50_product_macro_delta']:+.6f}",
+            flush=True,
+        )
+    return result
+
+
 def run_holdout(supervised: Path, fomaml: Path, run_name: str,
                 device: str = "cuda", decode_workers: int | None = None) -> dict:
+    fomaml = Path(fomaml)
+    query_best = fomaml.parent / "query_best.pt" if fomaml.name == "last.pt" else fomaml
+    if query_best.is_file():
+        payload = load_checkpoint(query_best)
+        if payload.get("experience_bank_dir"):
+            return run_retrieval_holdout(supervised, query_best, run_name, device, decode_workers)
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{0,79}", run_name):
         raise ValueError("run-name 只能使用字母、数字、连字符和下划线")
     os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")
