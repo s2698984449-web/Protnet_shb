@@ -1,0 +1,84 @@
+# B0 二分类 Faster R-CNN + FPN。
+version: v1
+data_config: config/data.yaml
+episode_config: config/episode.yaml
+annotation_output: output/audit/annotation_audit_report.csv
+annotation_report: doc/annotation_audit.md
+
+class_mode: binary_defect_localization
+classes:
+  background: 0
+  defect: 1
+
+mask_to_box:
+  connectivity: 8
+  min_component_area: 10
+  thresholds:
+    mvtec: nonzero
+    visa: nonzero
+    realiad: 127
+
+annotation_pilot:
+  bank: output/episodes/v1/episode_bank_meta_val.jsonl
+  max_unique_images_per_dataset: 64
+
+model:
+  architecture: fasterrcnn_resnet50_fpn
+  num_classes: 2
+  pretrained_weights: false
+  trainable_backbone_layers: 1
+  rpn_pre_nms_top_n_train: 200
+  rpn_post_nms_top_n_train: 100
+  rpn_pre_nms_top_n_test: 100
+  rpn_post_nms_top_n_test: 50
+  box_detections_per_img: 50
+
+smoke:
+  max_images: 3
+  seed: 20261120
+  overfit_steps: 5
+  learning_rate: 0.0025
+  momentum: 0.9
+  weight_decay: 0.0001
+  output: output/baseline/smoke_v3_metrics.json
+  report: doc/baseline_smoke_v3.md
+
+training:
+  environment: MAML
+  device: cuda
+  output_dir: output/baseline/runs
+  seed: 20261120
+  epochs: 12
+  batch_size: 1
+  num_workers: 0
+  learning_rate: 0.0025
+  momentum: 0.9
+  weight_decay: 0.0001
+  # 随机初始化且 batch size 为 1 时，未裁剪的梯度会在约 200 步后溢出。
+  grad_clip_norm: 10.0
+  lr_milestones: [8, 10]
+  lr_gamma: 0.1
+  log_every_steps: 100
+  model:
+    # 随机初始化时 TorchVision 默认训练整个主干。
+    trainable_backbone_layers: null
+    box_score_thresh: 0.0
+  sampling:
+    groups_per_dataset: 512
+    positive_group_fraction: 0.5
+    max_views_per_group: 1
+
+evaluation:
+  batch_size: 1
+  iou_thresholds: [0.50, 0.55, 0.60, 0.65, 0.70, 0.75, 0.80, 0.85, 0.90, 0.95]
+  working_iou: 0.5
+  score_threshold: 0.5
+  ignore_iou: 0.5
+
+pilot:
+  families_per_dataset: 1
+  epochs: 2
+  lr_milestones: [1]
+  log_every_steps: 3
+  sampling:
+    groups_per_dataset: 2

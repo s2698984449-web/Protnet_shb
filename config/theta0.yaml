@@ -1,0 +1,15 @@
+# θ₀ 折内监督训练沿用 B0-V3 检测器、ImageNet 初始化和 SGD 配置。
+output_dir: output/meta_transfer/theta0
+training:
+  epochs: 12
+  optimizer: sgd
+  sampling:
+    groups_per_dataset: 512
+pilot:
+  epochs: 1
+  lr_milestones: []
+  log_every_steps: 3
+  sampling:
+    groups_per_dataset: 2
+    positive_group_fraction: 0.5
+    max_views_per_group: 1

@@ -1,0 +1,51 @@
+# 数据根、索引和审计预算。改完后重新跑 scripts/audit.py。
+data_root: D:/data
+output_dir: output/audit
+report_path: doc/audit_report.md
+
+# 合格任务候选：不预设 5-way。某缺陷类的独立样本数 >= K + Q_min 才计入 N-way。
+task_candidates:
+  k_shot: [1, 2, 5, 10]
+  q_min: [1, 5, 10]
+
+# 物理样本组冻结规则与冲突消解策略。
+# preserve_official_test：保留官方测试侧，剔除冲突组在官方训练侧的正常图像，冲突组整体归入 test_group_ids。
+# full_group_to_test：冲突组全部图像（含训练侧正常图）整体并入 test_group_ids，供自建外层按组重分时对照。
+physical_group:
+  realiad_key_format: "{category}_{sample_id}"
+  conflict_policy: preserve_official_test
+  report_path: doc/physical_group_audit.md
+  verification:
+    sample_size: 45
+    seed: 20261120
+    check_visual_inliers: false
+    camera_for_inliers: C3
+    orb_nfeatures: 1500
+    lowe_ratio: 0.75
+    ransac_reproj_threshold: 5.0
+  artifacts:
+    physical_group_manifest: physical_group_manifest.csv
+    cross_split_conflicts: cross_split_conflicts.csv
+    group_statistics: group_statistics.csv
+    group_split: group_split.json
+    pair_verification: realiad_pair_verification.csv
+
+datasets:
+  mvtec:
+    root: D:/data/MVTEC
+    normal_dirname: good
+  visa:
+    root: D:/data/visa
+    primary_index: split_csv/1cls.csv
+    side_indexes:
+      - split_csv/2cls_fewshot.csv
+      - split_csv/2cls_highshot.csv
+    family_hypotheses:
+      - id: visa_pcb
+        members: [pcb1, pcb2, pcb3, pcb4]
+      - id: visa_macaroni
+        members: [macaroni1, macaroni2]
+  realiad:
+    root: D:/data/Real-IAD
+    index_dir: realiad_jsons
+    image_subdir: realiad_1024

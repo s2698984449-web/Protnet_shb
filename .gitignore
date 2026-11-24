@@ -21,7 +21,8 @@ env/
 lib/
 data/
 images/
-models/
+models/*
+!models/detector.py
 results/
 
 # Test file

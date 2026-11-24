@@ -1,0 +1,5 @@
+# 同折权重和检测对齐适配损失的留出配对评价。
+output_dir: output/meta_transfer/holdout
+seed: 20261120
+cpu_threads: 4
+decode_workers: 1

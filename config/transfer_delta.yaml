@@ -1,0 +1,10 @@
+# 单源任务隔离 Δ 验证。每组只取一个视角。
+output_dir: output/meta_transfer/delta
+sampling:
+  groups_per_dataset: 2
+  positive_group_fraction: 0.5
+  max_views_per_group: 1
+training:
+  batch_size: 1
+  num_workers: 0
+  log_every_steps: 1

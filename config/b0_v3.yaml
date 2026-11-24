@@ -1,0 +1,9 @@
+# B0 检测器协议。输入几何和 RPN 训练匹配各自配置。
+model:
+  resize_mode: shrink_only
+  min_size: 1024
+  max_size: 1536
+  size_divisible: 32
+  rpn_matching:
+    mode: iou_nwd
+    nwd_constant: 12.8

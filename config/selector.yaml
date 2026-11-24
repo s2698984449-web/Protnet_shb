@@ -1,0 +1,16 @@
+# 创新点一的挑选。底座和各块经验全程冻结。
+# 主终点是 utility.yaml 里的适配步数 k=n。k=0 只作对照，不参与挑选损失。
+# 没有预注册数值门槛的闸门只报告测量，不事后改成通过。
+output_dir: output/meta_transfer/innovation1
+seed: 20261120
+descriptor: v0
+primary_stage: after
+stage_a_epochs: 40
+stage_b_epochs: 40
+learning_rate: 0.01
+b_weight_decay: 0.01
+temperature_start: 1.0
+temperature_end: 0.1
+eps_loss: 0.001
+hidden: 128
+g3_requires_positive_module_gain: true

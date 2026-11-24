@@ -1,0 +1,13 @@
+# 正式强基线使用本地缓存的官方 ImageNet ResNet-50 权重。
+model:
+  backbone_weights: IMAGENET1K_V2
+  backbone_checkpoint: .cache/torch/hub/checkpoints/resnet50-11ad3fa6.pth
+  trainable_backbone_layers: 5
+training:
+  num_workers: 2
+  prefetch_factor: 2
+  persistent_workers: true
+  pin_memory: true
+evaluation:
+  cache_query_records: true
+  prefetch_images: true

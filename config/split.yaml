@@ -1,0 +1,45 @@
+# S1 外层产品族留出与内层 OOF。正式训练前冻结；禁止依据测试结果改动。
+version: v1
+seed: 20261120
+input_dir: output/audit
+output_dir: output/splits
+report_path: doc/split_protocol.md
+freeze_artifacts: true
+
+outer:
+  test_fraction: 0.20
+  min_test_families_per_dataset: 1
+  selection: stratified_stable_hash
+
+meta_validation:
+  fraction: 0.20
+  min_families_per_dataset: 1
+  selection: stratified_stable_hash
+
+inner:
+  folds: 5
+  assignment: stratified_balanced_stable_hash
+
+# 当前主方案。target_excluded 仍保留为后续 Pilot 对照，不在此阶段展开。
+candidate_pool_policy: fold_excluded
+
+episode_groups:
+  seed: 20261120
+  normal_reference_fraction: 0.50
+  defect_support_fraction: 0.50
+  min_groups_per_side: 1
+
+product_family_map:
+  visa:
+    visa_pcb: [pcb1, pcb2, pcb3, pcb4]
+    visa_macaroni: [macaroni1, macaroni2]
+
+artifacts:
+  family_manifest: product_family_manifest.csv
+  outer: outer_split.json
+  meta: meta_split.json
+  inner: inner_oof_folds.json
+  statistics: split_statistics.csv
+  episode_groups: episode_group_assignment.csv
+  episode_statistics: episode_group_statistics.csv
+  hashes: split_artifact_hashes.json

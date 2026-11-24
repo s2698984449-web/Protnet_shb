@@ -1,0 +1,36 @@
+# A1/A2 固定 Episode。只允许从 output/splits/episode_group_assignment.csv 抽样。
+version: v1
+seed: 20261120
+split_dir: output/splits
+output_dir: output/episodes/v1
+report_path: doc/episode_protocol.md
+freeze_artifacts: true
+
+protocol:
+  n_way: 1
+  k_shot: 5
+  q_defect_per_class: 5
+  n_reference_groups: 5
+  q_normal_groups: 5
+  episodes_per_task: 3
+  view_policy: all_views_in_physical_group
+  ignore_policy: episode_external_defects_are_ignore
+
+feasibility_grid:
+  n_way: [1, 2, 3, 4, 5]
+  k_shot: [1, 2, 5, 10]
+  q_min: [1, 5, 10]
+
+meta_validation_pilot:
+  max_products_per_dataset: 2
+  selection: qualified_stable_hash
+
+oof_training:
+  include_all_qualified_meta_train_products: true
+
+artifacts:
+  meta_validation_bank: episode_bank_meta_val.jsonl
+  oof_bank: episode_bank_oof.jsonl
+  statistics: episode_statistics.csv
+  feasibility: episode_feasibility.csv
+  hashes: episode_artifact_hashes.json

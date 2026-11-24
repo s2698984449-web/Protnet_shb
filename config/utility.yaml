@@ -1,0 +1,28 @@
+# 创新点一：底座是 FOMAML。模块经验也只从 1-way 5-shot 任务里学。
+# 禁止监督全量扫图。内层只看 Support，外层只看 Query。
+seed: 20261120
+modules:
+  - Feature
+  - Where
+  - Box
+  - Class
+require_all_targets: false
+no_contribution: source_selection
+chassis: fomaml
+episode:
+  n_way: 1
+  k_shot: 5
+meta:
+  epochs: 3
+  inner_steps: 1
+  inner_lr: 0.01
+  outer_lr: 0.001
+  outer_momentum: 0.9
+  first_order: true
+  log_every_steps: 1
+adaptation:
+  adapter: lora
+  steps: 1
+  learning_rate: 0.01
+  rank: 4
+  alpha: 4.0
