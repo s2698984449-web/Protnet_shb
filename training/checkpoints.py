@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 from contextlib import contextmanager
 from pathlib import Path
 from tempfile import NamedTemporaryFile
@@ -61,6 +62,7 @@ def b0_run_directory(directory: Path, resume: bool):
 
 @contextmanager
 def _atomic_output(path: Path):
+    """原子落盘。Windows 上目标文件被编辑器占用时 os.replace 会 WinError 5，短暂重试。"""
     output = NamedTemporaryFile(dir=path.parent, prefix=f".{path.name}.", delete=False)
     temporary = Path(output.name)
     try:
@@ -68,9 +70,20 @@ def _atomic_output(path: Path):
             yield output
             output.flush()
             os.fsync(output.fileno())
-        os.replace(temporary, path)
+        last_error = None
+        for attempt in range(8):
+            try:
+                os.replace(temporary, path)
+                temporary = None
+                break
+            except PermissionError as error:
+                last_error = error
+                time.sleep(0.05 * (2 ** attempt))
+        if temporary is not None:
+            raise last_error
     finally:
-        temporary.unlink(missing_ok=True)
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
 
 
 def save_checkpoint(path: Path, payload: dict) -> None:

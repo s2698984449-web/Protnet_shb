@@ -426,11 +426,16 @@ def _restores(original: torch.Tensor, restored: torch.Tensor) -> tuple[bool, flo
 
 
 def choose_vector_storage(vector: torch.Tensor) -> dict:
-    """在能恢复方向的格式里选择更小的一个。密文 FP16 恢复失败时保留 FP32。"""
+    """在能恢复方向的格式里选择更小的一个。密文 FP16 恢复失败或截零过多时保留 FP32。"""
     flat = vector.detach().float().cpu().reshape(-1).contiguous()
     if float(torch.linalg.vector_norm(flat)) < 1e-12:
         return {"format": "zeros", "numel": int(flat.numel()), "bytes": 0, "cosine": 1.0, "relative_error": 0.0}
-    candidates = [{"format": "dense_fp16", "values": flat.half()}]
+    half = flat.half()
+    zero_fraction = float((half == 0).sum().item()) / float(flat.numel())
+    limit = float(load_retrieval_config()["fp16_zero_fraction_limit"])
+    candidates = []
+    if zero_fraction <= limit:
+        candidates.append({"format": "dense_fp16", "values": half})
     # Feature 级千万维上构造 sparse index 会再吃掉数百 MB，只对中小向量尝试。
     if int(flat.numel()) <= 1_000_000:
         nonzero_count = int(torch.count_nonzero(flat))
@@ -478,13 +483,139 @@ def _persist_card_file(cards_dir, module: str, cluster: int, group: int, card: d
         {"encoded": {k: v for k, v in encoded.items() if k not in {"bytes", "cosine", "relative_error"}}},
     )
     return {
-        "module": module, "cluster": int(cluster), "group": int(group), "file": f"cards/{name}",
+        "module": module, "cluster": int(cluster), "group": int(group), "layer": module,
+        "file": f"cards/{name}",
         "format": encoded["format"], "bytes": int(encoded["bytes"]), "cosine": float(encoded["cosine"]),
         "relative_error": float(encoded["relative_error"]), "valid": bool(card["valid"]),
         "low_sample": bool(card["low_sample"]), "coherence": float(card["coherence"]),
         "member_count": int(card["member_count"]), "families": list(card["families"]),
         "task_ids": list(card["task_ids"]),
+        "utility": dict(card.get("utility") or _empty_utility()),
+        "compatibility": dict(card.get("compatibility") or {}),
+        "theta_version": str(card.get("theta_version") or card.get("theta_hash") or ""),
+        "theta_hash": str(card.get("theta_hash") or card.get("theta_version") or ""),
+        "use_count": int((card.get("utility") or {}).get("count") or 0),
+        "neg_rate": float((card.get("utility") or {}).get("neg_rate") or 0.0),
     }
+
+
+def _empty_utility() -> dict:
+    return {
+        "mean": 0.0, "variance": 0.0, "count": 0, "neg_rate": 0.0, "ema": 0.0,
+    }
+
+
+def _accumulate_utility(stats: dict, signal: float) -> dict:
+    """单卡片效用的在线均值/方差/负迁移率；不写入 AP。"""
+    count = int(stats.get("count") or 0) + 1
+    prev = float(stats.get("ema") or 0.0)
+    ema = signal if count == 1 else 0.9 * prev + 0.1 * signal
+    mean = float(stats.get("mean") or 0.0)
+    delta = signal - mean
+    mean = mean + delta / count
+    variance = float(stats.get("variance") or 0.0) + delta * (signal - mean)
+    neg = float(stats.get("neg_rate") or 0.0)
+    neg = ((neg * (count - 1)) + float(signal < 0.0)) / count
+    stats.update({"mean": mean, "variance": variance, "count": count, "neg_rate": neg, "ema": ema})
+    return stats
+
+
+def _candidate_utility_stats(bank: dict, module: str, candidate: dict) -> dict:
+    """把一个检索候选下各组卡片的历史效用聚成平滑输入；无身份字段。"""
+    from training.transfer_policy import smooth_utility_features
+
+    controller_prior = float(load_retrieval_config().get("utility_prior_count", 8.0))
+    groups = list(candidate.get("groups") or [])
+    cluster_id = int(candidate.get("cluster_id", -1))
+    means, counts, negs, variances = [], [], [], []
+    for group in groups:
+        card = _lookup_card(bank, module, cluster_id, int(group))
+        if card is None:
+            continue
+        stats = card.get("utility") or _empty_utility()
+        means.append(float(stats.get("ema") if stats.get("ema") is not None else stats.get("mean") or 0.0))
+        counts.append(float(stats.get("count") or 0.0))
+        negs.append(float(stats.get("neg_rate") or 0.0))
+        variances.append(float(stats.get("variance") or 0.0))
+    if not counts:
+        return {
+            "stats": _empty_utility(),
+            "features": smooth_utility_features(None, prior_count=controller_prior),
+        }
+    total = sum(counts)
+    weight = [count / total if total > 0 else 1.0 / len(counts) for count in counts]
+    merged = {
+        "mean": sum(value * w for value, w in zip(means, weight)),
+        "ema": sum(value * w for value, w in zip(means, weight)),
+        "variance": sum(value * w for value, w in zip(variances, weight)),
+        "count": int(round(sum(counts))),
+        "neg_rate": sum(value * w for value, w in zip(negs, weight)),
+    }
+    return {
+        "stats": merged,
+        "features": smooth_utility_features(merged, prior_count=controller_prior),
+    }
+
+
+def update_card_utilities(bank: dict, plans: list[dict], module_signals: dict[str, float]) -> None:
+    """单卡片效用用模块信号（反事实下为 -U）；组合效用单独记账，不把混合 AP 摊到单卡。"""
+    index = bank.get("card_index") or {}
+    memory = bank.get("cards_memory") or {}
+    combo_log = bank.setdefault("combo_utility_log", [])
+    injected_modules = [plan["module"] for plan in plans if plan.get("inject")]
+    combo_signal = -float(sum(float(module_signals.get(module, 0.0)) for module in injected_modules)) if injected_modules else 0.0
+    if injected_modules:
+        combo_log.append({
+            "modules": list(injected_modules),
+            "signal": combo_signal,
+            "kind": "module_combo_counterfactual",
+        })
+        if len(combo_log) > 256:
+            del combo_log[:-256]
+    for plan in plans:
+        module = plan["module"]
+        # module_signals[m] 约定与旧 FO 点积相同：utility_signal = -signal
+        utility_signal = -float(module_signals.get(module, 0.0))
+        metas = list(plan.get("candidate_meta") or [])
+        weights = plan.get("card_weights")
+        for offset, meta in enumerate(metas):
+            weight = 0.0 if weights is None or offset >= int(weights.numel()) else float(weights[offset].detach())
+            if weight < 1e-6:
+                continue
+            for card_id in meta.get("card_ids") or []:
+                parts = str(card_id).split("/")
+                if len(parts) != 3:
+                    continue
+                cluster = int(parts[1][1:])
+                group = int(parts[2][1:])
+                key = _card_key(module, cluster, group)
+                row = index.get(key)
+                if row is None:
+                    continue
+                stats = _accumulate_utility(row.setdefault("utility", _empty_utility()), utility_signal)
+                row["use_count"] = int(stats["count"])
+                row["neg_rate"] = float(stats["neg_rate"])
+                mem = memory.get((module, cluster, group))
+                if mem is not None:
+                    mem["utility"] = dict(stats)
+        # 组合兼容性只记「与其它已注入模块」的共现，不把 combo AP 写入单卡 mean。
+        if plan.get("inject"):
+            partners = [name for name in injected_modules if name != module]
+            for meta in metas[:1]:
+                for card_id in (meta.get("card_ids") or [])[:1]:
+                    parts = str(card_id).split("/")
+                    if len(parts) != 3:
+                        continue
+                    key = _card_key(module, int(parts[1][1:]), int(parts[2][1:]))
+                    row = index.get(key)
+                    if row is None:
+                        continue
+                    compat = row.setdefault("compatibility", {})
+                    for partner in partners:
+                        bucket = compat.setdefault(partner, _empty_utility())
+                        bucket["count"] = int(bucket.get("count") or 0) + 1
+                        prev = float(bucket.get("ema") or 0.0)
+                        bucket["ema"] = combo_signal if bucket["count"] == 1 else 0.9 * prev + 0.1 * combo_signal
 
 
 def assemble_group_cards(
@@ -535,6 +666,11 @@ def assemble_group_cards(
                 "member_count": len(members),
                 "families": sorted({task["family_id"] for task in members}),
                 "task_ids": [task["task_id"] for task in members],
+                "utility": _empty_utility(),
+                "compatibility": {},
+                "theta_version": str(task.get("theta_version") or task.get("theta_sha256") or ""),
+                "theta_hash": str(task.get("theta_hash") or task.get("theta_sha256") or ""),
+                "layer": module,
             }
             del merged
             if on_card is not None:
@@ -550,8 +686,9 @@ def _card_key(module: str, cluster: int, group: int) -> str:
 
 def _empty_retrieval(module: str, sim_max: float = 0.0, concentration: float = 0.0) -> dict:
     return {
-        "valid": False, "module": module, "vector": None, "named": {}, "source_groups": [],
-        "cluster_ids": [], "weights": [], "sim_max": float(sim_max), "concentration": float(concentration),
+        "valid": False, "module": module, "vector": None, "named": {}, "candidates": [],
+        "source_groups": [], "cluster_ids": [], "weights": [],
+        "sim_max": float(sim_max), "concentration": float(concentration),
     }
 
 
@@ -578,9 +715,10 @@ def retrieve_module_experience(
     )
     cluster_ids = [int(usable[index]) for index in picked["indices"]]
     raw_weights = [float(value) for value in picked["weights"]]
-    vectors, weights, used_groups = [], [], []
+    vectors, weights, used_groups, candidates = [], [], [], []
     width = int(bank["layouts"][module][-1]["offset"] + bank["layouts"][module][-1]["numel"]) if bank["layouts"][module] else 0
     groups = int(bank["experience_groups"])
+    center_sims = {int(usable[index]): float(similarities[index]) for index in range(int(usable.numel()))}
     for cluster_id, weight in zip(cluster_ids, raw_weights):
         units, counts, coherences, present = [], [], [], []
         for group in range(groups):
@@ -613,13 +751,23 @@ def retrieve_module_experience(
         vectors.append(merged["vector"])
         weights.append(weight)
         used_groups.extend(present)
+        candidates.append({
+            "vector": merged["vector"],
+            "sim": float(center_sims.get(int(cluster_id), 0.0)),
+            "cluster_id": int(cluster_id),
+            "groups": list(present),
+            "card_ids": [f"{module}/c{cluster_id}/g{group}" for group in present],
+        })
     if not vectors:
-        return _empty_retrieval(module, float(picked["sim_max"]), float(picked["concentration"]))
+        empty = _empty_retrieval(module, float(picked["sim_max"]), float(picked["concentration"]))
+        empty["candidates"] = []
+        return empty
     scale = sum(weights)
     mix = mix_cards(vectors, torch.tensor(weights) / scale)
     return {
         "valid": True, "module": module, "vector": mix,
         "named": unpack_named(mix, bank["layouts"][module]),
+        "candidates": candidates,
         "source_groups": sorted(set(used_groups)), "cluster_ids": cluster_ids, "weights": [value / scale for value in weights],
         "sim_max": float(picked["sim_max"]), "concentration": float(picked["concentration"]),
     }
@@ -743,6 +891,12 @@ def load_experience_bank(directory, theta_sha256: str | None = None) -> dict:
     index = load_checkpoint(directory / "module_memory.pt")
     if index.get("kind") != "experience_bank":
         raise ValueError(f"不是检索式经验库：{directory}")
+    layout_modules = set((index.get("layouts") or {}).keys())
+    if layout_modules != set(MODULES):
+        raise ValueError(
+            f"经验库模块布局是 {sorted(layout_modules)}，当前协议需要 {list(MODULES)}；"
+            "请用五功能组协议重建经验库"
+        )
     if theta_sha256 is not None and index["theta_sha256"] != theta_sha256:
         raise ValueError("经验库的参数版本和当前 θ 不一致")
     manifest = json.loads((directory / "experience_manifest.json").read_text(encoding="utf-8"))
@@ -1171,6 +1325,10 @@ def build_experience_bank(theta0, run_dir, *, max_families: int | None = None, t
         }
         next_keep[module] = float(choice["keep_ratio"])
     sketch_seconds = perf_counter() - sketch_started
+    for item in succeeded:
+        item["theta_sha256"] = theta_hash
+        item["theta_hash"] = theta_hash
+        item["theta_version"] = theta_hash
     cards = assemble_group_cards(
         succeeded, load_packed, layouts, anchors, keep_ratio, int(config["min_members_for_ties"]),
     )
@@ -1253,12 +1411,20 @@ def build_experience_bank(theta0, run_dir, *, max_families: int | None = None, t
         "assignments": assignments,
         "cards_memory": cards,
     }
-    save_experience_bank(run_dir, bank)
-    loaded = load_experience_bank(run_dir, theta_hash)
+    # save 会清空内存 unit 以省内存；落盘前先记下检索快照，再与重新加载结果对照。
     probe = succeeded[0]
+    before_by_module = {
+        module: retrieve_module_experience(
+            bank, module, probe["keys"][KEY_FOR_MODULE[module]], probe["group"],
+        )
+        for module in MODULES
+    }
+    save_experience_bank(run_dir, bank)
+    bank["cards_memory"] = {}
+    loaded = load_experience_bank(run_dir, theta_hash)
     reload_checks = []
     for module in MODULES:
-        before = retrieve_module_experience(bank, module, probe["keys"][KEY_FOR_MODULE[module]], probe["group"])
+        before = before_by_module[module]
         after = retrieve_module_experience(loaded, module, probe["keys"][KEY_FOR_MODULE[module]], probe["group"])
         if before["valid"] != after["valid"]:
             raise AssertionError(f"重新加载后 {module} 的检索有效性不一致")
@@ -1288,6 +1454,7 @@ def build_experience_bank(theta0, run_dir, *, max_families: int | None = None, t
         member_counts[str(row["member_count"])] = member_counts.get(str(row["member_count"]), 0) + 1
         format_counts[row["format"]] = format_counts.get(row["format"], 0) + 1
         valid_cards += int(bool(row["valid"]))
+    _discard_task_deltas(run_dir)
     elapsed = perf_counter() - started
     report = {
         "run_dir": str(run_dir),
@@ -1343,56 +1510,42 @@ def excluded_experience_group(bank: dict, family_id: str) -> int | None:
     return None
 
 
-def episode_allows_borrow(episode_id: str, probability: float, seed: int) -> bool:
-    """一条 Episode 只抽一次。四个模块共用这个结果。"""
-    from training.retrieval_memory import borrow_mask
-
-    digest = hashlib.sha256(f"{int(seed)}:{episode_id}".encode("utf-8")).digest()
-    episode_seed = int.from_bytes(digest[:8], "little") % (2**31 - 1)
-    return bool(borrow_mask(1, float(probability), episode_seed).item())
-
-
 class GammaController:
-    """四个模块各一对 g、beta，外加只在 Meta-Train 上滚动的 s0。"""
+    """条件化迁移决策网络包装（选卡 + Null + ρ）。保留类名以兼容训练循环调用点。"""
 
     def __init__(self, config: dict | None = None):
-        from training.retrieval_memory import RollingMedian, initial_gamma_parameters, load_retrieval_config
+        from training.transfer_policy import TransferPolicyController
 
-        config = load_retrieval_config() if config is None else config
-        self.gamma_max = float(config["gamma_max"])
-        if self.gamma_max <= 0 or self.gamma_max > 1:
-            raise ValueError("γ 上限必须在 (0, 1] 内")
-        self.gains = {}
-        self.raw_betas = {}
-        self.baselines = {}
-        parameters = []
-        for module in MODULES:
-            gain, raw_beta = initial_gamma_parameters(float(config["g_init"]), float(config["beta_init"]))
-            self.gains[module] = gain
-            self.raw_betas[module] = raw_beta
-            self.baselines[module] = RollingMedian(int(config["s0_window"]))
-            parameters.extend((gain, raw_beta))
-        self.optimizer = torch.optim.Adam(parameters, lr=float(config["gamma_adam_lr"]))
+        self.policy = TransferPolicyController(config)
+        self.rho_max = self.policy.rho_max
 
     def state_dict(self) -> dict:
+        from training.transfer_policy import POLICY_KIND
+
+        payload = self.policy.state_dict()
         return {
-            "gains": {module: self.gains[module].detach().cpu().clone() for module in MODULES},
-            "raw_betas": {module: self.raw_betas[module].detach().cpu().clone() for module in MODULES},
-            "baselines": {module: self.baselines[module].state() for module in MODULES},
-            "optimizer": self.optimizer.state_dict(),
+            "policy_state": payload,
+            "policy_optimizer_state": payload.get("policy_optimizer_state") or payload.get("optimizer"),
+            "kind": POLICY_KIND,
+            "modules": list(MODULES),
         }
 
     def load_state_dict(self, payload: dict) -> None:
-        with torch.no_grad():
-            for module in MODULES:
-                self.gains[module].copy_(payload["gains"][module])
-                self.raw_betas[module].copy_(payload["raw_betas"][module])
-                self.baselines[module].load(payload["baselines"][module])
-        self.optimizer.load_state_dict(payload["optimizer"])
+        from training.transfer_policy import POLICY_KIND
+
+        kind = payload.get("kind")
+        if kind != POLICY_KIND or "policy_state" not in payload:
+            raise ValueError(f"决策权重须为 {POLICY_KIND}，请用五模块条件化协议重新训练")
+        if payload.get("modules") and list(payload["modules"]) != list(MODULES):
+            raise ValueError(
+                f"决策网络模块是 {payload['modules']}，当前协议需要 {list(MODULES)}"
+            )
+        self.policy.load_state_dict(payload["policy_state"])
+        self.rho_max = self.policy.rho_max
 
 
 class InnerLRController:
-    """四个模块各自的 Support 学习率。它和历史注入的 γ 不是同一个参数。"""
+    """各模块各自的 Support 学习率；与迁移强度 ρ 分开。"""
 
     def __init__(self, config: dict | None = None):
         from training.retrieval_memory import load_retrieval_config
@@ -1446,78 +1599,484 @@ class InnerLRController:
 def plan_module_borrow(
     bank: dict, module: str, key: torch.Tensor, excluded_group: int | None,
     allowed_families: set[str], controller: GammaController, allow_borrow: bool,
+    *, support_step_l2: float | None = None, projected_key: torch.Tensor | None = None,
+    upstream_state: torch.Tensor | None = None, prior_plans: dict[str, dict] | None = None,
+    discrete_null: bool = False,
 ) -> dict:
-    """检索、跨簇融合，并算出这一模块的 γ。注入与否由整条任务的 allow_borrow 决定。"""
-    from training.retrieval_memory import borrowing_scale, positive_beta
+    """相似度只召回；MLP 结合历史效用选卡；Null 与 ρ 分离。"""
+    from training.retrieval_memory import project_l2
+    from training.transfer_policy import (
+        decide_inject, encode_upstream_state, mix_cards_from_logits, mix_selected_key_embed,
+        null_probability_from_logit, pad_candidates,
+    )
 
     retrieved = retrieve_module_experience(
         bank, module, key, excluded_group, allowed_families=allowed_families,
     )
     anchor = torch.tensor(float(bank["anchors"][module]), dtype=torch.float32)
-    similarity = torch.tensor(float(retrieved["sim_max"]), dtype=torch.float32)
-    baseline = torch.tensor(controller.baselines[module].baseline(), dtype=torch.float32)
-    beta = positive_beta(controller.raw_betas[module])
-    mix = retrieved["vector"]
-    mix_norm = 0.0 if mix is None else float(torch.linalg.vector_norm(mix))
-    gamma = borrowing_scale(
-        controller.gains[module], beta, similarity, baseline,
-        float(retrieved["concentration"]), mix_norm,
-        gamma_max=controller.gamma_max, has_card=bool(retrieved["valid"]),
-    ).clamp(0.0, controller.gamma_max)
-    inject = bool(allow_borrow) and bool(retrieved["valid"]) and mix_norm > 0.0 and float(gamma.detach()) > 0.0
+    width = int(bank["layouts"][module][-1]["offset"] + bank["layouts"][module][-1]["numel"]) if bank["layouts"][module] else 0
+    candidates = list(retrieved.get("candidates") or [])
+    vectors = [row["vector"] for row in candidates]
+    sims = [float(row["sim"]) for row in candidates]
+    key_name = KEY_FOR_MODULE[module]
+    key_dim = int(controller.policy.key_dim)
+    task_key = projected_key
+    if task_key is None:
+        task_key = project_l2(key.detach().float().cpu(), bank["pca"][key_name])
+    centers = bank["centers"][key_name]
+    key_diffs = []
+    candidate_keys = []
+    candidate_utilities = []
+    candidate_meta = []
+    for row in candidates:
+        cluster_id = int(row.get("cluster_id", -1))
+        util_info = _candidate_utility_stats(bank, module, row)
+        candidate_utilities.append(util_info["features"])
+        candidate_meta.append({
+            "cluster_id": cluster_id,
+            "card_ids": list(row.get("card_ids") or []),
+            "groups": list(row.get("groups") or []),
+            "sim": float(row.get("sim") or 0.0),
+            "utility": dict(util_info["stats"]),
+            "utility_features": [float(value) for value in util_info["features"].tolist()],
+        })
+        if 0 <= cluster_id < int(centers.shape[0]) and bool(bank["center_valid"][key_name][cluster_id]):
+            center = centers[cluster_id].detach().float().reshape(-1)
+            candidate_keys.append(center)
+            denom = float(torch.linalg.vector_norm(center) * torch.linalg.vector_norm(task_key))
+            cosine = 0.0 if denom < 1e-12 else float(torch.dot(center, task_key.reshape(-1)[: center.numel()]) / denom)
+            key_diffs.append(1.0 - cosine)
+        else:
+            candidate_keys.append(torch.zeros(key_dim))
+            key_diffs.append(1.0 - float(row.get("sim") or 0.0))
+    units, sim_tensor, norm_tensor, mask, diff_tensor, key_tensor, util_tensor = pad_candidates(
+        vectors, sims, width, controller.policy.max_candidates,
+        key_diffs=key_diffs, candidate_keys=candidate_keys,
+        candidate_utilities=candidate_utilities, key_dim=key_dim,
+    )
+    if upstream_state is None:
+        upstream_state = encode_upstream_state(prior_plans or {}, module, key_dim=key_dim)
+    card_logits, null_logit, rho_raw = controller.policy.policy(
+        task_key, sim_tensor, norm_tensor, diff_tensor, util_tensor, module, mask, upstream_state,
+    )
+    mix, card_weights = mix_cards_from_logits(card_logits, units, mask)
+    null_weight = null_probability_from_logit(null_logit)
+    selected_key_embed = mix_selected_key_embed(card_weights, key_tensor, mask)
+    null_probability = float(null_weight.detach())
+    rho = controller.policy.effective_rho(rho_raw, module)
+    step = 1.0 if support_step_l2 is None else float(support_step_l2)
+    # 软 Null：delta=(1-Null)*ρ*step*mix；卡片 Softmax 权重保持，不因 Null 重归一化。
+    # 离散 Null 仅诊断：阈值以上整段清零。
+    continuous_scale = (1.0 - null_weight) * rho * float(step)
+    delta_vector = continuous_scale * mix
+    applied_l2 = float(torch.linalg.vector_norm(delta_vector.detach()))
+    inject = decide_inject(
+        allow_borrow=bool(allow_borrow),
+        retrieved_valid=bool(retrieved["valid"]),
+        null_weight=null_weight,
+        applied_l2=applied_l2,
+        step=float(step),
+        discrete_null=bool(discrete_null),
+        null_threshold=float(controller.policy.null_eval_threshold),
+    )
+    if discrete_null and not inject:
+        delta_vector = mix.new_zeros(mix.shape)
+        applied_l2 = 0.0
     named = {}
     if inject:
-        scale = float(gamma.detach()) * float(anchor)
-        named = {name: value.detach() * scale for name, value in retrieved["named"].items()}
+        named = unpack_named(delta_vector.detach(), bank["layouts"][module])
+    card_weight_list = [float(value) for value in card_weights.detach().reshape(-1).tolist()]
+    effective_card_weights = [(1.0 - null_probability) * weight for weight in card_weight_list]
+    reject = "" if retrieved["valid"] else "empty"
+    selection_rows = []
+    for offset, meta in enumerate(candidate_meta):
+        weight = float(card_weights[offset].detach()) if offset < int(card_weights.numel()) else 0.0
+        if weight < 1e-6 and offset >= len(candidates):
+            continue
+        selection_rows.append({
+            **meta,
+            "weight": weight,
+            "why": (
+                f"sim={meta['sim']:.3f}, util_mean={meta['utility_features'][0]:.3f}, "
+                f"util_std={meta['utility_features'][1]:.3f}, count={meta['utility'].get('count', 0)}, "
+                f"neg_rate={meta['utility_features'][3]:.3f}"
+            ),
+        })
+    selection_rows.sort(key=lambda row: row["weight"], reverse=True)
     return {
-        "module": module, "gamma": gamma, "inject": inject, "named": named, "vector": mix, "anchor": anchor,
-        "sim_max": float(retrieved["sim_max"]), "concentration": float(retrieved["concentration"]),
-        "valid": bool(retrieved["valid"]), "source_groups": list(retrieved["source_groups"]),
+        "module": module,
+        "gamma": rho,
+        "rho": rho,
+        "rho_raw": rho_raw,
+        "rho_floor": float(controller.policy.rho_floor.get(module, 0.0)),
+        "logits": card_logits,
+        "card_logits": card_logits,
+        "null_logit": null_logit,
+        "card_weights": card_weights,
+        "card_weight_list": card_weight_list,
+        "effective_card_weights": effective_card_weights,
+        "null_weight": null_weight,
+        "null_probability": null_probability,
+        "null_decision": "null" if (discrete_null and not inject) else ("borrow" if inject else "null"),
+        "selected_key_embed": selected_key_embed,
+        "selection": selection_rows,
+        "candidate_meta": candidate_meta,
+        "inject": inject,
+        "named": named,
+        "vector": mix,
+        "delta_vector": delta_vector,
+        "upstream_state": upstream_state.detach().clone(),
+        "anchor": anchor,
+        "sim_max": float(retrieved["sim_max"]),
+        "utility_reject": reject,
+        "concentration": float(retrieved["concentration"]),
+        "valid": bool(retrieved["valid"]),
+        "source_groups": list(retrieved["source_groups"]),
         "cluster_ids": list(retrieved["cluster_ids"]),
+        "candidates": candidates,
+        "candidate_card_ids": [cid for row in candidates for cid in row.get("card_ids") or []],
         "excluded_group": None if excluded_group is None else int(excluded_group),
+        "support_step_l2": step,
+        "candidate_borrow_l2": applied_l2,
+        "applied_borrow_l2": applied_l2 if inject else 0.0,
+        "borrow_over_step": None if step <= 0 else (applied_l2 / step if inject else 0.0),
+        "discrete_null": bool(discrete_null),
     }
 
 
-def apply_gamma_proxy(controller: GammaController, plans: list[dict], query_grads: dict[str, torch.Tensor]) -> dict:
-    """用 Query 梯度的一阶代理更新 g 和 beta。点积为正时减小 γ，点积为负时增大 γ。
+def plan_modules_in_graph_order(
+    bank: dict, keys: dict, excluded_group: int | None, allowed_families: set[str],
+    controller: GammaController, allow_borrow: bool, step_l2: dict[str, float],
+    *, discrete_null: bool = False,
+) -> list[dict]:
+    """按 Backbone→Where→RoiFeature→Class/Box 顺序决策，下游读取上游卡片签名嵌入。"""
+    from training.transfer_policy import encode_upstream_state
 
-    整条任务不借用时，前向借用量为零。这里的梯度来自未借用轨迹，只估计未来 γ 的局部效用，
-    不是本条 Episode 已经发生的借用收益。
+    decided: dict[str, dict] = {}
+    plans = []
+    key_dim = int(controller.policy.key_dim)
+    for module in MODULES:
+        upstream = encode_upstream_state(decided, module, key_dim=key_dim)
+        plan = plan_module_borrow(
+            bank, module, keys[KEY_FOR_MODULE[module]], excluded_group, allowed_families,
+            controller, allow_borrow, support_step_l2=float(step_l2.get(module, 0.0)),
+            upstream_state=upstream, prior_plans=decided, discrete_null=discrete_null,
+        )
+        decided[module] = plan
+        plans.append(plan)
+    return plans
+
+
+def support_packed_grads(detector, records, device, settings: dict, layouts: dict) -> dict[str, torch.Tensor]:
+    """在共享 θ 上求 Support 梯度，不更新参数。决定借用之后，适应步仍在注入后的点上重算梯度。"""
+    from training.theta0 import _mean_module_grads
+
+    _loss, grads = _mean_module_grads(detector, records, device, settings)
+    packed = {module: _pack_module_grad(detector, grads, module, layouts[module]) for module in MODULES}
+    detector.zero_grad(set_to_none=True)
+    detector.eval()
+    return packed
+
+
+def query_total_and_role_packed_grads(
+    detector,
+    records,
+    device,
+    settings: dict,
+    layouts: dict,
+    *,
+    role_modules: set[str] | None = None,
+) -> tuple[torch.Tensor, list[torch.Tensor], dict[str, torch.Tensor], dict[str, torch.Tensor]]:
+    """一次前向同时得到整体 Query 梯度与职责分项梯度，避免双倍扫图。
+
+    role_modules 为空时跳过职责反传。Backbone 职责=total，直接复用整体梯度。
     """
-    from training.retrieval_memory import gamma_proxy_loss
+    from training.fomaml_roi import live_detection_loss_parts
+    from training.theta0 import InsufficientEpisodeAnnotations
+    from training.transfer_policy import MODULE_ROLE_LOSS
 
-    gammas, anchors, grads, mixes, dots = [], [], [], [], {}
+    trainable = [parameter for parameter in detector.parameters() if parameter.requires_grad]
+    total_accum = [torch.zeros_like(parameter) for parameter in trainable]
+    role_accum = {
+        module: [torch.zeros_like(parameter) for parameter in trainable]
+        for module in MODULES
+    }
+    total_loss = None
+    used = 0
+    wanted = set(MODULES if role_modules is None else role_modules)
+    detector.train()
+    for record in records:
+        parts = live_detection_loss_parts(
+            detector, record, device, settings["loss"], settings["where_loss_weight"], settings["ignore_iou"],
+        )
+        total = parts["total"]
+        pending: list[tuple[str, torch.Tensor]] = []
+        for module in MODULES:
+            if module not in wanted:
+                continue
+            keys = MODULE_ROLE_LOSS[module]
+            if keys == ("total",):
+                continue
+            loss = None
+            for name in keys:
+                term = parts[name]
+                loss = term if loss is None else loss + term
+            if loss is not None and torch.is_tensor(loss) and bool(loss.requires_grad):
+                pending.append((module, loss))
+        total_grads = torch.autograd.grad(
+            total, trainable, allow_unused=True, retain_graph=bool(pending),
+        )
+        for slot, grad in zip(total_accum, total_grads):
+            if grad is not None:
+                slot.add_(grad.detach())
+        if "Backbone" in wanted:
+            for slot, grad in zip(role_accum["Backbone"], total_grads):
+                if grad is not None:
+                    slot.add_(grad.detach())
+        for index, (module, loss) in enumerate(pending):
+            grads = torch.autograd.grad(
+                loss, trainable, allow_unused=True, retain_graph=(index + 1 < len(pending)),
+            )
+            for slot, grad in zip(role_accum[module], grads):
+                if grad is not None:
+                    slot.add_(grad.detach())
+        total_loss = total.detach() if total_loss is None else total_loss + total.detach()
+        used += 1
+        del parts, total, pending, total_grads
+    if used == 0 or total_loss is None:
+        raise InsufficientEpisodeAnnotations("Support 或 Query 没有可用的检测监督")
+    scale = float(used)
+    query_grads = [grad / scale for grad in total_accum]
+    packed_query = {
+        module: _pack_module_grad(detector, query_grads, module, layouts[module]) for module in MODULES
+    }
+    packed_role = {}
+    for module in MODULES:
+        role_grads = [grad / scale for grad in role_accum[module]]
+        packed_role[module] = _pack_module_grad(detector, role_grads, module, layouts[module])
+        del role_grads
+    detector.zero_grad(set_to_none=True)
+    detector.eval()
+    del total_accum, role_accum
+    return total_loss / scale, query_grads, packed_query, packed_role
+
+
+def gate_borrow_by_support(plans: list[dict], module_grads: dict[str, torch.Tensor]) -> None:
+    """只记录 Support 方向诊断，不再硬拒绝注入。迁移决策交给 MLP + Null。"""
     for plan in plans:
         module = plan["module"]
-        grad = query_grads[module].detach().float().reshape(-1).cpu()
-        mix = plan["vector"]
+        grad = module_grads[module].detach().float().reshape(-1)
+        grad_norm = float(torch.linalg.vector_norm(grad))
+        plan["support_grad_l2"] = grad_norm
+        mix = plan.get("vector")
+        scale = float(plan.get("applied_borrow_l2") or plan.get("candidate_borrow_l2") or 0.0)
         if mix is None:
-            mix = torch.zeros_like(grad)
-        mix = mix.detach().float().reshape(-1).cpu()
-        gammas.append(plan["gamma"])
-        anchors.append(plan["anchor"])
-        grads.append(grad)
-        mixes.append(mix)
-        dots[module] = float(torch.dot(grad, mix))
-    loss = gamma_proxy_loss(gammas, anchors, grads, mixes)
-    controller.optimizer.zero_grad(set_to_none=True)
-    loss.backward()
-    gain_grads = {}
-    for module in MODULES:
-        grad = controller.gains[module].grad
-        gain_grads[module] = 0.0 if grad is None else float(grad.detach())
-    controller.optimizer.step()
+            plan["support_dot"] = 0.0
+            continue
+        mix_flat = mix.detach().float().reshape(-1)
+        if int(mix_flat.numel()) != int(grad.numel()):
+            raise AssertionError(f"{module} 的借用向量和 Support 梯度维度不一致")
+        mix_norm = float(torch.linalg.vector_norm(mix_flat))
+        direction = mix_flat if mix_norm < 1e-12 else mix_flat / mix_norm
+        plan["support_dot"] = float(torch.dot(grad, direction)) * scale
+
+
+def attach_first_order_ratio(
+    plans: list[dict],
+    support_grads: dict[str, torch.Tensor],
+    query_grads: dict[str, torch.Tensor],
+    alphas: dict[str, float],
+) -> None:
+    """在共享 θ 上记 R = ⟨g_Q, ρ ‖α g_S‖ û⟩ / ⟨g_Q, α g_S⟩，以及 ‖ρ B‖、‖α g_S‖。"""
     for plan in plans:
-        if plan["valid"]:
-            controller.baselines[plan["module"]].observe(plan["sim_max"])
-    return {"loss": float(loss.detach()), "dots": dots, "gain_grads": gain_grads}
+        module = plan["module"]
+        g_q = query_grads[module].detach().float().reshape(-1)
+        g_s = support_grads[module].detach().float().reshape(-1)
+        alpha = float(alphas[module])
+        mix = plan.get("vector")
+        step_l2 = abs(alpha) * float(torch.linalg.vector_norm(g_s))
+        scale = float(plan["rho"].detach()) * step_l2
+        step_dot = float(torch.dot(g_q, g_s)) * alpha
+        if mix is None:
+            mix_norm = 0.0
+            borrow_l2 = 0.0
+            borrow_dot = 0.0
+        else:
+            mix_flat = mix.detach().float().reshape(-1)
+            if int(mix_flat.numel()) != int(g_q.numel()):
+                raise AssertionError(f"{module} 的借用向量和 Query 梯度维度不一致")
+            mix_norm = float(torch.linalg.vector_norm(mix_flat))
+            direction = mix_flat if mix_norm < 1e-12 else mix_flat / mix_norm
+            borrow_l2 = abs(scale)
+            borrow_dot = float(torch.dot(g_q, direction)) * scale
+        plan["retrieved_mix_l2"] = mix_norm
+        plan["retrieved_b_l2"] = mix_norm
+        plan["candidate_borrow_l2"] = borrow_l2
+        plan["alpha_grad_l2"] = step_l2
+        plan["query_dot_borrow"] = borrow_dot
+        plan["query_dot_step"] = step_dot
+        plan["first_order_ratio"] = None if abs(step_dot) < 1e-12 else borrow_dot / step_dot
+
+
+def gamma_runtime_values(controller: GammaController) -> dict:
+    """条件化决策网络运行时读数：ρ 上下限与共享 Null 头偏置。"""
+    null_bias = float(controller.policy.policy.null_head.bias.detach().reshape(-1)[0])
+    report = {
+        "rho_max": float(controller.rho_max),
+        "rho_floor": dict(controller.policy.rho_floor),
+        "null_bias": null_bias,
+        "kind": str(controller.state_dict().get("kind")),
+        "modules": {},
+    }
+    for module in MODULES:
+        report["modules"][module] = {
+            "rho_max": float(controller.rho_max),
+            "rho_floor": float(controller.policy.rho_floor.get(module, 0.0)),
+        }
+    return report
+
+
+def bank_card_attenuation(bank: dict) -> dict:
+    """卡片侧衰减读数：合并后单位方向范数恒为 1，幅度由锚和成员数体现。成员 Δ 已删则标未测。"""
+    from collections import Counter
+
+    by_module = {}
+    for module in MODULES:
+        rows = [row for row in bank["card_index"].values() if row["module"] == module and row["valid"]]
+        members = Counter(int(row["member_count"]) for row in rows)
+        by_module[module] = {
+            "valid_cards": len(rows),
+            "member_counts": {str(key): int(value) for key, value in sorted(members.items())},
+            "singleton_cards": int(members.get(1, 0)),
+            "mean_coherence": None if not rows else float(sum(float(row["coherence"]) for row in rows) / len(rows)),
+            "anchor": float(bank["anchors"][module]),
+            "unit_l2": 1.0,
+            "member_delta_l2": None,
+            "member_delta_l2_note": "task_deltas 拼卡后已删除，成员 Δ 范数未测",
+        }
+    return by_module
+
+
+def module_utility_report(plans: list[dict], alphas: dict[str, float]) -> dict:
+    """留出和训练日志共用的模块读数。拒绝借用的块保留候选幅度，注入幅度记 0。"""
+    report = {}
+    for plan in plans:
+        module = plan["module"]
+        grad_l2 = float(plan.get("support_grad_l2") or 0.0)
+        step_l2 = float(plan.get("alpha_grad_l2") if plan.get("alpha_grad_l2") is not None else alphas[module] * grad_l2)
+        applied = float(plan.get("applied_borrow_l2") or 0.0) if plan["inject"] else 0.0
+        top = (plan.get("selection") or [{}])[:3]
+        card_weights = list(plan.get("card_weight_list") or [])
+        if not card_weights and plan.get("card_weights") is not None:
+            weights = plan["card_weights"]
+            card_weights = [float(value) for value in weights.detach().reshape(-1).tolist()]
+        null_p = float(plan.get("null_probability") or 0.0)
+        effective = list(plan.get("effective_card_weights") or [(1.0 - null_p) * weight for weight in card_weights])
+        report[module] = {
+            "gamma": float(plan["gamma"].detach()),
+            "rho": float(plan["rho"].detach()) if plan.get("rho") is not None else float(plan["gamma"].detach()),
+            "rho_floor": float(plan.get("rho_floor") or 0.0),
+            "null_probability": null_p,
+            "null_decision": plan.get("null_decision") or ("borrow" if plan["inject"] else "null"),
+            "card_weights": card_weights,
+            "effective_card_weights": effective,
+            "sim_max": float(plan["sim_max"]),
+            "inject": bool(plan["inject"]),
+            "utility_reject": plan.get("utility_reject") or "",
+            "selected_cards": top,
+            "support_dot": None if "support_dot" not in plan else float(plan["support_dot"]),
+            "support_grad_l2": grad_l2,
+            "alpha": float(alphas[module]),
+            "alpha_grad_l2": step_l2,
+            "retrieved_mix_l2": None if "retrieved_mix_l2" not in plan else float(plan["retrieved_mix_l2"]),
+            "retrieved_b_l2": None if "retrieved_b_l2" not in plan else float(plan["retrieved_b_l2"]),
+            "candidate_borrow_l2": float(plan.get("candidate_borrow_l2") or 0.0),
+            "applied_borrow_l2": applied,
+            "borrow_over_step": (
+                plan["borrow_over_step"] if "borrow_over_step" in plan
+                else (None if step_l2 <= 0.0 else applied / step_l2)
+            ),
+            "query_dot_borrow": None if "query_dot_borrow" not in plan else float(plan["query_dot_borrow"]),
+            "query_dot_step": None if "query_dot_step" not in plan else float(plan["query_dot_step"]),
+            "first_order_ratio": None if "first_order_ratio" not in plan else plan["first_order_ratio"],
+        }
+    return report
+
+
+def module_utility_summary(episodes: dict) -> dict:
+    """按块汇总留出 AP50 差。这是读数，不是全产品放行门槛。"""
+    summary = {}
+    for module in MODULES:
+        injected, refused = [], []
+        for row in episodes.values():
+            info = row["modules"][module]
+            bucket = injected if info["inject"] else refused
+            bucket.append(float(row["ap50_delta"]))
+        summary[module] = {
+            "injected_episodes": len(injected),
+            "refused_episodes": len(refused),
+            "mean_ap50_delta_when_injected": None if not injected else float(sum(injected) / len(injected)),
+            "mean_ap50_delta_when_refused": None if not refused else float(sum(refused) / len(refused)),
+        }
+    return summary
+
+
+def mean_query_detection_loss(detector, records, device, settings: dict) -> float:
+    """只算 Query 检测损失均值，不反传、不打包梯度。"""
+    from training.fomaml_roi import live_detection_loss
+    from training.theta0 import InsufficientEpisodeAnnotations
+
+    total = 0.0
+    used = 0
+    detector.train()
+    for record in records:
+        loss = live_detection_loss(
+            detector, record, device, settings["loss"], settings["where_loss_weight"], settings["ignore_iou"],
+        )
+        total += float(loss.detach())
+        used += 1
+        del loss
+    detector.zero_grad(set_to_none=True)
+    detector.eval()
+    if used == 0:
+        raise InsufficientEpisodeAnnotations("Support 或 Query 没有可用的检测监督")
+    return total / float(used)
+
+
+def apply_counterfactual_policy(
+    controller: GammaController,
+    plans: list[dict],
+    utility: float,
+) -> dict:
+    """U=L_Null-L_Borrow（越大越好）。经 soft 注入幅度更新选卡/Null/ρ。"""
+    from training.transfer_policy import counterfactual_policy_loss
+
+    try:
+        loss = counterfactual_policy_loss(plans, utility, controller.policy.strength_boost)
+    except ValueError:
+        return {
+            "loss": 0.0,
+            "utility": float(utility),
+            "dots": {module: -float(utility) for module in MODULES},
+            "gain_grads": {module: 0.0 for module in MODULES},
+        }
+    controller.policy.optimizer.zero_grad(set_to_none=True)
+    loss.backward()
+    controller.policy.optimizer.step()
+    return {
+        "loss": float(loss.detach()),
+        "utility": float(utility),
+        # 与 update_card_utilities 约定：signal=-U → utility_signal=U
+        "dots": {module: -float(utility) for module in MODULES},
+        "gain_grads": {module: 0.0 for module in MODULES},
+    }
 
 
 def apply_alpha_proxy(
     controller: InnerLRController, support_grads: dict[str, torch.Tensor], query_grads: dict[str, torch.Tensor],
 ) -> dict:
     """dL_Q/dα = -⟨g_Q, g_S⟩。只更新四个学习率，不再跑检测器。"""
-    loss = controller.raw["Feature"].new_zeros(())
+    loss = controller.raw[MODULES[0]].new_zeros(())
     dots = {}
     for module in MODULES:
         dot = torch.dot(
@@ -1774,10 +2333,8 @@ def retrieval_fomaml_step(
     theta0_state: dict | None = None, adapter=None, read_only_cache: bool = False, writable_cache=None,
     extra_caches=None,
 ) -> dict:
-    """检索、临时注入、Support 一步、Query 梯度，再把共享参数恢复到借用前并分别更新 θ、γ 与 α。"""
+    """检索、临时注入、Support 一步；Query 反事实效用更新 ψ；共享 θ 用借用臂梯度外更新。"""
     from time import perf_counter
-
-    from training.theta0 import _mean_module_grads
 
     if adapter is None:
         raise ValueError("经验检索需要 Episode 适配器来读取正常参照和 Support")
@@ -1788,20 +2345,23 @@ def retrieval_fomaml_step(
     )
     allowed = allowed_source_families(episode)
     excluded = excluded_experience_group(bank, str(episode["family_id"]))
-    plans = [
-        plan_module_borrow(
-            bank, module, signature["keys"][KEY_FOR_MODULE[module]], excluded, allowed, controller, allow_borrow,
-        )
+    alphas, bound_before = module_inner_lrs(settings, inner_lr_controller)
+    gate_grads = support_packed_grads(detector, support_records, device, settings, bank["layouts"])
+    step_l2 = {
+        module: float(alphas[module]) * float(torch.linalg.vector_norm(gate_grads[module].reshape(-1)))
         for module in MODULES
-    ]
+    }
+    plans = plan_modules_in_graph_order(
+        bank, signature["keys"], excluded, allowed, controller, allow_borrow, step_l2,
+    )
     retrieval_seconds = perf_counter() - started
+    gate_borrow_by_support(plans, gate_grads)
     snapshot = _state_snapshot(detector)
     before = _parameter_snapshot(detector)
     borrow = {}
     for plan in plans:
         if plan["inject"]:
             borrow.update(plan["named"])
-    alphas, bound_before = module_inner_lrs(settings, inner_lr_controller)
     inner_started = perf_counter()
     adapted = retrieval_support_adapt(
         detector, support_records, device, settings, alphas, borrow, bank["layouts"],
@@ -1816,10 +2376,25 @@ def retrieval_fomaml_step(
     if inner_change <= 0:
         raise AssertionError("Support 适配没有更新检测器")
     outer_started = perf_counter()
-    query_loss, query_grads = _mean_module_grads(detector, query_records, device, settings)
-    packed_query = {
-        module: _pack_module_grad(detector, query_grads, module, bank["layouts"][module]) for module in MODULES
-    }
+    rng_cpu = torch.get_rng_state()
+    rng_cuda = torch.cuda.get_rng_state(device) if device.type == "cuda" else None
+    # 借用臂：Query 损失 + θ 外循环梯度（不再算职责分项代理）
+    query_loss, query_grads, packed_query, _role_query = query_total_and_role_packed_grads(
+        detector, query_records, device, settings, bank["layouts"],
+        role_modules=set(),
+    )
+    loss_borrow = float(query_loss.detach()) if torch.is_tensor(query_loss) else float(query_loss)
+    detector.load_state_dict(snapshot, strict=True)
+    # 对照臂：相同 Support/Query/RNG，无借用
+    torch.set_rng_state(rng_cpu)
+    if rng_cuda is not None:
+        torch.cuda.set_rng_state(rng_cuda, device)
+    retrieval_support_adapt(detector, support_records, device, settings, alphas, {}, bank["layouts"])
+    torch.set_rng_state(rng_cpu)
+    if rng_cuda is not None:
+        torch.cuda.set_rng_state(rng_cuda, device)
+    loss_null = mean_query_detection_loss(detector, query_records, device, settings)
+    utility = float(loss_null - loss_borrow)
     detector.load_state_dict(snapshot, strict=True)
     restored, owner = _state_difference(detector, snapshot)
     if restored != 0.0:
@@ -1840,7 +2415,8 @@ def retrieval_fomaml_step(
     outer_change = max(float((updated[name] - before[name]).abs().max()) for name in before)
     if grad_norm <= 0 or outer_change <= 0:
         raise AssertionError("Query 外循环没有更新共享检测器")
-    proxy = apply_gamma_proxy(controller, plans, packed_query)
+    proxy = apply_counterfactual_policy(controller, plans, utility)
+    update_card_utilities(bank, plans, proxy["dots"])
     alpha_report = None
     if inner_lr_controller is not None:
         alpha_report = apply_alpha_proxy(inner_lr_controller, adapted["support_grads"], packed_query)
@@ -1858,15 +2434,20 @@ def retrieval_fomaml_step(
         module = plan["module"]
         if not allow_borrow:
             choices[module] = "NoBorrow"
+        elif plan.get("utility_reject") == "empty":
+            choices[module] = "Empty"
         elif plan["inject"]:
             choices[module] = "Borrow"
         else:
             choices[module] = "Null"
-        weights[module] = float(plan["gamma"].detach())
+        weights[module] = float(plan["rho"].detach()) * max(0.0, 1.0 - float(plan.get("null_probability") or 0.0))
     del before, adapted, query_grads, packed_query
     return {
         "support_losses": support_losses,
-        "query_detection_loss": float(query_loss),
+        "query_detection_loss": loss_borrow,
+        "query_loss_borrow": loss_borrow,
+        "query_loss_null": loss_null,
+        "counterfactual_utility": utility,
         "inner_max_weight_change": inner_change,
         "outer_max_weight_change": outer_change,
         "query_grad_norm": grad_norm,
@@ -1887,10 +2468,9 @@ def retrieval_fomaml_step(
         "borrow_leak_max_abs": leak,
         "borrow_l2": borrow_l2,
         "gamma": weights,
+        "module_utility": module_utility_report(plans, alphas),
         "borrow_applied": borrow_applied,
-        "gamma_proxy_meaning": (
-            "borrowed_query_first_order_estimate" if borrow_applied else "unborrowed_query_first_order_estimate"
-        ),
+        "gamma_proxy_meaning": "query_counterfactual_utility",
         "inner_lr_before": alphas,
         "inner_lr_after": None if alpha_report is None else alpha_report["values"],
         "inner_lr_bound_hits": bound_before if alpha_report is None else alpha_report["bound_hits"],
@@ -1898,8 +2478,13 @@ def retrieval_fomaml_step(
     }
 
 
-def holdout_borrow_plan(bank: dict, episode: dict, keys: dict, controller: GammaController, records=None) -> list[dict]:
-    """留出只读检索。不更新 θ、经验库、g 或 beta，也不接受 Query 记录。"""
+def holdout_borrow_plan(
+    bank: dict, episode: dict, keys: dict, controller: GammaController, records=None,
+    *, step_l2: dict[str, float] | None = None,
+    discrete_null: bool = False,
+    null_eval_threshold: float | None = None,
+) -> list[dict]:
+    """留出只读检索。默认 soft Null；discrete+阈值仅诊断。不更新 θ/库/决策网。"""
     if records is not None:
         roles = {row["split_role"] for row in records}
         if roles - {"R", "SUPPORT"}:
@@ -1907,24 +2492,31 @@ def holdout_borrow_plan(bank: dict, episode: dict, keys: dict, controller: Gamma
     unexpected = set(keys) - {"Appearance", "Morphology", "Difference"}
     if unexpected:
         raise AssertionError(f"留出检索键只能来自外观、形态和差异：{sorted(unexpected)}")
+    if null_eval_threshold is not None:
+        controller.policy.null_eval_threshold = float(null_eval_threshold)
     family_id = str(episode["family_id"])
     allowed = allowed_source_families(episode)
     excluded = excluded_experience_group(bank, family_id)
-    return [
-        plan_module_borrow(bank, module, keys[KEY_FOR_MODULE[module]], excluded, allowed, controller, True)
-        for module in MODULES
-    ]
+    scales = step_l2 or {module: 1.0 for module in MODULES}
+    return plan_modules_in_graph_order(
+        bank, keys, excluded, allowed, controller, True, scales, discrete_null=bool(discrete_null),
+    )
 
 
 def retrieval_holdout_pair(
     detector, support_records, episode: dict, bank: dict, keys: dict, gamma: GammaController,
     alpha: InnerLRController, device, settings: dict,
 ) -> dict:
-    """同一 Support 上比较无借用 A 和检索借用 B。α 与 γ 冻结，并且这里不读取 Query。"""
+    """同一 Support 上比较无借用 A 和检索借用 B。α 与决策网络冻结，并且这里不读取 Query。"""
     before_alpha = {module: float(alpha.raw[module].detach()) for module in MODULES}
-    before_gamma = {module: float(gamma.gains[module].detach()) for module in MODULES}
-    plans = holdout_borrow_plan(bank, episode, keys, gamma, support_records)
+    before_policy = {name: float(param.detach().sum()) for name, param in gamma.policy.policy.named_parameters()}
     values, _hits = alpha.current()
+    support_grads = support_packed_grads(detector, support_records, device, settings, bank["layouts"])
+    step_l2 = {
+        module: float(values[module]) * float(torch.linalg.vector_norm(support_grads[module].reshape(-1)))
+        for module in MODULES
+    }
+    plans = holdout_borrow_plan(bank, episode, keys, gamma, support_records, step_l2=step_l2)
     snapshot = _state_snapshot(detector)
     retrieval_support_adapt(detector, support_records, device, settings, values, {})
     detector.load_state_dict(snapshot, strict=True)
@@ -1935,8 +2527,8 @@ def retrieval_holdout_pair(
     retrieval_support_adapt(detector, support_records, device, settings, values, borrow)
     detector.load_state_dict(snapshot, strict=True)
     after_alpha = {module: float(alpha.raw[module].detach()) for module in MODULES}
-    after_gamma = {module: float(gamma.gains[module].detach()) for module in MODULES}
-    if after_alpha != before_alpha or after_gamma != before_gamma:
+    after_policy = {name: float(param.detach().sum()) for name, param in gamma.policy.policy.named_parameters()}
+    if after_alpha != before_alpha or after_policy != before_policy:
         raise AssertionError("留出适应改动了冻结的 α 或 γ")
     return {
         "adapt": "retrieval_support_adapt",
@@ -2008,6 +2600,18 @@ def refresh_deltas_complete(output_dir, assignments: list[dict]) -> bool:
         if not (delta_dir / f"{row['task_id'].replace(':', '_')}.pt").is_file():
             return False
     return True
+
+
+def _discard_task_deltas(directory) -> None:
+    """卡片和索引核对通过后删掉全量任务差。检索只读卡片，下一轮会按新的 θ 重算。"""
+    import shutil
+    from pathlib import Path
+
+    delta_dir = Path(directory) / "task_deltas"
+    if not delta_dir.is_dir():
+        return
+    shutil.rmtree(delta_dir)
+    print(f"经验库已删除拼卡后的全量任务差：{delta_dir}", flush=True)
 
 
 def refresh_experience_cards(
@@ -2179,6 +2783,10 @@ def refresh_experience_cards(
         gc.collect()
 
     print(f"经验库刷新拼卡 keep={keep_ratio}", flush=True)
+    for item in refreshed:
+        item["theta_sha256"] = theta_hash
+        item["theta_hash"] = theta_hash
+        item["theta_version"] = theta_hash
     cards = assemble_group_cards(
         refreshed, load_packed, structure["layouts"], anchors, keep_ratio, int(config["min_members_for_ties"]),
         on_card=on_card,
@@ -2231,6 +2839,7 @@ def refresh_experience_cards(
     final_difference, final_owner = _state_difference(detector, snapshot)
     if final_difference != 0.0 or _state_sha256(_state_snapshot(detector)) != theta_hash:
         raise AssertionError(f"刷新结束时共享参数已变化：{final_owner} {final_difference}")
+    _discard_task_deltas(output_dir)
     return {
         "run_dir": str(output_dir),
         "theta_sha256": theta_hash,
@@ -2441,13 +3050,12 @@ def check_alpha_gamma_theta(bank_dir, theta0_path) -> dict:
     alpha = InnerLRController()
     gamma = GammaController()
     alpha_ids = {id(alpha.raw[module]) for module in MODULES}
-    gamma_ids = {id(gamma.gains[module]) for module in MODULES}
-    gamma_ids.update(id(gamma.raw_betas[module]) for module in MODULES)
+    policy_ids = {id(parameter) for parameter in gamma.policy.policy.parameters()}
     theta_ids = {id(parameter) for parameter in detector.parameters()}
-    if alpha_ids & theta_ids or gamma_ids & theta_ids or alpha_ids & gamma_ids:
-        raise AssertionError("α、γ 和 θ 不是三套独立参数")
+    if alpha_ids & theta_ids or policy_ids & theta_ids or alpha_ids & policy_ids:
+        raise AssertionError("α、迁移决策网络和 θ 不是三套独立参数")
     alpha_before, _hits = alpha.current()
-    gamma_before = {module: float(gamma.gains[module].detach()) for module in MODULES}
+    policy_before = {name: float(param.detach().sum()) for name, param in gamma.policy.policy.named_parameters()}
     theta_before = _state_sha256(_state_snapshot(detector))
     if any(abs(value - 0.01) > 1e-6 for value in alpha_before.values()):
         raise AssertionError(f"模块学习率初值不是 0.01：{alpha_before}")
@@ -2466,7 +3074,7 @@ def check_alpha_gamma_theta(bank_dir, theta0_path) -> dict:
     produced = step.pop("module_delta")
     del produced
     alpha_after, hits = alpha.current()
-    gamma_after = {module: float(gamma.gains[module].detach()) for module in MODULES}
+    policy_after = {name: float(param.detach().sum()) for name, param in gamma.policy.policy.named_parameters()}
     theta_after = _state_sha256(_state_snapshot(detector))
     alpha_sign_ok = True
     alpha_checked = []
@@ -2479,6 +3087,7 @@ def check_alpha_gamma_theta(bank_dir, theta0_path) -> dict:
             alpha_sign_ok = False
     if file_sha256(bank_dir / "module_memory.pt") != memory_hash or file_sha256(bank_dir / "experience_manifest.json") != manifest_hash:
         raise AssertionError("学习率检查改写了原来的最小经验库")
+    policy_changed = {name: policy_after[name] != policy_before[name] for name in policy_before}
     report = {
         "episode_id": episode["episode_id"],
         "alpha_before": alpha_before,
@@ -2487,9 +3096,7 @@ def check_alpha_gamma_theta(bank_dir, theta0_path) -> dict:
         "alpha_sign_matches": alpha_sign_ok,
         "alpha_sign_checked": alpha_checked,
         "bound_hits": hits,
-        "gamma_before": gamma_before,
-        "gamma_after": gamma_after,
-        "gamma_changed": {module: gamma_after[module] != gamma_before[module] for module in MODULES},
+        "policy_changed": any(policy_changed.values()),
         "theta_changed": theta_before != theta_after,
         "restore_max_abs": step["restore_max_abs"],
         "borrow_leak_max_abs": step["borrow_leak_max_abs"],
@@ -2504,8 +3111,8 @@ def check_alpha_gamma_theta(bank_dir, theta0_path) -> dict:
     print(json.dumps(report, ensure_ascii=False), flush=True)
     if not alpha_checked or not alpha_sign_ok:
         raise AssertionError("α 没有按 Query 与 Support 梯度的点积更新")
-    if not any(report["gamma_changed"].values()):
-        raise AssertionError("γ 没有独立更新")
+    if not report["policy_changed"]:
+        raise AssertionError("条件化迁移决策网络没有独立更新")
     if not report["theta_changed"] or report["restore_max_abs"] != 0.0 or report["borrow_leak_max_abs"] > 1e-5:
         raise AssertionError("θ 的外循环更新和借用恢复不正确")
     return report

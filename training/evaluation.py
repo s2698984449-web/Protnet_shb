@@ -84,6 +84,7 @@ def _score_product(queries: list[_QueryMatches], config: dict) -> dict:
             ap_by_iou[iou] = _average_precision(matches[score_order], positives)
     return {
         "ap50": ap_by_iou.get(0.5),
+        "ap75": ap_by_iou.get(0.75),
         "ap": mean(ap_by_iou.values()) if ap_by_iou else None,
         "precision": float(true_positives / max(true_positives + false_positives, 1)),
         "recall": float(true_positives / positives) if positives else None,
@@ -171,8 +172,8 @@ def operating_point_comparison(reference: dict, candidate: dict, config: dict) -
 
 def _product_macro(products: list[dict]) -> dict:
     metrics = {}
-    for key in ("ap50", "ap", "precision", "recall", "normal_fp_per_image"):
-        values = [product[key] for product in products if product[key] is not None]
+    for key in ("ap50", "ap75", "ap", "precision", "recall", "normal_fp_per_image"):
+        values = [product[key] for product in products if product.get(key) is not None]
         metrics[key] = mean(values) if values else None
     return {"products": len(products), **metrics}
 

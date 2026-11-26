@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import math
 import unittest
 
 import torch
@@ -8,24 +7,19 @@ import torch
 from training.retrieval_memory import (
     adaptive_topk,
     appearance_key,
-    borrow_mask,
-    borrowing_scale,
     box_weighted_mean,
     clip_large_delta,
     difference_key,
     expected_members_per_bin,
     family_task_weights,
     fit_fixed_pca,
-    gamma_proxy_loss,
     geometry_descriptor,
-    initial_gamma_parameters,
     load_retrieval_config,
     median_anchor,
     merge_cluster_members,
     merge_groups,
     mix_cards,
     morphology_key,
-    positive_beta,
     project_l2,
     retrieval_concentration,
     select_keep_ratio,
@@ -148,16 +142,7 @@ class RetrievalMemoryTest(unittest.TestCase):
         uniform = retrieval_concentration(torch.full((8,), 0.125))
         self.assertAlmostEqual(uniform, 0.0, places=5)
 
-    def test_gamma_gate_and_proxy_gradient(self):
-        closed = borrowing_scale(torch.tensor(0.0), torch.tensor(10.0), torch.tensor(1.0), torch.tensor(0.0), 0.0, 1.0)
-        self.assertEqual(float(closed), 0.0)
-        gain, raw_beta = initial_gamma_parameters()
-        beta = positive_beta(raw_beta)
-        self.assertAlmostEqual(float(beta), 10.0, places=4)
-        gamma = borrowing_scale(gain, beta, torch.tensor(1.0), torch.tensor(0.0), 1.0, 1.0)
-        loss = gamma_proxy_loss([gamma], [torch.tensor(2.0)], [torch.tensor([1.0, 0.0])], [torch.tensor([1.0, 0.0])])
-        loss.backward()
-        self.assertGreater(float(gain.grad), 0.0)
+    def test_mix_cards_is_weighted_sum(self):
         mixed = mix_cards([torch.tensor([1.0, 0.0]), torch.tensor([0.0, 1.0])], torch.tensor([0.25, 0.75]))
         self.assertTrue(torch.allclose(mixed, torch.tensor([0.25, 0.75])))
 
@@ -170,13 +155,6 @@ class RetrievalMemoryTest(unittest.TestCase):
         fallback = select_keep_ratio({0.2: [torch.ones(3, 2)]}, min_members=8)
         self.assertEqual(fallback["keep_ratio"], 1.0)
         self.assertFalse(fallback["calibrated"])
-
-    def test_borrow_mask_is_whole_task_and_reproducible(self):
-        first = borrow_mask(1000, 0.3, seed=11)
-        second = borrow_mask(1000, 0.3, seed=11)
-        self.assertTrue(torch.equal(first, second))
-        self.assertLess(abs(float(first.float().mean()) - 0.7), 0.05)
-        self.assertTrue(math.isfinite(float(first.float().mean())))
 
 
 if __name__ == "__main__":

@@ -54,6 +54,10 @@ def main() -> None:
     fomaml.add_argument("--sketch-dim", type=int, default=4096, help="Feature 和 Where 草图维度")
     fomaml.add_argument("--val-ap50", action="store_true", help="每个 epoch 结束在 Meta-Val 上比较当前权重和 θ0 的 AP50，借用关闭")
     fomaml.add_argument("--val-max-episodes", type=int, default=0, help="Meta-Val 最多使用多少条 Episode，0 表示全部")
+    fomaml.add_argument(
+        "--experience-bank", type=Path, required=True,
+        help="五模块检索经验库目录（必须显式指定，禁止自动取最新）",
+    )
 
     bank = commands.add_parser("experience-bank", help="用冻结 θ₀ 建立检索式经验库，不跑 FOMAML 训练")
     bank.add_argument("--theta0", type=Path, required=True)
@@ -67,6 +71,18 @@ def main() -> None:
     holdout.add_argument("--run-name", required=True)
     holdout.add_argument("--device", choices=("cuda", "cpu"), default="cuda")
     holdout.add_argument("--decode-workers", type=int, choices=(0, 1))
+    holdout.add_argument(
+        "--soft-null", action="store_true",
+        help="正式默认已是 soft；显式指定连续 (1-Null)*ρ",
+    )
+    holdout.add_argument(
+        "--discrete-null", action="store_true",
+        help="诊断：离散 Null 关断（配合 --null-eval-threshold，如 0.95 / 1.01）",
+    )
+    holdout.add_argument(
+        "--null-eval-threshold", type=float, default=None,
+        help="诊断：离散 Null 阈值；省略时读配置。单独给出该参数也视为 discrete",
+    )
 
     rpn = commands.add_parser("diagnose-rpn", help="诊断 RPN 各阶段覆盖")
     rpn.add_argument("--checkpoint", type=Path, required=True)
@@ -93,7 +109,7 @@ def main() -> None:
         train_theta0_fomaml(
             args.theta0, args.run_name, args.pilot, args.dry_run, args.prescreen_k, args.prescreen_audit,
             args.prescreen_audit_every, args.sketch_dim, args.val_ap50, args.val_max_episodes,
-            args.resume, epochs=args.epochs or None,
+            args.resume, experience_bank=args.experience_bank, epochs=args.epochs or None,
         )
     elif args.command == "experience-bank":
         import re
@@ -116,7 +132,12 @@ def main() -> None:
                 tasks_per_family=args.tasks_per_family or None,
             )
     elif args.command == "holdout":
-        run_holdout(args.supervised, args.fomaml, args.run_name, args.device, args.decode_workers)
+        run_holdout(
+            args.supervised, args.fomaml, args.run_name, args.device, args.decode_workers,
+            soft_null=True if args.soft_null else None,
+            discrete_null=True if args.discrete_null else None,
+            null_eval_threshold=args.null_eval_threshold,
+        )
     elif args.command == "diagnose-rpn":
         diagnose_rpn(args.checkpoint, args.samples, args.output)
     elif args.command == "diagnose-roi":

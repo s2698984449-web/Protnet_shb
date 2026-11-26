@@ -355,8 +355,8 @@ class FomamlLossTest(unittest.TestCase):
         }
         after = {name: value + 0.25 for name, value in before.items()}
         delta = split_parameter_delta(before, after)
-        self.assertEqual(set(delta), {"Feature", "Where", "Box", "Class"})
-        self.assertTrue(torch.equal(delta["Feature"]["backbone.weight"], torch.full((2,), 0.25)))
+        self.assertEqual(set(delta), {"Backbone", "Where", "RoiFeature", "Box", "Class"})
+        self.assertTrue(torch.equal(delta["Backbone"]["backbone.weight"], torch.full((2,), 0.25)))
         self.assertTrue(torch.equal(delta["Where"]["rpn.weight"], torch.full((2,), 0.25)))
         self.assertNotIn("borrowed", delta)
 
@@ -379,10 +379,11 @@ class FomamlLossTest(unittest.TestCase):
             model, record, torch.device("cpu"), _settings(), 1.0, 0.5, checkpoint_graph=True,
         )
         loss.backward()
-        totals = {"Feature": 0.0, "Where": 0.0, "Box": 0.0, "Class": 0.0}
+        totals = {"Backbone": 0.0, "Where": 0.0, "RoiFeature": 0.0, "Box": 0.0, "Class": 0.0}
         prefixes = {
-            "Feature": ("backbone.", "roi_heads.box_head."),
+            "Backbone": ("backbone.",),
             "Where": ("rpn.",),
+            "RoiFeature": ("roi_heads.box_head.",),
             "Box": ("roi_heads.box_predictor.bbox_pred.",),
             "Class": ("roi_heads.box_predictor.cls_score.",),
         }
@@ -442,10 +443,13 @@ class FomamlLossTest(unittest.TestCase):
                 parameter.zero_()
         store.capture("after")
         self.assertTrue(torch.equal(
-            delta["Feature"]["backbone.weight"], torch.tensor([[0.25]]),
+            delta["Backbone"]["backbone.weight"], torch.tensor([[0.25]]),
         ))
         self.assertTrue(torch.equal(
             delta["Where"]["rpn.weight"], torch.tensor([[0.25]]),
+        ))
+        self.assertTrue(torch.equal(
+            delta["RoiFeature"]["roi_heads.box_head.weight"], torch.tensor([[0.25]]),
         ))
         self.assertTrue(torch.equal(
             delta["Box"]["roi_heads.box_predictor.bbox_pred.weight"], torch.tensor([[0.25]]),
@@ -453,9 +457,7 @@ class FomamlLossTest(unittest.TestCase):
         self.assertTrue(torch.equal(
             delta["Class"]["roi_heads.box_predictor.cls_score.weight"], torch.tensor([[0.25]]),
         ))
-        self.assertEqual(
-            set(delta["Feature"]), {"backbone.weight", "roi_heads.box_head.weight"},
-        )
+        self.assertEqual(set(delta["Backbone"]), {"backbone.weight"})
 
     def test_score_cache_reuses_upstream_and_matches_original_rules(self):
         from torchvision.models.detection import fasterrcnn_resnet50_fpn
@@ -499,7 +501,7 @@ class FomamlLossTest(unittest.TestCase):
                 self.assertEqual(counts["backbone"], after_first["backbone"])
                 self.assertGreater(counts["rpn"], after_first["rpn"])
                 marked_rpn = counts["rpn"]
-                cache.mark("Feature", ("candidate", "mvtec:alpha"))
+                cache.mark("Backbone", ("candidate", "mvtec:alpha"))
                 cache.score_where(records)
                 self.assertGreater(counts["backbone"], after_first["backbone"])
                 self.assertGreater(counts["rpn"], marked_rpn)
@@ -519,7 +521,7 @@ class FomamlLossTest(unittest.TestCase):
 
         torch.manual_seed(8)
         with torch.no_grad():
-            legacy_feature = _legacy_score(model, "Feature", records, device, settings)
+            legacy_feature = _legacy_score(model, "Backbone", records, device, settings)
             legacy_where = _legacy_score(model, "Where", records, device, settings)
             legacy_head = _legacy_score(model, "Box", records, device, settings)
             shift_box(0.01)
@@ -557,7 +559,7 @@ class FomamlLossTest(unittest.TestCase):
                 model, library, "visa:target", records, device, settings,
             )
         self.assertEqual(new_choices, _legacy_choices)
-        for name in ("Feature", "Where", "Box", "Class"):
+        for name in ("Backbone", "Where", "RoiFeature", "Box", "Class"):
             self.assertAlmostEqual(new_weights[name], legacy_weights[name], places=5)
         for key, value in model.state_dict().items():
             self.assertTrue(torch.allclose(value, new_state[key], rtol=1e-5, atol=1e-6), key)
@@ -565,7 +567,7 @@ class FomamlLossTest(unittest.TestCase):
         self.assertTrue(all(weight < 1.0 for weight in new_weights.values()))
         if new_chosen:
             self.assertNotIn("Class", new_chosen)
-            self.assertNotIn("Feature", new_chosen)
+            self.assertNotIn("Backbone", new_chosen)
             self.assertNotIn("Where", new_chosen)
 
     def test_count_sketch_ranks_the_descent_direction(self):
@@ -585,22 +587,22 @@ class FomamlLossTest(unittest.TestCase):
         )
         self.assertEqual(cosine_neg_grad(torch.zeros(SKETCH_DIM), torch.zeros(SKETCH_DIM)), -1.0)
         grad_sketches = {
-            "Feature": module_count_sketch(grad),
+            "Backbone": module_count_sketch(grad),
             "Where": torch.zeros(SKETCH_DIM, dtype=torch.float16),
         }
         library = {
-            "mvtec:z": {"delta": {"Feature": opposite}},
-            "mvtec:a": {"Feature": aligned},
-            "mvtec:same": {"delta": {"Feature": aligned}, "sketch": {"Feature": first}},
+            "mvtec:z": {"delta": {"Backbone": opposite}},
+            "mvtec:a": {"Backbone": aligned},
+            "mvtec:same": {"delta": {"Backbone": aligned}, "sketch": {"Backbone": first}},
         }
         ranking = _rank_sources(library, "mvtec:same", grad_sketches)
-        self.assertEqual(ranking["Feature"], ["mvtec:a", "mvtec:z"])
+        self.assertEqual(ranking["Backbone"], ["mvtec:a", "mvtec:z"])
         self.assertEqual(ranking["Where"], [])
         tied = {
-            "mvtec:z": {"Feature": aligned},
-            "mvtec:a": {"Feature": {name: value.clone() for name, value in aligned.items()}},
+            "mvtec:z": {"Backbone": aligned},
+            "mvtec:a": {"Backbone": {name: value.clone() for name, value in aligned.items()}},
         }
-        self.assertEqual(_rank_sources(tied, "other", grad_sketches)["Feature"], ["mvtec:a", "mvtec:z"])
+        self.assertEqual(_rank_sources(tied, "other", grad_sketches)["Backbone"], ["mvtec:a", "mvtec:z"])
 
     def test_four_module_checkpoint_uses_parameter_names(self):
         class _Detector(torch.nn.Module):
@@ -618,8 +620,9 @@ class FomamlLossTest(unittest.TestCase):
                 self.extra = torch.nn.Linear(1, 1, bias=False)
 
         model = _Detector()
-        feature_names = _module_parameter_names(model, "Feature")
-        self.assertEqual(feature_names, {"backbone.weight", "roi_heads.box_head.weight"})
+        feature_names = _module_parameter_names(model, "Backbone")
+        self.assertEqual(feature_names, {"backbone.weight"})
+        self.assertEqual(_module_parameter_names(model, "RoiFeature"), {"roi_heads.box_head.weight"})
         base = {name: tensor.detach().cpu().clone() for name, tensor in model.state_dict().items()}
         adapted = {name: tensor.clone() for name, tensor in base.items()}
         adapted["backbone.weight"] = adapted["backbone.weight"] + 0.1
@@ -632,10 +635,10 @@ class FomamlLossTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             _checkpoint_models({"model": base}, {"model": outside}, model, four_modules=True)
         block = {name: base[name].clone() for name in feature_names}
-        checked = _checked_block(block, feature_names, "mvtec:bottle", "Feature", base)
+        checked = _checked_block(block, feature_names, "mvtec:bottle", "Backbone", base)
         self.assertEqual(set(checked), feature_names)
         with self.assertRaises(ValueError):
-            _checked_block({**block, "backbone.running_mean": base["backbone.running_mean"]}, feature_names, "mvtec:bottle", "Feature", base)
+            _checked_block({**block, "backbone.running_mean": base["backbone.running_mean"]}, feature_names, "mvtec:bottle", "Backbone", base)
 
     def test_prescreen_keeps_weights_and_can_skip_feature_sources(self):
         from torchvision.models.detection import fasterrcnn_resnet50_fpn
@@ -668,18 +671,18 @@ class FomamlLossTest(unittest.TestCase):
             self.assertIsNone(parameter.grad)
         for name, buf in model.named_buffers():
             self.assertTrue(torch.equal(buf, buffers[name]), name)
-        for label in ("Feature", "Where", "Box", "Class"):
+        for label in ("Backbone", "Where", "RoiFeature", "Box", "Class"):
             self.assertEqual(tuple(sketches[label].shape), (SKETCH_DIM,))
             self.assertEqual(sketches[label].dtype, torch.float16)
 
         feature_name = next(name for name, _parameter in model.named_parameters() if name.startswith("backbone."))
         library = {
             "mvtec:up": {
-                "Feature": {feature_name: torch.full_like(parameters[feature_name].cpu(), 0.01)},
+                "Backbone": {feature_name: torch.full_like(parameters[feature_name].cpu(), 0.01)},
                 "Box": _predictor_delta(model, "roi_heads.box_predictor.bbox_pred.", 0.01),
             },
             "mvtec:down": {
-                "Feature": {feature_name: torch.full_like(parameters[feature_name].cpu(), -0.01)},
+                "Backbone": {feature_name: torch.full_like(parameters[feature_name].cpu(), -0.01)},
                 "Box": _predictor_delta(model, "roi_heads.box_predictor.bbox_pred.", -0.01),
             },
         }
@@ -706,7 +709,7 @@ class FomamlLossTest(unittest.TestCase):
             torch.manual_seed(4)
             _chosen, open_box, _weights = select_module_initialization(
                 model, library, "visa:target", [record], device, settings,
-                {"Feature": set(), "Where": set()},
+                {"Backbone": set(), "Where": set()},
             )
             open_predictor = counts["predictor"]
             empty_backbone = counts["backbone"]
@@ -715,14 +718,14 @@ class FomamlLossTest(unittest.TestCase):
             torch.manual_seed(4)
             _chosen, closed_box, _weights = select_module_initialization(
                 model, library, "visa:target", [record], device, settings,
-                {"Feature": set(), "Where": set(), "Box": set()},
+                {"Backbone": set(), "Where": set(), "Box": set()},
             )
         finally:
             backbone_hook.remove()
             predictor_hook.remove()
         self.assertGreater(full_backbone, empty_backbone)
-        self.assertEqual(full_choices["Feature"] in {"Null", "mvtec:up", "mvtec:down"}, True)
-        self.assertEqual(open_box["Feature"], "Null")
+        self.assertEqual(full_choices["Backbone"] in {"Null", "mvtec:up", "mvtec:down"}, True)
+        self.assertEqual(open_box["Backbone"], "Null")
         self.assertEqual(open_box["Where"], "Null")
         self.assertGreater(open_predictor, counts["predictor"])
         self.assertEqual(closed_box["Box"], "Null")
@@ -867,7 +870,7 @@ def _apply_delta(model, delta, alpha: float = 1.0) -> None:
 
 
 def _legacy_score(model, module_name, records, device, settings):
-    if module_name == "Feature":
+    if module_name in ("Feature", "Backbone", "RoiFeature"):
         losses = []
         for record in records:
             view = eval_support_view(model, record, device, settings["ignore_iou"], keep_pyramid=False)
@@ -894,7 +897,7 @@ def _legacy_score(model, module_name, records, device, settings):
 
 
 def _legacy_select(model, library, family_id, records, device, settings):
-    modules = ("Feature", "Where", "Box", "Class")
+    modules = ("Backbone", "Where", "RoiFeature", "Box", "Class")
     saved = {name: parameter.detach().cpu().clone() for name, parameter in model.named_parameters()}
     chosen, choices, weights = {}, {}, {}
     model.eval()

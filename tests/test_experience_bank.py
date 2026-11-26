@@ -10,9 +10,12 @@ import torch
 
 from training.checkpoints import save_checkpoint
 from training.experience_bank import (
-    GammaController, InnerLRController, allowed_source_families, apply_alpha_proxy, apply_gamma_proxy,
-    assert_compatible_inner_lr, assert_sources_allowed, assign_experience_groups, choose_vector_storage,
-    decode_vector, episode_allows_borrow, frozen_retrieval_structure, group_prototypes, holdout_borrow_plan,
+    GammaController, InnerLRController, allowed_source_families, apply_alpha_proxy, apply_counterfactual_policy,
+    assert_compatible_inner_lr, assert_sources_allowed, assign_experience_groups, attach_first_order_ratio,
+    choose_vector_storage,
+    _discard_task_deltas, decode_vector, frozen_retrieval_structure, gate_borrow_by_support,
+    group_prototypes,
+    holdout_borrow_plan,
     inner_lr_manifest_fields, layered_sketch_indices, latest_experience_bank, limit_role_views,
     load_experience_bank, own_update_from_borrowed_init, pack_named, plan_module_borrow, query_exposure,
     refresh_deltas_complete, refresh_experience_cards, retrieval_fomaml_step, retrieval_holdout_pair,
@@ -142,39 +145,45 @@ class ExperienceBankTest(unittest.TestCase):
             "max_top_k": 4,
             "temperature": 1.0,
             "groups": {"mvtec:bottle": 0},
-            "layouts": {"Feature": layout, "Where": layout, "Box": layout, "Class": layout},
+            "layouts": {module: layout for module in MODULES},
             "pca": {name: {"mean": torch.zeros(4), "components": components} for name in ("Appearance", "Morphology", "Difference")},
             "centers": {name: torch.tensor([[1.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0]]) for name in ("Appearance", "Morphology", "Difference")},
             "center_valid": {name: torch.tensor([True, False]) for name in ("Appearance", "Morphology", "Difference")},
-            "anchors": {name: 1.0 for name in ("Feature", "Where", "Box", "Class")},
-            "keep_ratio": {name: 1.0 for name in ("Feature", "Where", "Box", "Class")},
-            "next_keep_ratio": {name: 1.0 for name in ("Feature", "Where", "Box", "Class")},
-            "trim_calibration": {name: {"keep_ratio": 1.0, "calibrated": False, "scores": []} for name in ("Feature", "Where", "Box", "Class")},
+            "anchors": {name: 1.0 for name in MODULES},
+            "keep_ratio": {name: 1.0 for name in MODULES},
+            "next_keep_ratio": {name: 1.0 for name in MODULES},
+            "trim_calibration": {name: {"keep_ratio": 1.0, "calibrated": False, "scores": []} for name in MODULES},
             "signatures": {name: torch.zeros(1, 4) for name in ("Appearance", "Morphology", "Difference")},
             "assignments": [],
             "cards_memory": {
-                ("Feature", 0, 0): {
+                ("Backbone", 0, 0): {
                     "unit": unit, "valid": True, "low_sample": True, "coherence": 1.0,
                     "member_count": 1, "families": ["mvtec:bottle"], "task_ids": ["a"],
                 },
             },
         }
         key = torch.tensor([4.0, 0.0, 0.0, 0.0])
-        own = retrieve_module_experience(bank, "Feature", key, 0)
+        own = retrieve_module_experience(bank, "Backbone", key, 0)
         self.assertFalse(own["valid"])
         self.assertNotIn(0, own["source_groups"])
-        external = retrieve_module_experience(bank, "Feature", key, None)
+        external = retrieve_module_experience(bank, "Backbone", key, None)
         self.assertTrue(external["valid"])
         self.assertEqual(external["source_groups"], [0])
         self.assertGreater(float(torch.dot(external["vector"], unit)), 0.999)
         with tempfile.TemporaryDirectory() as directory:
+            before = retrieve_module_experience(bank, "Backbone", key, None)
             save_experience_bank(Path(directory), bank)
+            # 落盘后内存 unit 被清空；校验必须用保存前快照，不能再读 cards_memory。
+            self.assertEqual(int(bank["cards_memory"][("Backbone", 0, 0)]["unit"].numel()), 0)
+            self.assertFalse(retrieve_module_experience(bank, "Backbone", key, None)["valid"])
             loaded = load_experience_bank(directory, "theta")
             with self.assertRaises(ValueError):
                 load_experience_bank(directory, "other-theta")
-            reloaded = retrieve_module_experience(loaded, "Feature", key, None)
-            self.assertTrue(torch.allclose(reloaded["vector"], external["vector"], atol=1e-3))
-            blocked = retrieve_module_experience(loaded, "Feature", key, 0)
+            reloaded = retrieve_module_experience(loaded, "Backbone", key, None)
+            self.assertTrue(before["valid"])
+            self.assertTrue(reloaded["valid"])
+            self.assertTrue(torch.allclose(reloaded["vector"], before["vector"], atol=1e-3))
+            blocked = retrieve_module_experience(loaded, "Backbone", key, 0)
             self.assertFalse(blocked["valid"])
         indices = layered_sketch_indices(layout, 3, 7)
         self.assertEqual(sum(int(item["index"].numel()) for item in indices), 3)
@@ -224,22 +233,13 @@ class RetrievalWiringTest(unittest.TestCase):
     def test_source_mask_drops_cards_from_unavailable_families(self):
         bank = _retrieval_bank()
         key = torch.tensor([4.0, 0.0, 0.0, 0.0])
-        blocked = retrieve_module_experience(bank, "Feature", key, None, allowed_families={"mvtec:cable"})
+        blocked = retrieve_module_experience(bank, "Backbone", key, None, allowed_families={"mvtec:cable"})
         self.assertFalse(blocked["valid"])
-        opened = retrieve_module_experience(bank, "Feature", key, None, allowed_families={"mvtec:bottle"})
+        opened = retrieve_module_experience(bank, "Backbone", key, None, allowed_families={"mvtec:bottle"})
         self.assertTrue(opened["valid"])
         self.assertEqual(opened["source_groups"], [0])
 
-    def test_no_borrow_is_one_decision_for_the_whole_episode(self):
-        self.assertFalse(episode_allows_borrow("oof:mvtec:cable:000", 1.0, 11))
-        self.assertTrue(episode_allows_borrow("oof:mvtec:cable:000", 0.0, 11))
-        self.assertEqual(
-            episode_allows_borrow("oof:mvtec:cable:000", 0.3, 11),
-            episode_allows_borrow("oof:mvtec:cable:000", 0.3, 11),
-        )
-        drawn = [bool(episode_allows_borrow(f"episode-{index}", 0.3, 11)) for index in range(300)]
-        self.assertGreater(sum(drawn), 150)
-        self.assertLess(sum(drawn), 270)
+    def test_closed_borrow_skips_proxy_and_open_updates_policy(self):
         bank = _retrieval_bank()
         key = torch.tensor([4.0, 0.0, 0.0, 0.0])
         episode = {
@@ -249,49 +249,51 @@ class RetrievalWiringTest(unittest.TestCase):
         self.assertEqual(allowed_source_families(episode), {"mvtec:bottle"})
         controller = GammaController()
         closed = [
-            plan_module_borrow(bank, module, key, 1, {"mvtec:bottle"}, controller, False) for module in MODULES
+            plan_module_borrow(
+                bank, module, key, 1, {"mvtec:bottle"}, controller, False, support_step_l2=1.0,
+            )
+            for module in MODULES
         ]
-        self.assertTrue(all(plan["gamma"].requires_grad for plan in closed))
-        self.assertTrue(all(float(plan["gamma"].detach()) <= 1.0 for plan in closed))
+        self.assertTrue(all(plan["rho"].requires_grad for plan in closed))
+        self.assertTrue(all(float(plan["rho"].detach()) <= controller.rho_max for plan in closed))
         self.assertEqual({plan["inject"] for plan in closed}, {False})
-        before = {module: float(controller.gains[module].detach()) for module in MODULES}
-        query = {plan["module"]: plan["vector"].detach().clone() for plan in closed}
-        apply_gamma_proxy(controller, closed, query)
-        for module in MODULES:
-            self.assertLess(float(controller.gains[module].detach()), before[module])
+        before = {name: float(param.detach().sum()) for name, param in controller.policy.policy.named_parameters()}
+        # 关闭借用时没有可微注入，反事实更新应为空操作
+        apply_counterfactual_policy(controller, closed, utility=1.0)
+        after = {name: float(param.detach().sum()) for name, param in controller.policy.policy.named_parameters()}
+        self.assertEqual(after, before)
         opened = [
-            plan_module_borrow(bank, module, key, 1, {"mvtec:bottle"}, controller, True) for module in MODULES
+            plan_module_borrow(
+                bank, module, key, 1, {"mvtec:bottle"}, controller, True, support_step_l2=1.0,
+            )
+            for module in MODULES
         ]
-        self.assertEqual({plan["inject"] for plan in opened}, {True})
+        self.assertTrue(any(plan["inject"] for plan in opened))
+        apply_counterfactual_policy(controller, opened, utility=0.8)
+        after_open = {name: float(param.detach().sum()) for name, param in controller.policy.policy.named_parameters()}
+        self.assertTrue(any(after_open[name] != before[name] for name in before))
 
-    def test_proxy_follows_the_negative_query_gradient(self):
-        harmful = GammaController()
-        self.assertEqual(harmful.baselines["Feature"].baseline(), 0.0)
-        harmful_before = float(harmful.gains["Feature"].detach())
-        harmful_plan = [{
-            "module": "Feature", "gamma": harmful.gains["Feature"].sigmoid(), "anchor": torch.tensor(1.0),
-            "vector": torch.tensor([1.0, 0.0]), "valid": True, "sim_max": 0.5,
-        }]
-        harmful_result = apply_gamma_proxy(harmful, harmful_plan, {"Feature": torch.tensor([1.0, 0.0])})
-        self.assertGreater(harmful_result["dots"]["Feature"], 0)
-        self.assertGreater(harmful_result["gain_grads"]["Feature"], 0)
-        self.assertLess(float(harmful.gains["Feature"].detach()), harmful_before)
-
+    def test_counterfactual_utility_updates_policy(self):
+        bank = _retrieval_bank()
+        key = torch.tensor([4.0, 0.0, 0.0, 0.0])
         helpful = GammaController()
-        helpful_before = float(helpful.gains["Feature"].detach())
-        helpful_plan = [{
-            "module": "Feature", "gamma": helpful.gains["Feature"].sigmoid(), "anchor": torch.tensor(1.0),
-            "vector": torch.tensor([1.0, 0.0]), "valid": True, "sim_max": 0.5,
-        }]
-        helpful_result = apply_gamma_proxy(helpful, helpful_plan, {"Feature": torch.tensor([-1.0, 0.0])})
-        self.assertLess(helpful_result["dots"]["Feature"], 0)
-        self.assertLess(helpful_result["gain_grads"]["Feature"], 0)
-        self.assertGreater(float(helpful.gains["Feature"].detach()), helpful_before)
+        helpful_plan = [
+            plan_module_borrow(
+                bank, "Backbone", key, 1, {"mvtec:bottle"}, helpful, True, support_step_l2=1.0,
+            )
+        ]
+        before = float(helpful_plan[0]["rho"].detach())
+        result = apply_counterfactual_policy(helpful, helpful_plan, utility=1.0)
+        self.assertAlmostEqual(result["utility"], 1.0)
+        after_plan = plan_module_borrow(
+            bank, "Backbone", key, 1, {"mvtec:bottle"}, helpful, True, support_step_l2=1.0,
+        )
+        self.assertNotEqual(float(after_plan["rho"].detach()), before)
 
     def test_module_delta_excludes_the_borrowed_increment(self):
         names = (
-            "backbone.weight", "rpn.weight", "roi_heads.box_predictor.bbox_pred.weight",
-            "roi_heads.box_predictor.cls_score.weight",
+            "backbone.weight", "rpn.weight", "roi_heads.box_head.weight",
+            "roi_heads.box_predictor.bbox_pred.weight", "roi_heads.box_predictor.cls_score.weight",
         )
         before = {name: torch.zeros(2) for name in names}
         borrow = {"backbone.weight": torch.tensor([0.4, -0.2])}
@@ -301,8 +303,9 @@ class RetrievalWiringTest(unittest.TestCase):
             for name in names
         }
         delta = own_update_from_borrowed_init(before, after, borrow)
-        self.assertTrue(torch.allclose(delta["Feature"]["backbone.weight"], learned["backbone.weight"]))
+        self.assertTrue(torch.allclose(delta["Backbone"]["backbone.weight"], learned["backbone.weight"]))
         self.assertTrue(torch.allclose(delta["Where"]["rpn.weight"], torch.zeros(2)))
+        self.assertIn("RoiFeature", delta)
 
     def test_holdout_plan_rejects_query_and_does_not_update_gamma(self):
         class Guard(dict):
@@ -319,17 +322,86 @@ class RetrievalWiringTest(unittest.TestCase):
             "source_available_action_ids": ["Null", "mvtec:bottle", "mvtec:capsule"],
         })
         controller = GammaController()
-        before = controller.state_dict()
+        before = {name: float(param.detach().sum()) for name, param in controller.policy.policy.named_parameters()}
         with self.assertRaises(AssertionError):
             holdout_borrow_plan(bank, episode, keys, controller, [{"split_role": "QUERY_DEFECT"}])
-        plans = holdout_borrow_plan(bank, episode, keys, controller, [{"split_role": "SUPPORT"}, {"split_role": "R"}])
-        self.assertEqual({plan["inject"] for plan in plans}, {True})
-        self.assertEqual(controller.gains["Feature"].detach(), before["gains"]["Feature"])
-        self.assertEqual(controller.baselines["Feature"].state(), before["baselines"]["Feature"])
+        plans = holdout_borrow_plan(
+            bank, episode, keys, controller, [{"split_role": "SUPPORT"}, {"split_role": "R"}],
+            step_l2={module: 1.0 for module in MODULES},
+        )
+        self.assertTrue(any(plan["valid"] for plan in plans))
+        after = {name: float(param.detach().sum()) for name, param in controller.policy.policy.named_parameters()}
+        self.assertEqual(after, before)
         from training.meta_transfer import retrieval_holdout_plan
 
         with self.assertRaises(AssertionError):
             retrieval_holdout_plan(bank, episode, keys, controller, [{"split_role": "QUERY_NORMAL"}])
+
+    def test_null_option_can_block_injection(self):
+        bank = _retrieval_bank()
+        key = torch.tensor([4.0, 0.0, 0.0, 0.0])
+        controller = GammaController()
+        with torch.no_grad():
+            controller.policy.policy.null_head.weight.zero_()
+            controller.policy.policy.null_head.bias.fill_(20.0)
+        plans = [
+            plan_module_borrow(
+                bank, module, key, 1, {"mvtec:bottle"}, controller, True, support_step_l2=1.0,
+            )
+            for module in MODULES
+        ]
+        self.assertTrue(all(float(plan["null_probability"]) > 0.9 for plan in plans))
+        self.assertEqual({plan["inject"] for plan in plans}, {False})
+        self.assertTrue(all(plan["named"] == {} for plan in plans))
+        discrete = plan_module_borrow(
+            bank, "Backbone", key, 1, {"mvtec:bottle"}, controller, True,
+            support_step_l2=1.0, discrete_null=True,
+        )
+        self.assertEqual(discrete["null_decision"], "null")
+        self.assertFalse(discrete["inject"])
+
+    def test_first_order_ratio_compares_borrow_to_own_step(self):
+        plan = {
+            "module": "Backbone", "inject": True, "named": {},
+            "vector": torch.tensor([1.0, 0.0]), "gamma": torch.tensor(0.5),
+            "rho": torch.tensor(0.5), "anchor": torch.tensor(2.0), "utility_reject": "",
+        }
+        attach_first_order_ratio(
+            [plan],
+            {"Backbone": torch.tensor([4.0, 0.0])},
+            {"Backbone": torch.tensor([1.0, 0.0])},
+            {"Backbone": 0.25},
+        )
+        # R = ⟨g_Q, ρ ‖α g_S‖ û⟩ / ⟨g_Q, α g_S⟩
+        self.assertAlmostEqual(plan["query_dot_borrow"], 0.5)
+        self.assertAlmostEqual(plan["query_dot_step"], 1.0)
+        self.assertAlmostEqual(plan["first_order_ratio"], 0.5)
+        self.assertAlmostEqual(plan["candidate_borrow_l2"], 0.5)
+        self.assertAlmostEqual(plan["alpha_grad_l2"], 1.0)
+
+    def test_support_alignment_is_diagnostic_only(self):
+        uphill = {
+            "module": "Backbone", "inject": True, "named": {"w": torch.ones(2)},
+            "vector": torch.tensor([1.0, 0.0]), "gamma": torch.tensor(0.5), "rho": torch.tensor(0.5),
+            "anchor": torch.tensor(2.0), "utility_reject": "", "applied_borrow_l2": 1.0,
+        }
+        gate_borrow_by_support([uphill], {"Backbone": torch.tensor([1.0, 0.0])})
+        self.assertTrue(uphill["inject"])
+        self.assertEqual(uphill["named"], {"w": uphill["named"]["w"]})
+        self.assertGreater(uphill["support_dot"], 0.0)
+        downhill = {
+            "module": "Backbone", "inject": True, "named": {"w": torch.tensor([-1.0, 0.0])},
+            "vector": torch.tensor([1.0, 0.0]), "gamma": torch.tensor(0.5), "rho": torch.tensor(0.5),
+            "anchor": torch.tensor(2.0), "utility_reject": "", "applied_borrow_l2": 1.0,
+        }
+        gate_borrow_by_support([downhill], {"Backbone": torch.tensor([-4.0, 0.0])})
+        self.assertTrue(downhill["inject"])
+        self.assertLess(downhill["support_dot"], 0.0)
+
+    def test_dense_fp16_rejected_when_too_many_elements_flush_to_zero(self):
+        values = torch.ones(100)
+        values[:20] = 1e-8
+        self.assertEqual(choose_vector_storage(values)["format"], "dense_fp32")
 
     def test_refresh_keeps_existing_clusters_and_does_not_pad_tasks(self):
         import inspect
@@ -374,11 +446,11 @@ class RetrievalWiringTest(unittest.TestCase):
         for module in MODULES:
             self.assertAlmostEqual(values[module], 0.01, places=6)
             self.assertEqual(hits[module], "")
-        controller.raw["Feature"].data.fill_(-30)
+        controller.raw["Backbone"].data.fill_(-30)
         controller.raw["Where"].data.fill_(5)
         values, hits = controller.current()
-        self.assertEqual(hits["Feature"], "min")
-        self.assertEqual(values["Feature"], controller.minimum)
+        self.assertEqual(hits["Backbone"], "min")
+        self.assertEqual(values["Backbone"], controller.minimum)
         self.assertEqual(hits["Where"], "max")
         self.assertAlmostEqual(values["Where"], controller.maximum, places=6)
         fresh = InnerLRController()
@@ -386,14 +458,14 @@ class RetrievalWiringTest(unittest.TestCase):
         support = {module: torch.zeros(3) for module in MODULES}
         query_up = {module: torch.zeros(3) for module in MODULES}
         query_down = {module: torch.zeros(3) for module in MODULES}
-        support["Feature"] = torch.tensor([1.0, 0.0, 0.0])
+        support["Backbone"] = torch.tensor([1.0, 0.0, 0.0])
         support["Box"] = torch.tensor([0.0, 1.0, 0.0])
-        query_up["Feature"] = torch.tensor([1.0, 0.0, 0.0])
+        query_up["Backbone"] = torch.tensor([1.0, 0.0, 0.0])
         query_down["Box"] = torch.tensor([0.0, -2.0, 0.0])
         apply_alpha_proxy(fresh, support, query_up)
         apply_alpha_proxy(fresh, support, query_down)
         after = fresh.current()[0]
-        self.assertGreater(after["Feature"], before["Feature"])
+        self.assertGreater(after["Backbone"], before["Backbone"])
         self.assertLess(after["Box"], before["Box"])
         self.assertAlmostEqual(after["Where"], before["Where"], places=6)
         self.assertAlmostEqual(after["Class"], before["Class"], places=6)
@@ -403,7 +475,10 @@ class RetrievalWiringTest(unittest.TestCase):
         key = torch.tensor([4.0, 0.0, 0.0, 0.0])
         controller = GammaController()
         closed = [
-            plan_module_borrow(bank, module, key, 1, {"mvtec:bottle"}, controller, False) for module in MODULES
+            plan_module_borrow(
+                bank, module, key, 1, {"mvtec:bottle"}, controller, False, support_step_l2=1.0,
+            )
+            for module in MODULES
         ]
         theta = {"backbone.weight": torch.ones(4)}
         for plan in closed:
@@ -415,7 +490,7 @@ class RetrievalWiringTest(unittest.TestCase):
         import inspect
 
         source = inspect.getsource(retrieval_fomaml_step)
-        self.assertIn("unborrowed_query_first_order_estimate", source)
+        self.assertIn("query_counterfactual_utility", source)
         self.assertIn("retrieval_support_adapt(", source)
         self.assertIn("retrieval_support_adapt(", inspect.getsource(retrieval_holdout_pair))
         signature = inspect.getsource(task_signature)
@@ -496,6 +571,9 @@ class RetrievalWiringTest(unittest.TestCase):
             self.assertFalse(refresh_deltas_complete(root, assignments))
             save_checkpoint(root / "task_deltas" / "a_b_2.pt", {"x": 1})
             self.assertTrue(refresh_deltas_complete(root, assignments))
+            _discard_task_deltas(root)
+            self.assertFalse((root / "task_deltas").exists())
+            self.assertFalse(refresh_deltas_complete(root, assignments))
 
 
 if __name__ == "__main__":

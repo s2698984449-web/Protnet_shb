@@ -269,7 +269,7 @@ def _remember_module_delta(module_memory: dict, library: dict, family_id: str, e
 
 
 def split_parameter_delta(before: dict[str, torch.Tensor], after: dict[str, torch.Tensor]) -> dict:
-    """按四块拆开这一步自己学到的参数差，不把借来的初始化算进这块知识。"""
+    """按五组功能参数拆开这一步自己学到的参数差，不把借来的初始化算进这块知识。"""
     if set(before) != set(after):
         raise AssertionError("内外参数名称不一致")
     grouped = {label: {} for label in MODULE_PREFIXES}
@@ -279,7 +279,7 @@ def split_parameter_delta(before: dict[str, torch.Tensor], after: dict[str, torc
             raise AssertionError(f"参数没有唯一模块：{name}")
         grouped[owners[0]][name] = (after[name] - old).detach().cpu()
     if any(not block for block in grouped.values()):
-        raise AssertionError("四块参数差必须同时留下")
+        raise AssertionError("五组参数差必须同时留下")
     return grouped
 
 
@@ -430,9 +430,9 @@ def _source_sketch(memory: dict, module_name: str, delta: dict, dim: int) -> tor
 
 
 def _rank_sources(library: dict, family_id: str, grad_sketches: dict, sketch_dim: int = SKETCH_DIM) -> dict[str, list[str]]:
-    """按 cos(-梯度草图, 参数差草图) 给 Feature 和 Where 的历史源排序。同族不参与。"""
+    """按 cos(-梯度草图, 参数差草图) 给 Backbone/Where 的历史源排序。同族不参与。"""
     ranking = {}
-    for module_name in ("Feature", "Where"):
+    for module_name in ("Backbone", "Where"):
         scored = []
         for source_family, memory in library.items():
             if source_family == family_id:
@@ -756,7 +756,9 @@ def select_module_initialization(
     trace: dict | None = None,
 ):
     """按块看支持集收益。收益为正才按小于 1 的权重加那一块，查询图不参与。"""
-    modules = ("Feature", "Where", "Box", "Class")
+    from training.retrieval_memory import MODULES
+
+    modules = tuple(MODULES)
     if not library:
         _fomaml_phase(trace, "挑选", "library=0")
         if timings is not None:
@@ -816,7 +818,7 @@ def select_module_initialization(
 
 
 def _open_modules(detector) -> int:
-    """四块参数都参与元训练。冻结会让 Feature 和 RPN 写不出自己的知识。"""
+    """五组功能参数都参与元训练。冻结会让 Backbone 和 RPN 写不出自己的知识。"""
     detector.requires_grad_(False)
     opened = 0
     for name, parameter in detector.named_parameters():
@@ -1032,8 +1034,8 @@ def _train(detector, adapter, episodes, provenance, run_dir, device, resume_stat
         )
     if int(meta.get("prescreen_audit") or 0) > 0 and "prescreen_audit" not in result:
         result["prescreen_audit"] = {
-            "episodes": 0, "large_episodes": 0, "hits": {"Feature": 0, "Where": 0},
-            "ranks": {"Feature": [], "Where": []}, "k": int(meta["prescreen_k"]),
+            "episodes": 0, "large_episodes": 0, "hits": {"Backbone": 0, "Where": 0},
+            "ranks": {"Backbone": [], "Where": []}, "k": int(meta["prescreen_k"]),
         }
     patience = int(meta.get("early_stopping_patience", 0))
     min_delta = float(meta.get("early_stopping_min_delta", 0.0))
@@ -1083,7 +1085,7 @@ def _train(detector, adapter, episodes, provenance, run_dir, device, resume_stat
     if meta.get("experience_bank"):
         from training.experience_bank import (
             GammaController, InnerLRController, _state_sha256, _state_snapshot, assert_compatible_inner_lr,
-            episode_allows_borrow, load_experience_bank, refresh_experience_cards, retrieval_fomaml_step,
+            load_experience_bank, refresh_experience_cards, retrieval_fomaml_step,
         )
         from training.retrieval_memory import load_retrieval_config
 
@@ -1266,13 +1268,10 @@ def _train(detector, adapter, episodes, provenance, run_dir, device, resume_stat
                     auditing = False
                     if retrieval_bank is not None:
                         _fomaml_phase(trace, "检索")
-                        allow_borrow = episode_allows_borrow(
-                            episode["episode_id"], float(meta["no_borrow_probability"]),
-                            int(provenance["seed"]) + int(epoch),
-                        )
+                        # 条件化协议：Null 进 Softmax，禁止随机整任务不借。
                         step = retrieval_fomaml_step(
                             initializer.module, optimizer, support_records, query_records, episode,
-                            retrieval_bank, gamma_controller, device, meta, allow_borrow=allow_borrow,
+                            retrieval_bank, gamma_controller, device, meta, allow_borrow=True,
                             inner_lr_controller=inner_lr_controller,
                             theta0_state=theta0_weights, adapter=adapter,
                             writable_cache=run_dir / "feature_cache",
@@ -1301,7 +1300,7 @@ def _train(detector, adapter, episodes, provenance, run_dir, device, resume_stat
                             prescreen_seconds = perf_counter() - started
                             if not auditing:
                                 allowed = {
-                                    name: set(ranking[name][:prescreen_k]) for name in ("Feature", "Where")
+                                    name: set(ranking[name][:prescreen_k]) for name in ("Backbone", "Where")
                                 }
                         borrowed, choices, reuse_weights = select_module_initialization(
                             initializer.module, library, family_id, support_records, device, meta,
@@ -1344,8 +1343,9 @@ def _train(detector, adapter, episodes, provenance, run_dir, device, resume_stat
                 step["reuse_weights"] = reuse_weights
                 step["seconds"] = {
                     "prescreen": prescreen_seconds,
-                    "feature": select_times.get("Feature", 0.0),
+                    "backbone": select_times.get("Backbone", 0.0),
                     "where": select_times.get("Where", 0.0),
+                    "roi_feature": select_times.get("RoiFeature", 0.0),
                     "box": select_times.get("Box", 0.0),
                     "class": select_times.get("Class", 0.0),
                     "inner": step.pop("inner_seconds"),
@@ -1354,7 +1354,7 @@ def _train(detector, adapter, episodes, provenance, run_dir, device, resume_stat
                 if auditing and ranking is not None:
                     audit = result["prescreen_audit"]
                     audit["episodes"] += 1
-                    for name in ("Feature", "Where"):
+                    for name in ("Backbone", "Where"):
                         winner = choices[name]
                         hit = winner == "Null" or winner in ranking[name][:prescreen_k]
                         audit["hits"][name] += int(hit)
@@ -1376,16 +1376,19 @@ def _train(detector, adapter, episodes, provenance, run_dir, device, resume_stat
                     "query_views": len(query_records), **step,
                 })
                 if meta["pilot"] or result["global_step"] == 1 or result["global_step"] % log_every == 0:
+                    from training.retrieval_memory import MODULES as _LOG_MODULES
+
                     brief = "/".join(
                         "Null" if choices[name] == "Null" else f"{choices[name]}@{reuse_weights[name]:.3f}"
-                        for name in ("Feature", "Where", "Box", "Class")
+                        for name in _LOG_MODULES
                     )
                     seconds = step["seconds"]
                     print(
                         f"FOMAML epoch={epoch} step={result['global_step']} "
                         f"query_detection={step['query_detection_loss']:.6f} init={brief} "
-                        f"sec prescreen={seconds['prescreen']:.2f} feature={seconds['feature']:.2f} "
-                        f"where={seconds['where']:.2f} box={seconds['box']:.2f} class={seconds['class']:.2f} "
+                        f"sec prescreen={seconds['prescreen']:.2f} backbone={seconds['backbone']:.2f} "
+                        f"where={seconds['where']:.2f} roi={seconds['roi_feature']:.2f} "
+                        f"box={seconds['box']:.2f} class={seconds['class']:.2f} "
                         f"inner={seconds['inner']:.2f} outer={seconds['outer']:.2f}",
                         flush=True,
                     )
@@ -1393,10 +1396,12 @@ def _train(detector, adapter, episodes, provenance, run_dir, device, resume_stat
                     touched = {name: bound_hits[name] for name in bound_hits if bound_hits[name]}
                     if touched:
                         print(f"FOMAML 模块学习率触及边界 step={result['global_step']} {touched}", flush=True)
-                    if step.get("gamma_proxy_meaning") == "unborrowed_query_first_order_estimate":
+                    if step.get("gamma_proxy_meaning") == "query_counterfactual_utility":
                         print(
-                            f"FOMAML step={result['global_step']} 前向借用量为零，"
-                            "Query 梯度只作为未来 γ 的局部一阶估计",
+                            f"FOMAML step={result['global_step']} "
+                            f"U={step.get('counterfactual_utility', 0.0):+.4f} "
+                            f"L_null={step.get('query_loss_null', 0.0):.4f} "
+                            f"L_borrow={step.get('query_loss_borrow', 0.0):.4f}",
                             flush=True,
                         )
                 write_resume(epoch, index + 1, index + 1 == len(order))
@@ -1414,8 +1419,11 @@ def _train(detector, adapter, episodes, provenance, run_dir, device, resume_stat
                 best_payload = {"model": best_state, "epoch": best_epoch, "loss": best_loss}
                 if gamma_controller is not None:
                     best_payload["gamma_state"] = gamma_controller.state_dict()
+                    best_payload["policy_state"] = gamma_controller.state_dict()
                     best_payload["experience_bank_dir"] = retrieval_bank["directory"]
                     best_payload["theta_sha256"] = retrieval_bank["theta_sha256"]
+                    best_payload["theta_version"] = retrieval_bank["theta_sha256"]
+                    best_payload["bank_version"] = retrieval_bank["theta_sha256"]
                 if inner_lr_controller is not None:
                     best_payload["inner_lr_state"] = inner_lr_controller.state_dict()
                     best_payload["inner_lr_snapshot"] = inner_lr_controller.current()[0]
@@ -1451,8 +1459,11 @@ def _train(detector, adapter, episodes, provenance, run_dir, device, resume_stat
                     extras = {}
                     if gamma_controller is not None:
                         extras["gamma_state"] = gamma_controller.state_dict()
+                        extras["policy_state"] = gamma_controller.state_dict()
                         extras["experience_bank_dir"] = retrieval_bank["directory"]
                         extras["theta_sha256"] = retrieval_bank["theta_sha256"]
+                        extras["theta_version"] = retrieval_bank["theta_sha256"]
+                        extras["bank_version"] = retrieval_bank["theta_sha256"]
                     if inner_lr_controller is not None:
                         extras["inner_lr_state"] = inner_lr_controller.state_dict()
                         extras["inner_lr_snapshot"] = inner_lr_controller.current()[0]
@@ -1470,8 +1481,12 @@ def _train(detector, adapter, episodes, provenance, run_dir, device, resume_stat
 
     if best_state is not None:
         detector.load_state_dict(best_state)
-    if not meta["pilot"] and not result["early_stopped"] and trained_families != set(provenance["theta0_train_family_ids"]):
-        raise AssertionError("正式 FOMAML 未覆盖本折全部允许训练产品族")
+    # 覆盖口径=本轮实际任务族（检索式可只跑分组子集），不是整折 θ₀ 全族。
+    expected_families = {episode["family_id"] for episode in episodes}
+    if not meta["pilot"] and not result["early_stopped"] and trained_families != expected_families:
+        missing = sorted(expected_families - trained_families)
+        extra = sorted(trained_families - expected_families)
+        raise AssertionError(f"正式 FOMAML 未覆盖本轮任务产品族 missing={missing} extra={extra}")
     if device.type == "cuda":
         torch.cuda.synchronize(device)
         result["peak_cuda_allocated_mib"] = max(prior_peak, torch.cuda.max_memory_allocated(device) / 2**20)
@@ -1488,8 +1503,10 @@ def _train(detector, adapter, episodes, provenance, run_dir, device, resume_stat
         _spill_episode_delta(memory_parts, episode_id, row)
     library.clear()
     gc.collect()
+    from training.retrieval_memory import MODULES as _MEMORY_MODULES
+
     save_checkpoint(run_dir / "module_memory.pt", {
-        "episodes": module_memory, "modules": ["Feature", "Where", "Box", "Class"],
+        "episodes": module_memory, "modules": list(_MEMORY_MODULES),
         "delta_storage": memory_parts.name,
     })
     save_checkpoint(run_dir / "last.pt", {"model": detector.state_dict(), "provenance": provenance,
@@ -1500,7 +1517,7 @@ def _train(detector, adapter, episodes, provenance, run_dir, device, resume_stat
     audit = result.get("prescreen_audit")
     if audit and audit["episodes"]:
         parts = []
-        for name in ("Feature", "Where"):
+        for name in ("Backbone", "Where"):
             rate = audit["hits"][name] / audit["episodes"]
             parts.append(f"{name} hit_rate={rate:.3f} {_rank_text(audit['ranks'][name])}")
         print("预筛核对 " + " ".join(parts), flush=True)
@@ -1594,8 +1611,10 @@ def train_theta0_fomaml(
     settings = {**config["training"], "loss": loss, "pilot": pilot, "first_order": True,
                 "grad_clip_norm": source["settings"]["grad_clip_norm"],
                 "ignore_iou": load_config(baseline_path)["evaluation"]["ignore_iou"]}
-    if list(settings.get("modules") or []) != ["Feature", "Where", "Box", "Class"]:
-        raise ValueError("FOMAML 必须同时打开 Feature、Where、Box、Class")
+    from training.retrieval_memory import MODULES as _REQUIRED_MODULES
+
+    if list(settings.get("modules") or []) != list(_REQUIRED_MODULES):
+        raise ValueError(f"FOMAML 必须同时打开 {list(_REQUIRED_MODULES)}")
     if not 0 < float(settings["reuse_weight_cap"]) < 1:
         raise ValueError("复用权重上限必须在 (0, 1) 内，不能整段复用")
     if not isfinite(float(settings["where_loss_weight"])) or float(settings["where_loss_weight"]) < 0:
@@ -1623,17 +1642,17 @@ def train_theta0_fomaml(
         raise ValueError("sketch-dim 必须为正")
     if settings["val_max_episodes"] < 0:
         raise ValueError("val-max-episodes 不能为负")
-    from training.experience_bank import latest_experience_bank, load_experience_bank
+    from training.experience_bank import load_experience_bank
     from training.retrieval_memory import load_retrieval_config
 
-    bank_path = latest_experience_bank(source["fold_id"]) if experience_bank is None else Path(experience_bank)
-    bank_path = bank_path.resolve(strict=True)
-    load_experience_bank(bank_path)
-    retrieval = load_retrieval_config()
+    if experience_bank is None:
+        raise ValueError("必须显式指定 --experience-bank，禁止自动选择最新经验库目录")
+    bank_path = Path(experience_bank).resolve(strict=True)
+    bank_payload = load_experience_bank(bank_path)
+    load_retrieval_config()
     settings["experience_bank"] = str(bank_path)
-    settings["no_borrow_probability"] = float(retrieval["no_borrow_probability"])
-    if not 0 <= settings["no_borrow_probability"] < 1:
-        raise ValueError("整条任务不借用的概率必须在 [0, 1) 内")
+    settings["bank_version"] = str(bank_payload.get("theta_sha256") or "")
+    settings["theta_version"] = str(bank_payload.get("theta_sha256") or "")
     validate_detection_loss_settings(settings["loss"])
     if pilot:
         settings["epochs"] = config["pilot"]["epochs"]
@@ -1692,4 +1711,12 @@ def train_theta0_fomaml(
         resume_state = None
     del parent
     with b0_run_directory(run_dir, resume=resume):
-        return _train(detector, adapter, episodes, provenance, run_dir, device, resume_state)
+        result = _train(detector, adapter, episodes, provenance, run_dir, device, resume_state)
+    if not pilot and result.get("complete") and bool(config["training"].get("holdout_after_train")):
+        from training.meta_transfer import run_holdout
+
+        holdout_name = f"{run_name}-holdout"
+        print(f"FOMAML 完成，开始留出评价 {holdout_name}", flush=True)
+        result["holdout_run"] = holdout_name
+        result["holdout"] = run_holdout(theta0, run_dir / "last.pt", holdout_name, "cuda")
+    return result

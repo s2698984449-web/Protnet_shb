@@ -10,9 +10,12 @@ training:
   num_workers: 0
   early_stopping_patience: 1
   early_stopping_min_delta: 0.0
+  # 正式训练写完 last.pt 后，用同一折监督权重做留出。运行名是「训练名-holdout」。
+  holdout_after_train: true
   modules:
-    - Feature
+    - Backbone
     - Where
+    - RoiFeature
     - Box
     - Class
   reuse_weight_cap: 0.5
@@ -27,13 +30,13 @@ training:
       roi: 0.25
       positive: 1.0
       ranking: 1.0
-      hard_negative: 1.0
-      localization: 0.5
+      hard_negative: 1.5
+      localization: 0.75
     positive_iou: 0.5
     negative_iou: 0.5
     working_logit: 0.0
     ranking_margin: 0.2
-    hard_negative_top_k: 16
+    hard_negative_top_k: 32
 pilot:
   epochs: 1
   dataset: mvtec

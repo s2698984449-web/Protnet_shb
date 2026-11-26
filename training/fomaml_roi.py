@@ -12,12 +12,28 @@ from data_proc.detection import image_to_tensor, target_for_model
 
 
 MODULE_PREFIXES = {
-    # RoI 的共享 fc6/fc7 提取分类与回归共同使用的特征，仅划入 Feature。
-    "Feature": ("backbone.", "roi_heads.box_head."),
+    # Backbone → Where → RoiFeature → Class / Box；保留 Backbone 到 RoI 的直接特征连接。
+    "Backbone": ("backbone.",),
     "Where": ("rpn.",),
+    "RoiFeature": ("roi_heads.box_head.",),
     "Box": ("roi_heads.box_predictor.bbox_pred.",),
     "Class": ("roi_heads.box_predictor.cls_score.",),
 }
+
+
+def assert_module_partition(model) -> dict[str, list[str]]:
+    """核对五组参数无重叠、无遗漏（相对 MODULE_PREFIXES 覆盖范围）。"""
+    owned = {label: [] for label in MODULE_PREFIXES}
+    for name, _parameter in model.named_parameters():
+        owners = [label for label, prefixes in MODULE_PREFIXES.items() if name.startswith(prefixes)]
+        if len(owners) > 1:
+            raise AssertionError(f"参数落入多个模块：{name} → {owners}")
+        if len(owners) == 1:
+            owned[owners[0]].append(name)
+    for label, names in owned.items():
+        if not names:
+            raise AssertionError(f"模块无参数：{label}")
+    return owned
 
 SKETCH_DIM = 4096
 SKETCH_SEED = 20261124
@@ -382,10 +398,41 @@ def _pyramid(detector, tensors):
     return levels
 
 
+def _jitter_gt_proposals(boxes: torch.Tensor, image_size: tuple[int, int], *, count: int = 4) -> torch.Tensor:
+    """对 GT 框做平移/缩放扰动，扩充 Box 正样本监督。"""
+    if boxes is None or int(boxes.numel()) == 0 or count < 1:
+        return boxes.new_zeros((0, 4)) if boxes is not None else torch.zeros((0, 4))
+    height, width = float(image_size[0]), float(image_size[1])
+    jittered = []
+    for box in boxes:
+        x1, y1, x2, y2 = [float(value) for value in box.tolist()]
+        bw = max(x2 - x1, 1.0)
+        bh = max(y2 - y1, 1.0)
+        for index in range(count):
+            # 与 boxes 同设备采样；须显式 device=，否则默认 CPU 与 CUDA generator 冲突。
+            generator = torch.Generator(device=boxes.device)
+            generator.manual_seed(101 + index * 17 + int(x1) * 13)
+            draws = torch.rand(3, device=boxes.device, generator=generator)
+            dx = (float(draws[0]) - 0.5) * 0.2 * bw
+            dy = (float(draws[1]) - 0.5) * 0.2 * bh
+            scale = 0.9 + 0.2 * float(draws[2])
+            cx = 0.5 * (x1 + x2) + dx
+            cy = 0.5 * (y1 + y2) + dy
+            nw, nh = bw * scale, bh * scale
+            nx1 = min(max(cx - 0.5 * nw, 0.0), width - 1.0)
+            ny1 = min(max(cy - 0.5 * nh, 0.0), height - 1.0)
+            nx2 = min(max(cx + 0.5 * nw, nx1 + 1.0), width)
+            ny2 = min(max(cy + 0.5 * nh, ny1 + 1.0), height)
+            jittered.append(boxes.new_tensor([nx1, ny1, nx2, ny2]))
+    return torch.stack(jittered) if jittered else boxes.new_zeros((0, 4))
+
+
 def _live_roi_loss(detector, pyramid, proposals, targets, record, original_size, images, loss_settings, ignore_iou, device):
     proposal = proposals[0]
     roi_heads = detector.roi_heads
     target_boxes = targets[0]["boxes"]
+    if int(target_boxes.numel()) > 0:
+        proposal = torch.cat([proposal, _jitter_gt_proposals(target_boxes, images.image_sizes[0])], dim=0)
     ignore_boxes = _record_boxes(
         record, "ignore_annotations", original_size, images.image_sizes[0], proposal
     )
@@ -411,6 +458,71 @@ def _live_roi_loss(detector, pyramid, proposals, targets, record, original_size,
     return roi_detection_loss(roi_heads.box_predictor, example, roi_heads.box_coder, loss_settings, device)
 
 
+def live_detection_loss_parts(
+    detector, record: dict, device, loss_settings, where_loss_weight: float, ignore_iou: float,
+) -> dict[str, torch.Tensor]:
+    """一张图的可微损失分项，供模块职责代理使用。不含 checkpoint。"""
+    if not detector.training or not detector.rpn.training:
+        raise ValueError("模块元训练需要训练模式的检测器和 RPN")
+    where_loss_weight = float(where_loss_weight)
+    if not isfinite(where_loss_weight) or where_loss_weight < 0:
+        raise ValueError("Where 损失权重必须为非负有限值")
+    if not 0 < float(ignore_iou) <= 1:
+        raise ValueError("Ignore IoU must be in (0, 1]")
+    original_size, images, targets = _transformed_view(detector, record, device)
+    pyramid = _pyramid(detector, images.tensors)
+    proposals, rpn_losses = detector.rpn(images, pyramid, targets)
+    where = rpn_losses["loss_objectness"] + rpn_losses["loss_rpn_box_reg"]
+    proposal = proposals[0]
+    roi_heads = detector.roi_heads
+    target_boxes = targets[0]["boxes"]
+    if int(target_boxes.numel()) > 0:
+        proposal = torch.cat([proposal, _jitter_gt_proposals(target_boxes, images.image_sizes[0])], dim=0)
+    ignore_boxes = _record_boxes(
+        record, "ignore_annotations", original_size, images.image_sizes[0], proposal
+    )
+    eligible = _remove_ignored_proposals(
+        proposal, target_boxes, ignore_boxes, roi_heads.proposal_matcher.high_threshold, ignore_iou,
+    )
+    sampled, _, labels, regression_targets = roi_heads.select_training_samples([eligible], targets)
+    anchor = pyramid[next(iter(pyramid))]
+    zero = anchor.new_zeros(())
+    parts = {
+        "where": where,
+        "roi": zero,
+        "positive": zero,
+        "ranking": zero,
+        "hard_negative": zero,
+        "localization": zero,
+    }
+    if labels[0].numel() and eligible.numel():
+        sampled_boxes = sampled[0]
+        example = ROIExample(
+            roi_heads.box_head(roi_heads.box_roi_pool(pyramid, [sampled_boxes], images.image_sizes)),
+            labels[0],
+            torch.where(labels[0][:, None] > 0, regression_targets[0], 0.0),
+            sampled_boxes,
+            roi_heads.box_head(roi_heads.box_roi_pool(pyramid, [eligible], images.image_sizes)),
+            eligible,
+            target_boxes,
+            ignore_boxes,
+            bool(record["normal_flag"]),
+        )
+        components = _loss_components(
+            roi_heads.box_predictor, example, roi_heads.box_coder, loss_settings, device,
+        )
+        weights = loss_settings["weights"]
+        for name in ("roi", "positive", "ranking", "hard_negative", "localization"):
+            parts[name] = components[name] * float(weights[name])
+    roi_total = sum(parts[name] for name in ("roi", "positive", "ranking", "hard_negative", "localization"))
+    total = roi_total + where_loss_weight * where
+    parts["roi_total"] = roi_total
+    parts["total"] = total
+    if not torch.isfinite(total):
+        raise FloatingPointError(f"模块检测损失不是有限值：{record.get('image_id')}")
+    return parts
+
+
 def live_detection_loss(
     detector, record: dict, device, loss_settings, where_loss_weight: float, ignore_iou: float,
     checkpoint_graph: bool = False,
@@ -429,24 +541,9 @@ def live_detection_loss(
 
         from torch.utils.checkpoint import checkpoint
         return checkpoint(run, image.to(device), use_reentrant=False)
-    if not detector.training or not detector.rpn.training:
-        raise ValueError("模块元训练需要训练模式的检测器和 RPN")
-    where_loss_weight = float(where_loss_weight)
-    if not isfinite(where_loss_weight) or where_loss_weight < 0:
-        raise ValueError("Where 损失权重必须为非负有限值")
-    if not 0 < float(ignore_iou) <= 1:
-        raise ValueError("Ignore IoU must be in (0, 1]")
-    original_size, images, targets = _transformed_view(detector, record, device)
-    pyramid = _pyramid(detector, images.tensors)
-    proposals, rpn_losses = detector.rpn(images, pyramid, targets)
-    where = rpn_losses["loss_objectness"] + rpn_losses["loss_rpn_box_reg"]
-    roi = _live_roi_loss(
-        detector, pyramid, proposals, targets, record, original_size, images, loss_settings, ignore_iou, device,
-    )
-    total = roi + where_loss_weight * where
-    if not torch.isfinite(total):
-        raise FloatingPointError(f"模块检测损失不是有限值：{record.get('image_id')}")
-    return total
+    return live_detection_loss_parts(
+        detector, record, device, loss_settings, where_loss_weight, ignore_iou,
+    )["total"]
 
 
 @torch.no_grad()
@@ -526,9 +623,9 @@ def _predict_heads(predictor, features, *, cls: bool, bbox: bool):
 class SupportScoreCache:
     """无梯度模块评分的分层缓存。
 
-    只在一次初始化选择内有效。Feature 令牌变化后丢弃骨干特征、候选和 RoI 特征；
+    只在一次初始化选择内有效。Backbone 令牌变化后丢弃骨干特征、候选和 RoI 特征；
     Where 令牌变化后丢弃候选和依赖候选的 RoI 特征，骨干特征可以继续用。
-    Box 只重算框回归，Class 只重算分类。采样仍然每次调用正负样本采样器。
+    RoiFeature 变化后丢弃 RoI 特征；Box 只重算框回归，Class 只重算分类。
     骨干特征留在 CPU，打分时按张图搬回显存，避免 4GB 卡上同时放下整组特征塔。
     """
 
@@ -541,6 +638,7 @@ class SupportScoreCache:
         self.loss_settings = settings["loss"]
         self.ignore_iou = ignore_iou
         self.feature_token = ("shared",)
+        self.roi_feature_token = ("shared",)
         self.where_token = ("shared",)
         self.box_token = ("shared",)
         self.class_token = ("shared",)
@@ -572,14 +670,18 @@ class SupportScoreCache:
     def token(self, module_name: str):
         return {
             "Feature": self.feature_token,
+            "Backbone": self.feature_token,
+            "RoiFeature": self.roi_feature_token,
             "Where": self.where_token,
             "Box": self.box_token,
             "Class": self.class_token,
         }[module_name]
 
     def mark(self, module_name: str, token) -> None:
-        if module_name == "Feature":
+        if module_name in ("Feature", "Backbone"):
             self.feature_token = token
+        elif module_name == "RoiFeature":
+            self.roi_feature_token = token
         elif module_name == "Where":
             self.where_token = token
         elif module_name == "Box":
@@ -590,7 +692,7 @@ class SupportScoreCache:
             raise ValueError(f"未知模块：{module_name}")
 
     def score(self, module_name: str, records) -> float | None:
-        if module_name == "Feature":
+        if module_name in ("Feature", "Backbone", "RoiFeature"):
             return self.score_feature(records)
         if module_name == "Where":
             return self.score_where(records)
@@ -778,7 +880,7 @@ class SupportScoreCache:
         return self._roi_features(pyramid, sampled_boxes, prepared)
 
     def _sync_roi_token(self) -> None:
-        token = (self.feature_token, self.where_token)
+        token = (self.feature_token, self.where_token, self.roi_feature_token)
         if token == self._roi_token:
             return
         self._roi.clear()

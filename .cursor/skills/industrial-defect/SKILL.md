@@ -1,14 +1,27 @@
 ---
 name: industrial-defect
 description: >-
-  通用工业缺陷检测的目录、配置和改代码约定。做数据预处理、训练、评价、改配置或看产物时使用。
-  Use when working in this repo on industrial defect detection, data audit, configs,
-  data_proc, scripts, doc, or output.
+  通用工业缺陷检测的目录、配置和改代码约定。在本仓库写代码、改训练/评价逻辑、做数据预处理、
+  改配置或看产物前必须先阅读本 SKILL.md。
+  Use when working in this repo on industrial defect detection, coding, training,
+  data audit, configs, data_proc, scripts, doc, or output. Always read this skill
+  before writing or changing code.
 ---
 
 # 工业缺陷检测
 
-做这个项目时遵守下面的目录和改代码约定。
+做这个项目时遵守下面的目录和改代码约定。**以后写代码都要先阅读本 SKILL.md。**
+
+## 写代码优先级
+
+以后写代码的时候，减少冗余逻辑。优先考虑可复用逻辑和可复用的知识，减少内存占用，以效果和运行速度优先，不做冗余计算。
+
+落点要求：
+
+- 先复用已有函数、通路和结论，禁止平行再写一套同义逻辑。
+- 同一前向/反传能合并就合并；禁止为对称接口做双倍扫图或重复打包。
+- 常驻内存只留当前步必要张量；大块中间结果算完即释，磁盘产物按轮次覆盖或只留 best/当前。
+- 效果与速度冲突时，先保证协议正确，再删冗余计算；不为「看起来完整」保留无用分支。
 
 ## 目录
 
@@ -24,7 +37,7 @@ description: >-
 
 ## 改代码
 
-代码保持规范化和轻量化，这是最高优先级。路径、预算、阈值、折数放进 `config`。业务逻辑放进已有的 `common`、`data_proc` 或 `training`，命令放进 `scripts`。禁止硬编码，禁止为一次查看、一次汇总或一次调试新增脚本。
+改任何代码前先读本文件，并遵守上面的「写代码优先级」。代码保持规范化和轻量化，这是最高优先级。路径、预算、阈值、折数放进 `config`。业务逻辑放进已有的 `common`、`data_proc` 或 `training`，命令放进 `scripts`。禁止硬编码，禁止为一次查看、一次汇总或一次调试新增脚本。
 
 需要重复使用的逻辑写成通用入口，接收配置和参数，能够服务后续实验。读取已有 `metrics.json` 或做临时计算时，在当次命令中执行，不落盘。若确实写出了一次性文件，同一轮工作结束前立即删除，不留在 `output`、仓库根目录或 `scripts`。
 

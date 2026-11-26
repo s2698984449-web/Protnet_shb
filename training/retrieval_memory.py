@@ -14,10 +14,11 @@ import torch.nn.functional as F
 from common.io import load_config, named_config_path
 
 
-MODULES = ("Feature", "Where", "Box", "Class")
+MODULES = ("Backbone", "Where", "RoiFeature", "Box", "Class")
 KEY_FOR_MODULE = {
-    "Feature": "Appearance",
+    "Backbone": "Appearance",
     "Where": "Morphology",
+    "RoiFeature": "Appearance",
     "Box": "Morphology",
     "Class": "Difference",
 }
@@ -31,8 +32,8 @@ def load_retrieval_config() -> dict:
         raise ValueError("第一版 PCA 固定，train_projection 必须为 false")
     if int(config["min_members_for_ties"]) < 2:
         raise ValueError("TIES 最少成员必须不小于 2")
-    if not 0 < float(config["no_borrow_probability"]) < 1:
-        raise ValueError("不借用概率必须在 (0, 1) 内")
+    if not 0 < float(config.get("rho_max", 0.3)) <= 1:
+        raise ValueError("ρ 上限必须在 (0, 1]")
     return config
 
 
@@ -361,73 +362,6 @@ def mix_cards(cards: list[torch.Tensor], weights: torch.Tensor) -> torch.Tensor:
     for card, weight in zip(cards, weights):
         mixed = mixed + weight * card
     return mixed
-
-
-def borrowing_scale(
-    gain: torch.Tensor, beta: torch.Tensor, sim_max: torch.Tensor, baseline: torch.Tensor,
-    concentration: float, mix_norm: float, *, gamma_max: float = 1.0, has_card: bool = True,
-) -> torch.Tensor:
-    """gamma = gamma_max * sigmoid(g) * sigmoid(beta * (sim_max - s0)) * c_ret。门控失败时为 0。"""
-    raw = gamma_max * torch.sigmoid(gain) * torch.sigmoid(beta * (sim_max - baseline)) * float(concentration)
-    open_gate = has_card and mix_norm > 0 and concentration > 0
-    return raw * (1.0 if open_gate else 0.0)
-
-
-def positive_beta(raw_beta: torch.Tensor) -> torch.Tensor:
-    return F.softplus(raw_beta)
-
-
-def initial_gamma_parameters(g_init: float = -1.0, beta_init: float = 10.0) -> tuple[torch.Tensor, torch.Tensor]:
-    gain = torch.tensor(float(g_init), dtype=torch.float32, requires_grad=True)
-    raw_beta = torch.tensor(log(torch.expm1(torch.tensor(float(beta_init))).item()), dtype=torch.float32, requires_grad=True)
-    return gain, raw_beta
-
-
-def gamma_proxy_loss(
-    gammas: list[torch.Tensor], anchors: list[torch.Tensor], query_grads: list[torch.Tensor], mixes: list[torch.Tensor],
-) -> torch.Tensor:
-    """L = Σ gamma * A * <g_Q, B_mix>。点积为负表示一阶上有利于降低 Query 损失。"""
-    if not gammas:
-        raise ValueError("没有可计算的模块借用")
-    total = gammas[0].new_zeros(())
-    for gamma, anchor, query_grad, mix in zip(gammas, anchors, query_grads, mixes):
-        total = total + gamma * anchor * torch.dot(query_grad.detach().reshape(-1), mix.detach().reshape(-1))
-    return total
-
-
-def borrow_mask(count: int, probability: float, seed: int) -> torch.Tensor:
-    """整条任务一起决定。True 表示这条任务允许借用。"""
-    if count < 1:
-        raise ValueError("任务数必须为正")
-    generator = torch.Generator(device="cpu")
-    generator.manual_seed(int(seed))
-    return torch.rand(count, generator=generator) >= float(probability)
-
-
-class RollingMedian:
-    """Meta-Train 相似度的滚动中位数。空窗口基线按 0 计算，决定之后才写入本条任务。"""
-
-    def __init__(self, window: int):
-        if int(window) < 1:
-            raise ValueError("滚动窗口必须为正")
-        self.window = int(window)
-        self.values: list[float] = []
-
-    def baseline(self) -> float:
-        if not self.values:
-            return 0.0
-        return float(_median(torch.tensor(self.values, dtype=torch.float32)))
-
-    def observe(self, value: float) -> None:
-        self.values.append(float(value))
-        if len(self.values) > self.window:
-            del self.values[:-self.window]
-
-    def state(self) -> list[float]:
-        return list(self.values)
-
-    def load(self, values) -> None:
-        self.values = [float(value) for value in values][-self.window:]
 
 
 def split_half_cosine(vectors: torch.Tensor, splits: int = 3) -> torch.Tensor:

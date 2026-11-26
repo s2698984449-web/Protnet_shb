@@ -224,7 +224,7 @@ def build_parameter_manifest(model) -> dict:
         module["scalar_count"] = sum(row["numel"] for row in module["parameters"])
     return {
         "modules": modules,
-        "shared_roi_box_head_owner": "Feature",
+        "shared_roi_box_head_owner": "RoiFeature",
         "frozen_buffer_names": sorted(name for name, _ in model.named_buffers()),
         "tensor_count": len(seen),
         "scalar_count": sum(row["scalar_count"] for row in modules.values()),
@@ -764,8 +764,9 @@ def _load_fomaml_memory(fomaml: Path, trained_episode_ids: list[str], saved_epoc
     if file_sha256(path) != digest:
         raise RuntimeError("任务记忆在读取期间发生变化")
     modules = payload.get("modules")
-    if modules not in (["Box", "Class"], ["Feature", "Where", "Box", "Class"]):
-        raise ValueError("任务记忆的模块必须是 Box/Class，或 Feature/Where/Box/Class")
+    five = ["Backbone", "Where", "RoiFeature", "Box", "Class"]
+    if modules not in (["Box", "Class"], ["Feature", "Where", "Box", "Class"], five):
+        raise ValueError("任务记忆的模块必须是 Box/Class、旧四模块，或五功能组")
     stored = payload.get("episodes")
     if not isinstance(stored, dict) or set(stored) != set(trained_episode_ids):
         raise ValueError("任务记忆的 Episode 和 FOMAML 训练名单不一致")
@@ -1934,11 +1935,13 @@ def load_retrieval_holdout_state(checkpoint: Path):
     bank = load_experience_bank(payload["experience_bank_dir"], payload.get("theta_sha256"))
     assert_compatible_inner_lr(bank, payload["inner_lr_snapshot"], strict=False)
     gamma = GammaController()
-    gamma.load_state_dict(payload["gamma_state"])
+    gamma.load_state_dict(payload.get("policy_state") or payload["gamma_state"])
     alpha = InnerLRController()
     alpha.load_state_dict(payload["inner_lr_state"])
-    for parameter in list(gamma.gains.values()) + list(gamma.raw_betas.values()) + list(alpha.raw.values()):
+    for parameter in list(gamma.policy.policy.parameters()) + list(alpha.raw.values()):
         parameter.requires_grad_(False)
+    if payload.get("bank_version") and payload["bank_version"] != bank["theta_sha256"]:
+        raise ValueError("留出检查点的 bank_version 与经验库 theta_hash 不一致")
     return {
         "model": payload["model"], "bank": bank, "gamma": gamma, "alpha": alpha,
         "epoch": payload.get("epoch"), "theta_sha256": payload.get("theta_sha256"),
@@ -1984,21 +1987,55 @@ def _score_adapted_episode(detector, episode, adapter, device, evaluation) -> di
         "family_id": episode["family_id"],
         "product": product,
         "ap50": float(row["ap50"]),
+        "ap75": None if row.get("ap75") is None else float(row["ap75"]),
         "normal_fp_per_image": None if row["normal_fp_per_image"] is None else float(row["normal_fp_per_image"]),
         "precision": None if row["precision"] is None else float(row["precision"]),
         "recall": None if row["recall"] is None else float(row["recall"]),
     }
 
 
+def _resolve_holdout_null_mode(
+    *,
+    soft_null: bool | None,
+    discrete_null: bool | None,
+    null_eval_threshold: float | None,
+) -> tuple[bool, float]:
+    """正式默认 soft；discrete + 阈值仅诊断。返回 (use_soft, threshold)。"""
+    from training.retrieval_memory import load_retrieval_config
+
+    config = load_retrieval_config()
+    threshold = float(
+        config.get("null_eval_threshold", 0.5)
+        if null_eval_threshold is None
+        else null_eval_threshold
+    )
+    mode = str(config.get("holdout_null_mode", "soft")).lower()
+    if discrete_null:
+        return False, threshold
+    if soft_null:
+        return True, threshold
+    if null_eval_threshold is not None:
+        return False, threshold
+    return mode != "discrete", threshold
+
+
 def run_retrieval_holdout(
     supervised: Path, checkpoint: Path, run_name: str,
     device: str = "cuda", decode_workers: int | None = None,
+    *,
+    soft_null: bool | None = None,
+    discrete_null: bool | None = None,
+    null_eval_threshold: float | None = None,
 ) -> dict:
-    """检索式 FOMAML 的留出：同一 Support 上比较无借用与检索借用，再报 Query AP50。"""
+    """检索式 FOMAML 的留出：同一 Support 上比较无借用与检索借用，再报 Query AP50/AP75。"""
     from training.evaluation import _product_macro
+    from data_proc.fomaml_episodes import episode_records
     from training.experience_bank import (
-        _cache_directories, holdout_borrow_plan, retrieval_support_adapt, task_signature,
+        _cache_directories, attach_first_order_ratio, bank_card_attenuation, gate_borrow_by_support,
+        gamma_runtime_values, holdout_borrow_plan, module_utility_report, module_utility_summary,
+        retrieval_support_adapt, support_packed_grads, task_signature,
     )
+    from training.theta0 import _usable_phase_views
 
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{0,79}", run_name):
         raise ValueError("run-name 只能使用字母、数字、连字符和下划线")
@@ -2081,13 +2118,39 @@ def run_retrieval_holdout(
             torch.cuda.reset_peak_memory_stats(device)
         detector = build_faster_rcnn(model_config, initialize_backbone=False).to(device)
         detector.load_state_dict(retrieval["model"], strict=True)
+        use_soft, threshold = _resolve_holdout_null_mode(
+            soft_null=soft_null, discrete_null=discrete_null, null_eval_threshold=null_eval_threshold,
+        )
+        discrete_null_flag = not use_soft
+        gamma.policy.null_eval_threshold = threshold
+        holdout_seed = int(config.get("seed", 20261120))
+        result["provenance"]["holdout_null"] = {
+            "discrete_null": discrete_null_flag,
+            "null_eval_threshold": threshold,
+            "soft_null": bool(use_soft),
+            "holdout_null_mode": "soft" if use_soft else "discrete",
+            "seed": holdout_seed,
+        }
         print(
             f"检索式留出：{len(episodes)} 条 Episode，经验库 {Path(retrieval['experience_bank_dir']).name}，"
-            f"epoch={retrieval['epoch']}",
+            f"epoch={retrieval['epoch']} soft_null={int(use_soft)} discrete_null={int(discrete_null_flag)} "
+            f"null_threshold={threshold:.3f} seed={holdout_seed}",
             flush=True,
         )
-        null_rows, borrow_rows = [], []
+
+        def _restore(snapshot_state):
+            detector.load_state_dict(snapshot_state, strict=True)
+            detector.eval()
+
+        def _seed_episode(episode_index: int):
+            seed = holdout_seed + int(episode_index)
+            torch.manual_seed(seed)
+            if device.type == "cuda":
+                torch.cuda.manual_seed_all(seed)
+
+        null_rows, borrow_rows, k0_rows = [], [], []
         for index, episode in enumerate(episodes, start=1):
+            _seed_episode(index)
             signature = task_signature(
                 adapter, episode, bank, detector, device, settings, theta0_state,
                 writable_cache=writable_cache, read_only=False, extra_caches=extra_caches,
@@ -2099,39 +2162,81 @@ def run_retrieval_holdout(
             }
             snapshot = {key: value.detach().cpu().clone() for key, value in detector.state_dict().items()}
             values, _hits = alpha.current()
-            # A：无借用
+            # K=0：完全不适应
+            _seed_episode(index)
+            detector.eval()
+            k0_score = _score_adapted_episode(detector, episode, adapter, device, evaluation)
+            # A：无借用、K=1（与借用臂共用同一 snapshot / 种子起点）
+            _seed_episode(index)
             detector.train()
             retrieval_support_adapt(detector, support, device, settings, values, {})
             detector.eval()
             null_score = _score_adapted_episode(detector, episode, adapter, device, evaluation)
-            detector.load_state_dict(snapshot, strict=True)
+            _restore(snapshot)
+            # 共享 θ 上的 Support / Query 梯度，用于门控与一阶贡献比 R
+            support_grads = support_packed_grads(detector, support, device, settings, bank["layouts"])
+            _support_all, query_all = episode_records(adapter, episode)
+            query_records = _usable_phase_views(
+                detector, query_all, device, settings["ignore_iou"], settings["views_per_group"],
+                settings.get("fallback_views_per_group"),
+            )
+            query_grads = support_packed_grads(detector, query_records, device, settings, bank["layouts"])
+            _restore(snapshot)
             # B：检索借用
-            plans = holdout_borrow_plan(bank, episode, keys, gamma, support)
+            step_l2 = {
+                module: float(values[module]) * float(torch.linalg.vector_norm(support_grads[module].reshape(-1)))
+                for module in values
+            }
+            plans = holdout_borrow_plan(
+                bank, episode, keys, gamma, support, step_l2=step_l2,
+                discrete_null=discrete_null_flag, null_eval_threshold=threshold,
+            )
+            gate_borrow_by_support(plans, support_grads)
+            attach_first_order_ratio(plans, support_grads, query_grads, values)
             borrow = {}
             for plan in plans:
                 if plan["inject"]:
                     borrow.update(plan["named"])
+            _seed_episode(index)
             detector.train()
             retrieval_support_adapt(detector, support, device, settings, values, borrow)
             detector.eval()
             borrow_score = _score_adapted_episode(detector, episode, adapter, device, evaluation)
-            detector.load_state_dict(snapshot, strict=True)
+            _restore(snapshot)
             row = {
                 "episode_id": episode["episode_id"],
                 "family_id": episode["family_id"],
+                "k0": k0_score,
                 "null": null_score,
                 "borrow": borrow_score,
                 "ap50_delta": borrow_score["ap50"] - null_score["ap50"],
+                "ap75_delta": (
+                    None if borrow_score.get("ap75") is None or null_score.get("ap75") is None
+                    else float(borrow_score["ap75"]) - float(null_score["ap75"])
+                ),
+                "ap50_k1_minus_k0": null_score["ap50"] - k0_score["ap50"],
+                "ap75_k1_minus_k0": (
+                    None if null_score.get("ap75") is None or k0_score.get("ap75") is None
+                    else float(null_score["ap75"]) - float(k0_score["ap75"])
+                ),
                 "borrow_injected": {plan["module"]: bool(plan["inject"]) for plan in plans},
                 "source_groups": {plan["module"]: list(plan.get("source_groups") or []) for plan in plans},
+                "modules": module_utility_report(plans, values),
             }
             result["episodes"][episode["episode_id"]] = row
+            k0_rows.append(k0_score)
             null_rows.append(null_score)
             borrow_rows.append(borrow_score)
+            ratio_parts = []
+            for name, info in row["modules"].items():
+                ratio = info["first_order_ratio"]
+                ratio_parts.append(f"{name}=na" if ratio is None else f"{name}={ratio:.3g}")
+            ratio_text = " ".join(ratio_parts)
             print(
                 f"留出 {index}/{len(episodes)} {episode['episode_id']} "
-                f"null_ap50={null_score['ap50']:.4f} borrow_ap50={borrow_score['ap50']:.4f} "
-                f"delta={row['ap50_delta']:+.4f}",
+                f"k0={k0_score['ap50']:.4f} k1={null_score['ap50']:.4f} "
+                f"borrow={borrow_score['ap50']:.4f} delta={row['ap50_delta']:+.4f} "
+                f"inject={sum(int(plan['inject']) for plan in plans)}/{len(plans)} R[{ratio_text}]",
                 flush=True,
             )
             _write_report(path, result)
@@ -2143,55 +2248,137 @@ def run_retrieval_holdout(
             per_product = {}
             for product, items in sorted(products.items()):
                 fps = [item["normal_fp_per_image"] for item in items if item["normal_fp_per_image"] is not None]
+                ap75s = [item["ap75"] for item in items if item.get("ap75") is not None]
                 per_product[product] = {
                     "ap50": float(sum(item["ap50"] for item in items) / len(items)),
+                    "ap75": None if not ap75s else float(sum(ap75s) / len(ap75s)),
                     "ap": None,
                     "precision": None,
                     "recall": None,
                     "normal_fp_per_image": float(sum(fps) / len(fps)) if fps else None,
                 }
+            ap75_episode = [row["ap75"] for row in rows if row.get("ap75") is not None]
             return {
                 "product_macro": _product_macro(list(per_product.values())),
                 "per_product": per_product,
                 "episode_mean_ap50": float(sum(row["ap50"] for row in rows) / len(rows)),
+                "episode_mean_ap75": None if not ap75_episode else float(sum(ap75_episode) / len(ap75_episode)),
             }
 
+        def _ratio_summary(episodes_payload: dict) -> dict:
+            from training.retrieval_memory import MODULES
+
+            summary = {}
+            for module in MODULES:
+                ratios, applied_l2, step_l2, nulls, rhos = [], [], [], [], []
+                for row in episodes_payload.values():
+                    info = row["modules"][module]
+                    if info["first_order_ratio"] is not None:
+                        ratios.append(float(info["first_order_ratio"]))
+                    applied_l2.append(float(info["applied_borrow_l2"]))
+                    step_l2.append(float(info["alpha_grad_l2"]))
+                    nulls.append(float(info.get("null_probability") or 0.0))
+                    rhos.append(float(info.get("rho") or info.get("gamma") or 0.0))
+                mean_step = None if not step_l2 else float(sum(step_l2) / len(step_l2))
+                mean_applied = None if not applied_l2 else float(sum(applied_l2) / len(applied_l2))
+                summary[module] = {
+                    "mean_first_order_ratio": None if not ratios else float(sum(ratios) / len(ratios)),
+                    "median_first_order_ratio": (
+                        None if not ratios else float(sorted(ratios)[len(ratios) // 2])
+                    ),
+                    "mean_null_probability": float(sum(nulls) / len(nulls)),
+                    "mean_rho": float(sum(rhos) / len(rhos)),
+                    "mean_applied_borrow_l2": mean_applied,
+                    "mean_alpha_gs_l2": mean_step,
+                    "mean_borrow_over_step": (
+                        None if mean_step is None or mean_step <= 0 or mean_applied is None
+                        else float(mean_applied / mean_step)
+                    ),
+                }
+            return summary
+
+        k0_summary = _macro(k0_rows)
         null_summary = _macro(null_rows)
         borrow_summary = _macro(borrow_rows)
         deltas = [float(result["episodes"][eid]["ap50_delta"]) for eid in result["episodes"]]
+        k1_minus_k0 = [float(result["episodes"][eid]["ap50_k1_minus_k0"]) for eid in result["episodes"]]
+        ap75_deltas = [
+            float(result["episodes"][eid]["ap75_delta"])
+            for eid in result["episodes"]
+            if result["episodes"][eid].get("ap75_delta") is not None
+        ]
         result["summary"] = {
+            "k0": k0_summary,
             "null": null_summary,
             "borrow": borrow_summary,
+            "ap50_k1_minus_k0_product_macro": (
+                float(null_summary["product_macro"]["ap50"]) - float(k0_summary["product_macro"]["ap50"])
+            ),
+            "ap50_k1_minus_k0_episode_mean": float(sum(k1_minus_k0) / len(k1_minus_k0)),
             "ap50_product_macro_delta": (
                 float(borrow_summary["product_macro"]["ap50"]) - float(null_summary["product_macro"]["ap50"])
             ),
             "ap50_episode_mean_delta": float(sum(deltas) / len(deltas)),
             "ap50_positive_episodes": sum(delta > 0 for delta in deltas),
             "ap50_negative_episodes": sum(delta < 0 for delta in deltas),
+            "ap75_product_macro_delta": (
+                None
+                if borrow_summary["product_macro"].get("ap75") is None
+                or null_summary["product_macro"].get("ap75") is None
+                else float(borrow_summary["product_macro"]["ap75"]) - float(null_summary["product_macro"]["ap75"])
+            ),
+            "ap75_episode_mean_delta": None if not ap75_deltas else float(sum(ap75_deltas) / len(ap75_deltas)),
             "episodes": len(episodes),
+            "module_utility": module_utility_summary(result["episodes"]),
+            "attenuation": {
+                "cards": bank_card_attenuation(bank),
+                "gamma": gamma_runtime_values(gamma),
+                "first_order": _ratio_summary(result["episodes"]),
+            },
         }
         result["elapsed_seconds"] = perf_counter() - start
         if device.type == "cuda":
             result["peak_cuda_allocated_mib"] = torch.cuda.max_memory_allocated(device) / 2**20
         result["complete"] = True
         _write_report(path, result)
+        ap75_text = ""
+        if borrow_summary["product_macro"].get("ap75") is not None:
+            ap75_text = (
+                f" k0_ap75={k0_summary['product_macro']['ap75']:.6f} "
+                f"k1_ap75={null_summary['product_macro']['ap75']:.6f} "
+                f"borrow_ap75={borrow_summary['product_macro']['ap75']:.6f} "
+                f"borrow-k1_ap75={result['summary']['ap75_product_macro_delta']:+.6f}"
+            )
         print(
-            f"检索式留出完成：null_ap50={null_summary['product_macro']['ap50']:.6f} "
+            f"检索式留出完成：k0_ap50={k0_summary['product_macro']['ap50']:.6f} "
+            f"k1_ap50={null_summary['product_macro']['ap50']:.6f} "
             f"borrow_ap50={borrow_summary['product_macro']['ap50']:.6f} "
-            f"delta={result['summary']['ap50_product_macro_delta']:+.6f}",
+            f"k1-k0={result['summary']['ap50_k1_minus_k0_product_macro']:+.6f} "
+            f"borrow-k1={result['summary']['ap50_product_macro_delta']:+.6f}"
+            f"{ap75_text}",
             flush=True,
         )
     return result
 
 
-def run_holdout(supervised: Path, fomaml: Path, run_name: str,
-                device: str = "cuda", decode_workers: int | None = None) -> dict:
+def run_holdout(
+    supervised: Path, fomaml: Path, run_name: str,
+    device: str = "cuda", decode_workers: int | None = None,
+    *,
+    soft_null: bool | None = None,
+    discrete_null: bool | None = None,
+    null_eval_threshold: float | None = None,
+) -> dict:
     fomaml = Path(fomaml)
     query_best = fomaml.parent / "query_best.pt" if fomaml.name == "last.pt" else fomaml
     if query_best.is_file():
         payload = load_checkpoint(query_best)
         if payload.get("experience_bank_dir"):
-            return run_retrieval_holdout(supervised, query_best, run_name, device, decode_workers)
+            return run_retrieval_holdout(
+                supervised, query_best, run_name, device, decode_workers,
+                soft_null=soft_null, discrete_null=discrete_null,
+                null_eval_threshold=null_eval_threshold,
+            )
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{0,79}", run_name):
         raise ValueError("run-name 只能使用字母、数字、连字符和下划线")
     os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")
