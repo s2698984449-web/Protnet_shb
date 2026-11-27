@@ -29,9 +29,13 @@ module_loo:
   # 强度：同任务配对排序（0.1vs0.2 / 0.2vs0.3 / 0.1vs0.3）；正式注入仍用策略 ρ。
   rho_probes: [0.1, 0.2, 0.3]
   rho_pairwise: true
+  # 相对死区比例；同 RNG 双评 ε 恒为 0，已改为相对阈值 + EMA。
+  rho_deadzone_rel: 0.05
   # 卡片：保留单卡相对 Null；≥2 张时再做轻量配对排序。
   card_probe: true
   card_pairwise: true
+  # 每步 ρ/卡二选一，显著缩短 outer 中的反事实适配。
+  probe_alternate: true
 ap_utility:
   # 默认隔离：不进主决策损失；every_n=0 关闭训练步。符号一致率留给 Meta-Val/诊断。
   enabled: false

@@ -1850,6 +1850,8 @@ def query_total_packed_grads(
     from training.fomaml_roi import live_detection_loss
     from training.theta0 import InsufficientEpisodeAnnotations
 
+    import gc
+
     trainable = [parameter for parameter in detector.parameters() if parameter.requires_grad]
     total_accum = [torch.zeros_like(parameter) for parameter in trainable]
     total_loss = None
@@ -1866,6 +1868,7 @@ def query_total_packed_grads(
         total_loss = total.detach() if total_loss is None else total_loss + total.detach()
         used += 1
         del total, total_grads
+        gc.collect()
     if used == 0 or total_loss is None:
         raise InsufficientEpisodeAnnotations("Support 或 Query 没有可用的检测监督")
     scale = float(used)
@@ -1876,6 +1879,9 @@ def query_total_packed_grads(
     detector.zero_grad(set_to_none=True)
     detector.eval()
     del total_accum
+    gc.collect()
+    if device.type == "cuda":
+        torch.cuda.empty_cache()
     return total_loss / scale, query_grads, packed_query
 
 
@@ -2432,6 +2438,8 @@ def counterfactual_adapt_query_loss(
     rng_cuda,
 ) -> float:
     """反事实臂：恢复快照 → 注入 → Support 一步 → Query 损失。不打包梯度、不留参数快照。"""
+    import gc
+
     from training.theta0 import _add_named_delta, _mean_module_grads
 
     detector.load_state_dict(snapshot, strict=True)
@@ -2451,7 +2459,12 @@ def counterfactual_adapt_query_loss(
     torch.set_rng_state(rng_cpu)
     if rng_cuda is not None:
         torch.cuda.set_rng_state(rng_cuda, device)
-    return float(mean_query_detection_loss(detector, query_records, device, settings))
+    value = float(mean_query_detection_loss(detector, query_records, device, settings))
+    detector.zero_grad(set_to_none=True)
+    gc.collect()
+    if device.type == "cuda":
+        torch.cuda.empty_cache()
+    return value
 
 
 def _pack_module_grad(detector, grads: list[torch.Tensor], module: str, layout: list[dict]) -> torch.Tensor:
@@ -2557,12 +2570,29 @@ def module_rho_and_card_probes(
     rho_probe = None
     card_probe = None
     shared_eps = float(getattr(controller.policy, "_probe_noise_eps", 0.0) or 0.0)
+    deadzone_rel = float(getattr(controller.policy, "rho_deadzone_rel", 0.05) or 0.0)
+    # 交替：偶数步只探 ρ，奇数步只探卡，避免同一步 5 次适配。
+    phase = int(getattr(controller.policy, "_probe_phase", 0) or 0)
+    do_rho = True
+    do_card = True
+    if bool(getattr(controller.policy, "probe_alternate", True)):
+        do_rho = (phase % 2 == 0)
+        do_card = not do_rho
+        controller.policy._probe_phase = phase + 1
 
     def _adapt_and_loss(borrow: dict) -> float:
         return counterfactual_adapt_query_loss(
             detector, snapshot, support_records, query_records, device, settings, alphas, borrow,
             rng_cpu=rng_cpu, rng_cuda=rng_cuda,
         )
+
+    def _pair_eps(utility_a: float, utility_b: float) -> float:
+        nonlocal shared_eps
+        scale = max(abs(float(utility_a)), abs(float(utility_b)), 1e-6)
+        eps = max(float(shared_eps), float(deadzone_rel) * float(scale))
+        shared_eps = 0.9 * float(shared_eps) + 0.1 * float(eps)
+        controller.policy._probe_noise_eps = float(shared_eps)
+        return float(eps)
 
     def _others_borrow(module: str) -> dict:
         borrow = {}
@@ -2601,7 +2631,7 @@ def module_rho_and_card_probes(
         else:
             loss_without = _adapt_and_loss(_others_borrow(module))
             baselines[module] = float(loss_without)
-        if rho_probe is None:
+        if do_rho and rho_probe is None:
             pair = controller.policy.next_rho_pair()
             if pair is not None:
                 rho_a, rho_b = float(pair[0]), float(pair[1])
@@ -2617,18 +2647,10 @@ def module_rho_and_card_probes(
                     named_a = _rho_named(module, rho_a, step, mix)
                     named_b = _rho_named(module, rho_b, step, mix)
                     if named_a is not None and named_b is not None:
-                        loss_a = _adapt_and_loss(named_a)
-                        # 同档重复一次 → 噪声死区；卡配对复用该 ε，不再双评。
-                        loss_a_rep = _adapt_and_loss(named_a)
-                        loss_b = _adapt_and_loss(named_b)
-                        utility_a = float(loss_without - loss_a)
-                        utility_a_rep = float(loss_without - loss_a_rep)
-                        utility_b = float(loss_without - loss_b)
-                        eps = abs(utility_a - utility_a_rep)
-                        # EMA 平滑跨步噪声底，避免偶发 0 死区。
-                        shared_eps = 0.9 * float(shared_eps) + 0.1 * float(eps)
-                        controller.policy._probe_noise_eps = float(shared_eps)
-                        eps = max(float(eps), float(shared_eps))
+                        # 同 RNG 下重复评价 ε 恒为 0，只评两档；死区用相对阈值。
+                        utility_a = float(loss_without - _adapt_and_loss(named_a))
+                        utility_b = float(loss_without - _adapt_and_loss(named_b))
+                        eps = _pair_eps(utility_a, utility_b)
                         delta = utility_a - utility_b
                         winner = None
                         if abs(delta) > eps:
@@ -2646,7 +2668,7 @@ def module_rho_and_card_probes(
                         }
         mask = plan.get("candidate_mask")
         units = plan.get("units")
-        if card_probe is None and torch.is_tensor(mask) and torch.is_tensor(units):
+        if do_card and card_probe is None and torch.is_tensor(mask) and torch.is_tensor(units):
             rho_card = float(plan["rho"].detach()) if torch.is_tensor(plan.get("rho")) else float(plan.get("rho") or 0.0)
             if rho_card <= 1e-8 and rho_probe is not None:
                 if rho_probe.get("pairwise") and rho_probe.get("winner") is not None:
@@ -2665,7 +2687,7 @@ def module_rho_and_card_probes(
                 if named_a is not None and named_b is not None:
                     utility_a = float(loss_without - _adapt_and_loss(named_a))
                     utility_b = float(loss_without - _adapt_and_loss(named_b))
-                    eps = float(rho_probe.get("eps") if rho_probe and rho_probe.get("pairwise") else shared_eps)
+                    eps = _pair_eps(utility_a, utility_b)
                     card_probe = {
                         "module": module,
                         "pairwise": True,
@@ -2689,7 +2711,7 @@ def module_rho_and_card_probes(
                             "rho": float(rho_card),
                             "utility": float(loss_without - _adapt_and_loss(named)),
                         }
-        if rho_probe is not None and card_probe is not None:
+        if (not do_rho or rho_probe is not None) and (not do_card or card_probe is not None):
             break
     detector.load_state_dict(snapshot, strict=True)
     return {"rho_probe": rho_probe, "card_probe": card_probe}
@@ -2761,37 +2783,48 @@ def retrieval_fomaml_step(
     inner_change = max(float(value.abs().max()) for block in module_delta.values() for value in block.values())
     if inner_change <= 0:
         raise AssertionError("Support 适配没有更新检测器")
+    import gc
+
     outer_started = perf_counter()
+    outer_parts = {"query_grad": 0.0, "null": 0.0, "loo": 0.0, "probes": 0.0, "sgd": 0.0}
+    # 多轮反事实前先回收碎片，避免读大图时 CPU MemoryError。
+    gc.collect()
+    if device.type == "cuda":
+        torch.cuda.empty_cache()
     rng_cpu = torch.get_rng_state()
     rng_cuda = torch.cuda.get_rng_state(device) if device.type == "cuda" else None
     # 借用臂：Query 损失 + θ 外循环梯度
+    part_t = perf_counter()
     query_loss, query_grads, packed_query = query_total_packed_grads(
         detector, query_records, device, settings, bank["layouts"],
     )
     loss_borrow = float(query_loss.detach()) if torch.is_tensor(query_loss) else float(query_loss)
+    outer_parts["query_grad"] = perf_counter() - part_t
     detector.load_state_dict(snapshot, strict=True)
-    # 对照臂：相同 Support/Query/RNG，无借用
-    torch.set_rng_state(rng_cpu)
-    if rng_cuda is not None:
-        torch.cuda.set_rng_state(rng_cuda, device)
-    retrieval_support_adapt(detector, support_records, device, settings, alphas, {}, bank["layouts"])
-    torch.set_rng_state(rng_cpu)
-    if rng_cuda is not None:
-        torch.cuda.set_rng_state(rng_cuda, device)
-    loss_null = mean_query_detection_loss(detector, query_records, device, settings)
+    # 对照臂：相同 Support/Query/RNG，无借用（轻路径，不打包梯度）
+    part_t = perf_counter()
+    loss_null = counterfactual_adapt_query_loss(
+        detector, snapshot, support_records, query_records, device, settings, alphas, {},
+        rng_cpu=rng_cpu, rng_cuda=rng_cuda,
+    )
+    outer_parts["null"] = perf_counter() - part_t
     utility = float(loss_null - loss_borrow)
     rho_probe = None
     card_probe = None
     if allow_borrow and loo_modules:
+        part_t = perf_counter()
         module_utilities, loo_kinds, loo_baselines = module_leave_one_out_utilities(
             detector, snapshot, plans, support_records, query_records, device, settings, alphas,
             bank["layouts"], loss_borrow, loo_modules, rng_cpu=rng_cpu, rng_cuda=rng_cuda,
         )
+        outer_parts["loo"] = perf_counter() - part_t
+        part_t = perf_counter()
         probes = module_rho_and_card_probes(
             detector, snapshot, plans, support_records, query_records, device, settings, alphas,
             bank["layouts"], loo_modules, controller, rng_cpu=rng_cpu, rng_cuda=rng_cuda,
             loss_without_by_module=loo_baselines,
         )
+        outer_parts["probes"] = perf_counter() - part_t
         rho_probe = probes.get("rho_probe")
         card_probe = probes.get("card_probe")
         del loo_baselines, probes
@@ -2801,6 +2834,7 @@ def retrieval_fomaml_step(
     restored, owner = _state_difference(detector, snapshot)
     if restored != 0.0:
         raise AssertionError(f"外更新前没有恢复到借用前的共享参数：{owner} {restored}")
+    part_t = perf_counter()
     optimizer.zero_grad(set_to_none=True)
     trainable = [parameter for parameter in detector.parameters() if parameter.requires_grad]
     if len(trainable) != len(query_grads):
@@ -2812,6 +2846,7 @@ def retrieval_fomaml_step(
     ).item()
     optimizer.step()
     optimizer.zero_grad(set_to_none=True)
+    outer_parts["sgd"] = perf_counter() - part_t
     outer_seconds = perf_counter() - outer_started
     updated = _parameter_snapshot(detector)
     outer_change = max(float((updated[name] - before[name]).abs().max()) for name in before)
@@ -2920,6 +2955,7 @@ def retrieval_fomaml_step(
         "module_delta": module_delta,
         "inner_seconds": inner_seconds,
         "outer_seconds": outer_seconds,
+        "outer_parts": {key: float(value) for key, value in outer_parts.items()},
         "retrieval_seconds": retrieval_seconds,
         "module_choices": choices,
         "reuse_weights": weights,

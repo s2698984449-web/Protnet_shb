@@ -326,11 +326,19 @@ class TransferPolicyController:
         self.rho_pairwise = bool(loo.get("rho_pairwise", True))
         self.card_probe = bool(loo.get("card_probe", True))
         self.card_pairwise = bool(loo.get("card_pairwise", True))
+        # 每步只做 ρ 或卡其一，把 outer 反事实适配次数砍半。
+        self.probe_alternate = bool(loo.get("probe_alternate", True))
+        # 相对死区：ε = max(EMA, rho_deadzone_rel * max(|Ua|,|Ub|))；不再做同 RNG 双评。
+        self.rho_deadzone_rel = float(loo.get("rho_deadzone_rel", 0.05))
+        if self.rho_deadzone_rel < 0.0:
+            raise ValueError("module_loo.rho_deadzone_rel 必须 ≥ 0")
         self._loo_cursor = 0
         self._rho_probe_cursor = 0
         self._rho_pair_cursor = 0
         self._card_probe_cursor = 0
         self._card_pair_cursor = 0
+        self._probe_noise_eps = 0.0
+        self._probe_phase = 0
         ap_cfg = config.get("ap_utility") or {}
         # AP Head 默认隔离：不进主决策损失；every_n=0 关闭训练步。
         self.ap_utility_enabled = bool(ap_cfg.get("enabled", False))

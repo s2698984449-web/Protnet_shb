@@ -252,6 +252,8 @@ class TransferPolicyTest(unittest.TestCase):
         self.assertTrue(controller.policy.rho_pairwise)
         self.assertTrue(controller.policy.card_probe)
         self.assertTrue(controller.policy.card_pairwise)
+        self.assertTrue(controller.policy.probe_alternate)
+        self.assertAlmostEqual(float(controller.policy.rho_deadzone_rel), 0.05, places=5)
         self.assertFalse(controller.policy.ap_utility_enabled)
         self.assertEqual(int(controller.policy.ap_utility_every_n_steps), 0)
         self.assertEqual(

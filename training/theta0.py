@@ -1025,8 +1025,27 @@ def _train(detector, adapter, episodes, provenance, run_dir, device, resume_stat
         saved_fingerprint = dict(resume_state["fingerprint"])
         saved_fingerprint.setdefault("experience_bank", "")
         saved_fingerprint.setdefault("data_profile", "")
-        if json.dumps(saved_fingerprint, sort_keys=True) != json.dumps(expected, sort_keys=True):
+        # epochs 允许在续训时提高（或与断点对齐）；其余指纹必须一致。
+        saved_settings = dict(saved_fingerprint.get("settings") or {})
+        expected_settings = dict(expected.get("settings") or {})
+        saved_epochs = int(saved_settings.pop("epochs", 0) or 0)
+        expected_epochs = int(expected_settings.pop("epochs", 0) or 0)
+        comparable_saved = dict(saved_fingerprint)
+        comparable_expected = dict(expected)
+        comparable_saved["settings"] = saved_settings
+        comparable_expected["settings"] = expected_settings
+        if json.dumps(comparable_saved, sort_keys=True) != json.dumps(comparable_expected, sort_keys=True):
             raise ValueError("断点的折、任务或训练开关和本次命令不一致")
+        resume_epoch = int(resume_state.get("epoch") or 1)
+        if expected_epochs < resume_epoch:
+            raise ValueError(
+                f"续训 epochs={expected_epochs} 小于断点已进行到的 epoch={resume_epoch}"
+            )
+        if expected_epochs != saved_epochs:
+            print(
+                f"FOMAML 续训：epochs {saved_epochs} → {expected_epochs}（断点 epoch={resume_epoch}）",
+                flush=True,
+            )
         if resume_state.get("code") != provenance.get("code"):
             print("FOMAML 续训：代码与断点时不同，任务和开关一致，从上次完成的外更新继续", flush=True)
         detector.load_state_dict(resume_state["model"])
@@ -1378,6 +1397,7 @@ def _train(detector, adapter, episodes, provenance, run_dir, device, resume_stat
                 }, memory_parts)
                 step["module_choices"] = choices
                 step["reuse_weights"] = reuse_weights
+                outer_parts = step.pop("outer_parts", None) or {}
                 step["seconds"] = {
                     "prescreen": prescreen_seconds,
                     "backbone": select_times.get("Backbone", 0.0),
@@ -1387,6 +1407,11 @@ def _train(detector, adapter, episodes, provenance, run_dir, device, resume_stat
                     "class": select_times.get("Class", 0.0),
                     "inner": step.pop("inner_seconds"),
                     "outer": step.pop("outer_seconds"),
+                    "outer_query_grad": float(outer_parts.get("query_grad", 0.0)),
+                    "outer_null": float(outer_parts.get("null", 0.0)),
+                    "outer_loo": float(outer_parts.get("loo", 0.0)),
+                    "outer_probes": float(outer_parts.get("probes", 0.0)),
+                    "outer_sgd": float(outer_parts.get("sgd", 0.0)),
                 }
                 if auditing and ranking is not None:
                     audit = result["prescreen_audit"]
@@ -1426,7 +1451,10 @@ def _train(detector, adapter, episodes, provenance, run_dir, device, resume_stat
                         f"sec prescreen={seconds['prescreen']:.2f} backbone={seconds['backbone']:.2f} "
                         f"where={seconds['where']:.2f} roi={seconds['roi_feature']:.2f} "
                         f"box={seconds['box']:.2f} class={seconds['class']:.2f} "
-                        f"inner={seconds['inner']:.2f} outer={seconds['outer']:.2f}",
+                        f"inner={seconds['inner']:.2f} outer={seconds['outer']:.2f} "
+                        f"(qg={seconds['outer_query_grad']:.2f} null={seconds['outer_null']:.2f} "
+                        f"loo={seconds['outer_loo']:.2f} probes={seconds['outer_probes']:.2f} "
+                        f"sgd={seconds['outer_sgd']:.2f})",
                         flush=True,
                     )
                     bound_hits = step.get("inner_lr_bound_hits") or {}

@@ -237,11 +237,15 @@ class UnifiedDetectionAdapter:
 
 
 def image_to_tensor(path: str):
+    """读图为 CHW float32；先走 uint8 再转 float，避免直接 float32 大数组峰值翻倍。"""
     import torch
 
     with Image.open(path) as image:
-        pixels = np.asarray(image.convert("RGB"), dtype=np.float32)
-    return torch.from_numpy(pixels).permute(2, 0, 1) / 255.0
+        rgb = np.asarray(image.convert("RGB"), dtype=np.uint8)
+    tensor = torch.from_numpy(np.ascontiguousarray(rgb)).permute(2, 0, 1).to(dtype=torch.float32)
+    tensor.div_(255.0)
+    del rgb
+    return tensor
 
 
 def target_for_model(record: dict) -> dict:
