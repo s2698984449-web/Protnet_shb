@@ -2418,6 +2418,42 @@ def retrieval_support_adapt(
     }
 
 
+def counterfactual_adapt_query_loss(
+    detector,
+    snapshot: dict,
+    support_records,
+    query_records,
+    device,
+    settings: dict,
+    alphas: dict[str, float],
+    borrow_named: dict,
+    *,
+    rng_cpu,
+    rng_cuda,
+) -> float:
+    """反事实臂：恢复快照 → 注入 → Support 一步 → Query 损失。不打包梯度、不留参数快照。"""
+    from training.theta0 import _add_named_delta, _mean_module_grads
+
+    detector.load_state_dict(snapshot, strict=True)
+    torch.set_rng_state(rng_cpu)
+    if rng_cuda is not None:
+        torch.cuda.set_rng_state(rng_cuda, device)
+    if borrow_named:
+        _add_named_delta(detector, borrow_named)
+    ran = False
+    for _ in range(int(settings["inner_steps"])):
+        loss, grads = _mean_module_grads(detector, support_records, device, settings)
+        apply_module_inner_step(detector, grads, alphas, float(settings["grad_clip_norm"]))
+        del loss, grads
+        ran = True
+    if not ran:
+        raise AssertionError("Support 适应没有执行")
+    torch.set_rng_state(rng_cpu)
+    if rng_cuda is not None:
+        torch.cuda.set_rng_state(rng_cuda, device)
+    return float(mean_query_detection_loss(detector, query_records, device, settings))
+
+
 def _pack_module_grad(detector, grads: list[torch.Tensor], module: str, layout: list[dict]) -> torch.Tensor:
     trainable = [(name, parameter) for name, parameter in detector.named_parameters() if parameter.requires_grad]
     if len(trainable) != len(grads):
@@ -2445,24 +2481,22 @@ def module_leave_one_out_utilities(
     *,
     rng_cpu,
     rng_cuda,
-) -> tuple[dict[str, float], dict[str, str]]:
-    """模块条件贡献。已注入：U_m=L_{-m}-L_all；未注入：U_m=L_all-L_{all+m}（add-one，供重开）。"""
+) -> tuple[dict[str, float], dict[str, str], dict[str, float]]:
+    """模块条件贡献。已注入：U_m=L_{-m}-L_all；未注入：U_m=L_all-L_{all+m}（add-one，供重开）。
+
+    第三项 `loss_without_by_module`：该模块关闭时的 Query 损失，供 ρ/卡探针复用，避免再跑一轮适配。
+    """
+    del layouts  # 反事实轻路径不打包梯度
     utilities: dict[str, float] = {}
     kinds: dict[str, str] = {}
+    loss_without_by_module: dict[str, float] = {}
     by_module = {plan["module"]: plan for plan in plans}
 
     def _adapt_and_loss(borrow: dict) -> float:
-        detector.load_state_dict(snapshot, strict=True)
-        torch.set_rng_state(rng_cpu)
-        if rng_cuda is not None:
-            torch.cuda.set_rng_state(rng_cuda, device)
-        retrieval_support_adapt(
-            detector, support_records, device, settings, alphas, borrow, layouts,
+        return counterfactual_adapt_query_loss(
+            detector, snapshot, support_records, query_records, device, settings, alphas, borrow,
+            rng_cpu=rng_cpu, rng_cuda=rng_cuda,
         )
-        torch.set_rng_state(rng_cpu)
-        if rng_cuda is not None:
-            torch.cuda.set_rng_state(rng_cuda, device)
-        return float(mean_query_detection_loss(detector, query_records, device, settings))
 
     for module in loo_modules:
         plan = by_module.get(module)
@@ -2477,9 +2511,12 @@ def module_leave_one_out_utilities(
                     continue
                 borrow.update(other["named"])
             loss_without = _adapt_and_loss(borrow)
+            loss_without_by_module[module] = float(loss_without)
             utilities[module] = float(loss_without - float(loss_all))
             kinds[module] = "leave_one_out"
             continue
+        # 未注入：正式臂已不含该模块，loss_all 即「无该模块」基线。
+        loss_without_by_module[module] = float(loss_all)
         candidate = plan.get("candidate_named") or {}
         if not candidate:
             utilities[module] = 0.0
@@ -2494,7 +2531,7 @@ def module_leave_one_out_utilities(
         utilities[module] = float(float(loss_all) - loss_with)
         kinds[module] = "add_one"
     detector.load_state_dict(snapshot, strict=True)
-    return utilities, kinds
+    return utilities, kinds, loss_without_by_module
 
 
 def module_rho_and_card_probes(
@@ -2512,24 +2549,20 @@ def module_rho_and_card_probes(
     *,
     rng_cpu,
     rng_cuda,
+    loss_without_by_module: dict[str, float] | None = None,
 ) -> dict:
     """对 LOO 目标模块做同任务 ρ 配对 + 单卡/卡配对；相对「无该模块」算 Query 效用。"""
     by_module = {plan["module"]: plan for plan in plans}
+    baselines = dict(loss_without_by_module or {})
     rho_probe = None
     card_probe = None
+    shared_eps = float(getattr(controller.policy, "_probe_noise_eps", 0.0) or 0.0)
 
     def _adapt_and_loss(borrow: dict) -> float:
-        detector.load_state_dict(snapshot, strict=True)
-        torch.set_rng_state(rng_cpu)
-        if rng_cuda is not None:
-            torch.cuda.set_rng_state(rng_cuda, device)
-        retrieval_support_adapt(
-            detector, support_records, device, settings, alphas, borrow, layouts,
+        return counterfactual_adapt_query_loss(
+            detector, snapshot, support_records, query_records, device, settings, alphas, borrow,
+            rng_cpu=rng_cpu, rng_cuda=rng_cuda,
         )
-        torch.set_rng_state(rng_cpu)
-        if rng_cuda is not None:
-            torch.cuda.set_rng_state(rng_cuda, device)
-        return float(mean_query_detection_loss(detector, query_records, device, settings))
 
     def _others_borrow(module: str) -> dict:
         borrow = {}
@@ -2563,7 +2596,11 @@ def module_rho_and_card_probes(
         mix = plan.get("vector")
         if step <= 0.0 or not torch.is_tensor(mix):
             continue
-        loss_without = _adapt_and_loss(_others_borrow(module))
+        if module in baselines:
+            loss_without = float(baselines[module])
+        else:
+            loss_without = _adapt_and_loss(_others_borrow(module))
+            baselines[module] = float(loss_without)
         if rho_probe is None:
             pair = controller.policy.next_rho_pair()
             if pair is not None:
@@ -2581,13 +2618,17 @@ def module_rho_and_card_probes(
                     named_b = _rho_named(module, rho_b, step, mix)
                     if named_a is not None and named_b is not None:
                         loss_a = _adapt_and_loss(named_a)
-                        # 同档重复评价 → 噪声死区 ε
+                        # 同档重复一次 → 噪声死区；卡配对复用该 ε，不再双评。
                         loss_a_rep = _adapt_and_loss(named_a)
                         loss_b = _adapt_and_loss(named_b)
                         utility_a = float(loss_without - loss_a)
                         utility_a_rep = float(loss_without - loss_a_rep)
                         utility_b = float(loss_without - loss_b)
                         eps = abs(utility_a - utility_a_rep)
+                        # EMA 平滑跨步噪声底，避免偶发 0 死区。
+                        shared_eps = 0.9 * float(shared_eps) + 0.1 * float(eps)
+                        controller.policy._probe_noise_eps = float(shared_eps)
+                        eps = max(float(eps), float(shared_eps))
                         delta = utility_a - utility_b
                         winner = None
                         if abs(delta) > eps:
@@ -2622,15 +2663,9 @@ def module_rho_and_card_probes(
                 named_a = _card_named(module, rho_card, step, units[index_a])
                 named_b = _card_named(module, rho_card, step, units[index_b])
                 if named_a is not None and named_b is not None:
-                    loss_a = _adapt_and_loss(named_a)
-                    loss_a_rep = _adapt_and_loss(named_a)
-                    loss_b = _adapt_and_loss(named_b)
-                    utility_a = float(loss_without - loss_a)
-                    utility_a_rep = float(loss_without - loss_a_rep)
-                    utility_b = float(loss_without - loss_b)
-                    eps = abs(utility_a - utility_a_rep)
-                    if rho_probe and rho_probe.get("pairwise"):
-                        eps = max(float(eps), float(rho_probe.get("eps") or 0.0))
+                    utility_a = float(loss_without - _adapt_and_loss(named_a))
+                    utility_b = float(loss_without - _adapt_and_loss(named_b))
+                    eps = float(rho_probe.get("eps") if rho_probe and rho_probe.get("pairwise") else shared_eps)
                     card_probe = {
                         "module": module,
                         "pairwise": True,
@@ -2748,16 +2783,18 @@ def retrieval_fomaml_step(
     rho_probe = None
     card_probe = None
     if allow_borrow and loo_modules:
-        module_utilities, loo_kinds = module_leave_one_out_utilities(
+        module_utilities, loo_kinds, loo_baselines = module_leave_one_out_utilities(
             detector, snapshot, plans, support_records, query_records, device, settings, alphas,
             bank["layouts"], loss_borrow, loo_modules, rng_cpu=rng_cpu, rng_cuda=rng_cuda,
         )
         probes = module_rho_and_card_probes(
             detector, snapshot, plans, support_records, query_records, device, settings, alphas,
             bank["layouts"], loo_modules, controller, rng_cpu=rng_cpu, rng_cuda=rng_cuda,
+            loss_without_by_module=loo_baselines,
         )
         rho_probe = probes.get("rho_probe")
         card_probe = probes.get("card_probe")
+        del loo_baselines, probes
     else:
         module_utilities, loo_kinds = {}, {}
     detector.load_state_dict(snapshot, strict=True)
