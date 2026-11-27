@@ -323,12 +323,17 @@ class TransferPolicyController:
         for value in self.rho_probes:
             if not 0.0 < value <= self.rho_max + 1e-8:
                 raise ValueError(f"module_loo.rho_probes 须在 (0, rho_max]，收到 {value}")
+        self.rho_pairwise = bool(loo.get("rho_pairwise", True))
         self.card_probe = bool(loo.get("card_probe", True))
+        self.card_pairwise = bool(loo.get("card_pairwise", True))
         self._loo_cursor = 0
         self._rho_probe_cursor = 0
+        self._rho_pair_cursor = 0
         self._card_probe_cursor = 0
+        self._card_pair_cursor = 0
         ap_cfg = config.get("ap_utility") or {}
-        self.ap_utility_enabled = bool(ap_cfg.get("enabled", True))
+        # AP Head 默认隔离：不进主决策损失；every_n=0 关闭训练步。
+        self.ap_utility_enabled = bool(ap_cfg.get("enabled", False))
         self.ap_utility_every_n_steps = max(0, int(ap_cfg.get("every_n_steps", 0)))
         self.policy = ConditionalTransferMLP(
             key_dim=self.key_dim,
@@ -360,6 +365,36 @@ class TransferPolicyController:
         self._rho_probe_cursor += 1
         return value
 
+    def rho_probe_pairs(self) -> list[tuple[float, float]]:
+        """同任务配对：(0.1,0.2)、(0.2,0.3)、(0.1,0.3)。"""
+        values = list(self.rho_probes)
+        if len(values) < 2:
+            return []
+        pairs: list[tuple[float, float]] = []
+        for left in range(len(values)):
+            for right in range(left + 1, len(values)):
+                pairs.append((float(values[left]), float(values[right])))
+        # 固定轮换顺序：相邻优先，再跨档
+        ordered: list[tuple[float, float]] = []
+        for index in range(len(values) - 1):
+            ordered.append((float(values[index]), float(values[index + 1])))
+        for pair in pairs:
+            if pair not in ordered and (pair[1], pair[0]) not in ordered:
+                ordered.append(pair)
+        return ordered
+
+    def next_rho_pair(self) -> tuple[float, float] | None:
+        """轮换一对 ρ；不足两档则退回单档 (ρ, None 用单探针路径)。"""
+        if not self.rho_pairwise or len(self.rho_probes) < 2:
+            single = self.next_rho_probe()
+            return None if single is None else (float(single), float(single))
+        pairs = self.rho_probe_pairs()
+        if not pairs:
+            return None
+        pair = pairs[self._rho_pair_cursor % len(pairs)]
+        self._rho_pair_cursor += 1
+        return float(pair[0]), float(pair[1])
+
     def next_card_probe_index(self, mask: torch.Tensor) -> int | None:
         """在有效候选中轮换一张卡；无有效候选则跳过。"""
         if not self.card_probe:
@@ -371,6 +406,18 @@ class TransferPolicyController:
         self._card_probe_cursor += 1
         return int(choice)
 
+    def next_card_probe_pair(self, mask: torch.Tensor) -> tuple[int, int] | None:
+        """轮换两张有效卡做配对；不足两张则返回 None（退回单卡）。"""
+        if not self.card_probe or not self.card_pairwise:
+            return None
+        valid = [index for index, flag in enumerate(mask.bool().reshape(-1).tolist()) if flag]
+        if len(valid) < 2:
+            return None
+        pairs = [(valid[i], valid[j]) for i in range(len(valid)) for j in range(i + 1, len(valid))]
+        choice = pairs[self._card_pair_cursor % len(pairs)]
+        self._card_pair_cursor += 1
+        return int(choice[0]), int(choice[1])
+
     def state_dict(self) -> dict:
         return {
             "policy": self.policy.state_dict(),
@@ -381,7 +428,9 @@ class TransferPolicyController:
             "key_dim": self.key_dim,
             "loo_cursor": int(self._loo_cursor),
             "rho_probe_cursor": int(self._rho_probe_cursor),
+            "rho_pair_cursor": int(self._rho_pair_cursor),
             "card_probe_cursor": int(self._card_probe_cursor),
+            "card_pair_cursor": int(self._card_pair_cursor),
             "kind": POLICY_KIND,
         }
 
@@ -403,8 +452,12 @@ class TransferPolicyController:
             self._loo_cursor = int(payload["loo_cursor"])
         if "rho_probe_cursor" in payload:
             self._rho_probe_cursor = int(payload["rho_probe_cursor"])
+        if "rho_pair_cursor" in payload:
+            self._rho_pair_cursor = int(payload["rho_pair_cursor"])
         if "card_probe_cursor" in payload:
             self._card_probe_cursor = int(payload["card_probe_cursor"])
+        if "card_pair_cursor" in payload:
+            self._card_pair_cursor = int(payload["card_pair_cursor"])
 
     def effective_rho(self, raw: torch.Tensor, module: str) -> torch.Tensor:
         del module
@@ -547,12 +600,33 @@ def counterfactual_policy_loss(
 
 
 def rho_probe_policy_loss(plan: dict, utility: float, rho_probe: float) -> torch.Tensor:
-    """强度探针：U>0 拉向 ρ_probe，U<0 拉向 0。"""
+    """单档强度探针（配对不可用时的回退）：U>0 拉向 ρ_probe，U<0 拉向 0。"""
     rho = plan.get("rho")
     if not torch.is_tensor(rho) or not bool(rho.requires_grad):
         raise ValueError("ρ 探针需要可微的 rho")
     target = float(rho_probe) if float(utility) > 0.0 else 0.0
     return (rho - rho.new_tensor(target)) ** 2
+
+
+def rho_pair_policy_loss(
+    plan: dict,
+    rho_a: float,
+    utility_a: float,
+    rho_b: float,
+    utility_b: float,
+    eps: float,
+) -> torch.Tensor:
+    """同任务双档排序：|ΔU|>ε 时把 ρ 拉向优胜档；死区内不监督。"""
+    rho = plan.get("rho")
+    if not torch.is_tensor(rho) or not bool(rho.requires_grad):
+        raise ValueError("ρ 配对需要可微的 rho")
+    delta = float(utility_a) - float(utility_b)
+    if abs(delta) <= float(eps):
+        raise ValueError("ρ 配对落在噪声死区")
+    if abs(float(rho_a) - float(rho_b)) <= 1e-12:
+        raise ValueError("ρ 配对两档相同")
+    winner = float(rho_a) if delta > 0.0 else float(rho_b)
+    return (rho - rho.new_tensor(winner)) ** 2
 
 
 def card_probe_policy_loss(plan: dict, utility: float, card_index: int) -> torch.Tensor:
@@ -564,3 +638,50 @@ def card_probe_policy_loss(plan: dict, utility: float, card_index: int) -> torch
     if index < 0 or index >= int(logits.numel()):
         raise ValueError("卡探针下标越界")
     return (-float(utility)) * logits[index]
+
+
+def card_pair_policy_loss(
+    plan: dict,
+    index_a: int,
+    utility_a: float,
+    index_b: int,
+    utility_b: float,
+    eps: float,
+) -> torch.Tensor:
+    """单卡绝对效用 + 配对排序：死区内只保留绝对项。"""
+    logits = plan.get("card_logits")
+    if not torch.is_tensor(logits) or not bool(logits.requires_grad):
+        raise ValueError("卡配对需要可微的 card_logits")
+    a = int(index_a)
+    b = int(index_b)
+    if a < 0 or b < 0 or a >= int(logits.numel()) or b >= int(logits.numel()):
+        raise ValueError("卡配对下标越界")
+    if a == b:
+        raise ValueError("卡配对下标相同")
+    loss = (-float(utility_a)) * logits[a] + (-float(utility_b)) * logits[b]
+    delta = float(utility_a) - float(utility_b)
+    if abs(delta) > float(eps):
+        # 抬高优胜卡、压低劣势卡
+        if delta > 0.0:
+            loss = loss + torch.nn.functional.softplus(logits[b] - logits[a])
+        else:
+            loss = loss + torch.nn.functional.softplus(logits[a] - logits[b])
+    return loss
+
+
+def utility_ap_sign_agreement(
+    utility: float,
+    delta_ap: float | None,
+    *,
+    eps_u: float = 0.0,
+    eps_ap: float = 0.0,
+) -> dict | None:
+    """诊断：Query 效用与 ΔAP 符号是否一致（排除近零噪声）。"""
+    if delta_ap is None:
+        return None
+    u_value = float(utility)
+    ap_value = float(delta_ap)
+    if abs(u_value) <= float(eps_u) or abs(ap_value) <= float(eps_ap):
+        return {"comparable": False, "agree": None, "utility": u_value, "delta_ap": ap_value}
+    agree = (u_value > 0.0) == (ap_value > 0.0)
+    return {"comparable": True, "agree": bool(agree), "utility": u_value, "delta_ap": ap_value}

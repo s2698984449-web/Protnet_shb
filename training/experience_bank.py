@@ -2062,11 +2062,13 @@ def apply_counterfactual_policy(
     ap_targets: dict | None = None,
     rho_probe: dict | None = None,
     card_probe: dict | None = None,
+    task_utility: float | None = None,
 ) -> dict:
-    """按模块条件贡献 U_m 更新 ψ；可选 ρ/卡探针与稀疏 AP 监督。"""
+    """按模块条件贡献 U_m 更新 ψ；可选 ρ/卡相对排序探针。AP Head 默认不进主损失。"""
     from training.transfer_policy import (
-        ap_utility_nll, card_probe_policy_loss, counterfactual_policy_loss,
-        plan_decision_features, rho_probe_policy_loss,
+        ap_utility_nll, card_pair_policy_loss, card_probe_policy_loss, counterfactual_policy_loss,
+        plan_decision_features, rho_pair_policy_loss, rho_probe_policy_loss,
+        utility_ap_sign_agreement,
     )
 
     by_module = {plan["module"]: plan for plan in plans}
@@ -2075,24 +2077,64 @@ def apply_counterfactual_policy(
     except ValueError:
         loss = None
     if rho_probe and rho_probe.get("module") in by_module:
+        plan = by_module[rho_probe["module"]]
         try:
-            term = rho_probe_policy_loss(
-                by_module[rho_probe["module"]], float(rho_probe["utility"]), float(rho_probe["rho"]),
-            )
+            if rho_probe.get("pairwise"):
+                term = rho_pair_policy_loss(
+                    plan,
+                    float(rho_probe["rho_a"]),
+                    float(rho_probe["utility_a"]),
+                    float(rho_probe["rho_b"]),
+                    float(rho_probe["utility_b"]),
+                    float(rho_probe.get("eps", 0.0)),
+                )
+            else:
+                term = rho_probe_policy_loss(
+                    plan, float(rho_probe["utility"]), float(rho_probe["rho"]),
+                )
             loss = term if loss is None else loss + term
         except ValueError:
             pass
     if card_probe and card_probe.get("module") in by_module:
+        plan = by_module[card_probe["module"]]
         try:
-            term = card_probe_policy_loss(
-                by_module[card_probe["module"]], float(card_probe["utility"]), int(card_probe["index"]),
-            )
+            if card_probe.get("pairwise"):
+                term = card_pair_policy_loss(
+                    plan,
+                    int(card_probe["index_a"]),
+                    float(card_probe["utility_a"]),
+                    int(card_probe["index_b"]),
+                    float(card_probe["utility_b"]),
+                    float(card_probe.get("eps", 0.0)),
+                )
+            else:
+                term = card_probe_policy_loss(
+                    plan, float(card_probe["utility"]), int(card_probe["index"]),
+                )
             loss = term if loss is None else loss + term
         except ValueError:
             pass
     ap_loss = None
     prediction = None
-    if ap_targets is not None and controller.policy.ap_utility_enabled:
+    sign_agree = None
+    # 仅当显式打开且 every_n>0 时才把 AP 写入损失。
+    train_ap = (
+        ap_targets is not None
+        and controller.policy.ap_utility_enabled
+        and int(controller.policy.ap_utility_every_n_steps) > 0
+    )
+    if ap_targets is not None and task_utility is not None:
+        sign_agree = {
+            "ap50": utility_ap_sign_agreement(
+                float(task_utility),
+                None if ap_targets.get("ap50") is None else float(ap_targets["ap50"]),
+            ),
+            "ap75": utility_ap_sign_agreement(
+                float(task_utility),
+                None if ap_targets.get("ap75") is None else float(ap_targets["ap75"]),
+            ),
+        }
+    if train_ap:
         features = plan_decision_features(plans)
         prediction = controller.policy.ap_head(features)
         ap_loss = ap_utility_nll(
@@ -2109,6 +2151,7 @@ def apply_counterfactual_policy(
             "gain_grads": {module: 0.0 for module in MODULES},
             "ap_loss": None,
             "ap_prediction": None,
+            "sign_agreement": sign_agree,
             "rho_probe": rho_probe,
             "card_probe": card_probe,
         }
@@ -2127,6 +2170,7 @@ def apply_counterfactual_policy(
             "log_sigma_ap50": float(prediction["log_sigma_ap50"].detach()),
             "log_sigma_ap75": float(prediction["log_sigma_ap75"].detach()),
         },
+        "sign_agreement": sign_agree,
         "rho_probe": rho_probe,
         "card_probe": card_probe,
     }
@@ -2469,7 +2513,7 @@ def module_rho_and_card_probes(
     rng_cpu,
     rng_cuda,
 ) -> dict:
-    """对 LOO 目标模块各探 1 档 ρ 与 1 张卡；相对「无该模块」算 Query 效用。"""
+    """对 LOO 目标模块做同任务 ρ 配对 + 单卡/卡配对；相对「无该模块」算 Query 效用。"""
     by_module = {plan["module"]: plan for plan in plans}
     rho_probe = None
     card_probe = None
@@ -2495,6 +2539,22 @@ def module_rho_and_card_probes(
             borrow.update(other["named"])
         return borrow
 
+    def _rho_named(module: str, rho_value: float, step: float, mix: torch.Tensor) -> dict | None:
+        probe_flat = float(rho_value) * step * mix.detach().float().reshape(-1)
+        if float(torch.linalg.vector_norm(probe_flat)) <= 1e-8:
+            return None
+        named = dict(_others_borrow(module))
+        named.update(unpack_named(probe_flat, layouts[module]))
+        return named
+
+    def _card_named(module: str, rho_card: float, step: float, unit: torch.Tensor) -> dict | None:
+        card_flat = float(rho_card) * step * unit.detach().float().reshape(-1)
+        if float(torch.linalg.vector_norm(card_flat)) <= 1e-8:
+            return None
+        named = dict(_others_borrow(module))
+        named.update(unpack_named(card_flat, layouts[module]))
+        return named
+
     for module in loo_modules:
         plan = by_module.get(module)
         if plan is None or not plan.get("valid"):
@@ -2504,42 +2564,96 @@ def module_rho_and_card_probes(
         if step <= 0.0 or not torch.is_tensor(mix):
             continue
         loss_without = _adapt_and_loss(_others_borrow(module))
-        rho_value = controller.policy.next_rho_probe()
-        if rho_value is not None and rho_probe is None:
-            probe_flat = float(rho_value) * step * mix.detach().float().reshape(-1)
-            if float(torch.linalg.vector_norm(probe_flat)) > 1e-8:
-                probe_named = dict(_others_borrow(module))
-                probe_named.update(unpack_named(probe_flat, layouts[module]))
-                loss_with = _adapt_and_loss(probe_named)
-                rho_probe = {
-                    "module": module,
-                    "rho": float(rho_value),
-                    "utility": float(loss_without - loss_with),
-                }
+        if rho_probe is None:
+            pair = controller.policy.next_rho_pair()
+            if pair is not None:
+                rho_a, rho_b = float(pair[0]), float(pair[1])
+                if abs(rho_a - rho_b) <= 1e-12:
+                    named = _rho_named(module, rho_a, step, mix)
+                    if named is not None:
+                        utility = float(loss_without - _adapt_and_loss(named))
+                        rho_probe = {
+                            "module": module, "pairwise": False,
+                            "rho": float(rho_a), "utility": utility,
+                        }
+                else:
+                    named_a = _rho_named(module, rho_a, step, mix)
+                    named_b = _rho_named(module, rho_b, step, mix)
+                    if named_a is not None and named_b is not None:
+                        loss_a = _adapt_and_loss(named_a)
+                        # 同档重复评价 → 噪声死区 ε
+                        loss_a_rep = _adapt_and_loss(named_a)
+                        loss_b = _adapt_and_loss(named_b)
+                        utility_a = float(loss_without - loss_a)
+                        utility_a_rep = float(loss_without - loss_a_rep)
+                        utility_b = float(loss_without - loss_b)
+                        eps = abs(utility_a - utility_a_rep)
+                        delta = utility_a - utility_b
+                        winner = None
+                        if abs(delta) > eps:
+                            winner = rho_a if delta > 0.0 else rho_b
+                        rho_probe = {
+                            "module": module,
+                            "pairwise": True,
+                            "rho_a": rho_a,
+                            "rho_b": rho_b,
+                            "utility_a": utility_a,
+                            "utility_b": utility_b,
+                            "eps": float(eps),
+                            "delta_u": float(delta),
+                            "winner": None if winner is None else float(winner),
+                        }
         mask = plan.get("candidate_mask")
         units = plan.get("units")
-        if (
-            card_probe is None
-            and torch.is_tensor(mask)
-            and torch.is_tensor(units)
-        ):
-            card_index = controller.policy.next_card_probe_index(mask)
-            if card_index is not None:
-                rho_card = float(plan["rho"].detach()) if torch.is_tensor(plan.get("rho")) else float(plan.get("rho") or 0.0)
-                if rho_card <= 1e-8 and rho_value is not None:
-                    rho_card = float(rho_value)
-                unit = units.detach().float()[int(card_index)].reshape(-1)
-                card_flat = rho_card * step * unit
-                if float(torch.linalg.vector_norm(card_flat)) > 1e-8:
-                    card_named = dict(_others_borrow(module))
-                    card_named.update(unpack_named(card_flat, layouts[module]))
-                    loss_with = _adapt_and_loss(card_named)
+        if card_probe is None and torch.is_tensor(mask) and torch.is_tensor(units):
+            rho_card = float(plan["rho"].detach()) if torch.is_tensor(plan.get("rho")) else float(plan.get("rho") or 0.0)
+            if rho_card <= 1e-8 and rho_probe is not None:
+                if rho_probe.get("pairwise") and rho_probe.get("winner") is not None:
+                    rho_card = float(rho_probe["winner"])
+                elif rho_probe.get("pairwise"):
+                    rho_card = 0.5 * (float(rho_probe["rho_a"]) + float(rho_probe["rho_b"]))
+                else:
+                    rho_card = float(rho_probe.get("rho") or 0.1)
+            if rho_card <= 1e-8:
+                rho_card = float(controller.policy.rho_probes[0]) if controller.policy.rho_probes else 0.1
+            card_pair = controller.policy.next_card_probe_pair(mask)
+            if card_pair is not None:
+                index_a, index_b = int(card_pair[0]), int(card_pair[1])
+                named_a = _card_named(module, rho_card, step, units[index_a])
+                named_b = _card_named(module, rho_card, step, units[index_b])
+                if named_a is not None and named_b is not None:
+                    loss_a = _adapt_and_loss(named_a)
+                    loss_a_rep = _adapt_and_loss(named_a)
+                    loss_b = _adapt_and_loss(named_b)
+                    utility_a = float(loss_without - loss_a)
+                    utility_a_rep = float(loss_without - loss_a_rep)
+                    utility_b = float(loss_without - loss_b)
+                    eps = abs(utility_a - utility_a_rep)
+                    if rho_probe and rho_probe.get("pairwise"):
+                        eps = max(float(eps), float(rho_probe.get("eps") or 0.0))
                     card_probe = {
                         "module": module,
-                        "index": int(card_index),
+                        "pairwise": True,
+                        "index_a": index_a,
+                        "index_b": index_b,
                         "rho": float(rho_card),
-                        "utility": float(loss_without - loss_with),
+                        "utility_a": utility_a,
+                        "utility_b": utility_b,
+                        "eps": float(eps),
+                        "delta_u": float(utility_a - utility_b),
                     }
+            else:
+                card_index = controller.policy.next_card_probe_index(mask)
+                if card_index is not None:
+                    named = _card_named(module, rho_card, step, units[int(card_index)])
+                    if named is not None:
+                        card_probe = {
+                            "module": module,
+                            "pairwise": False,
+                            "index": int(card_index),
+                            "rho": float(rho_card),
+                            "utility": float(loss_without - _adapt_and_loss(named)),
+                        }
         if rho_probe is not None and card_probe is not None:
             break
     detector.load_state_dict(snapshot, strict=True)
@@ -2705,10 +2819,10 @@ def retrieval_fomaml_step(
         }
         for name, parameter in detector.named_parameters():
             parameter.data.copy_(updated[name].to(device=parameter.device, dtype=parameter.dtype))
-    if allow_borrow and (module_utilities or rho_probe or card_probe):
+    if allow_borrow and (module_utilities or rho_probe or card_probe or ap_targets is not None):
         proxy = apply_counterfactual_policy(
             controller, plans, module_utilities, ap_targets=ap_targets,
-            rho_probe=rho_probe, card_probe=card_probe,
+            rho_probe=rho_probe, card_probe=card_probe, task_utility=utility,
         )
         if module_utilities:
             update_module_contributions(bank, module_utilities, plans)
@@ -2720,6 +2834,7 @@ def retrieval_fomaml_step(
             "gain_grads": {module: 0.0 for module in MODULES},
             "ap_loss": None,
             "ap_prediction": None,
+            "sign_agreement": None,
             "rho_probe": None,
             "card_probe": None,
         }
@@ -2760,6 +2875,7 @@ def retrieval_fomaml_step(
         "force_closed": list(force_closed),
         "rho_probe": rho_probe,
         "card_probe": card_probe,
+        "sign_agreement": proxy.get("sign_agreement"),
         "ap_targets": ap_targets,
         "inner_max_weight_change": inner_change,
         "outer_max_weight_change": outer_change,

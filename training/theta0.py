@@ -1444,14 +1444,35 @@ def _train(detector, adapter, episodes, provenance, run_dir, device, resume_stat
                         closed = ",".join(step.get("force_closed") or []) or "-"
                         rho_p = step.get("rho_probe") or {}
                         card_p = step.get("card_probe") or {}
-                        rho_txt = (
-                            "-" if not rho_p else
-                            f"{rho_p.get('module')}@ρ={float(rho_p.get('rho', 0.0)):.2f}:{float(rho_p.get('utility', 0.0)):+.3f}"
-                        )
-                        card_txt = (
-                            "-" if not card_p else
-                            f"{card_p.get('module')}#{int(card_p.get('index', -1))}:{float(card_p.get('utility', 0.0)):+.3f}"
-                        )
+                        if not rho_p:
+                            rho_txt = "-"
+                        elif rho_p.get("pairwise"):
+                            win = rho_p.get("winner")
+                            win_txt = "-" if win is None else f"{float(win):.2f}"
+                            rho_txt = (
+                                f"{rho_p.get('module')}@"
+                                f"{float(rho_p.get('rho_a', 0.0)):.2f}/{float(rho_p.get('rho_b', 0.0)):.2f}"
+                                f":Δ={float(rho_p.get('delta_u', 0.0)):+.3f}"
+                                f"/ε={float(rho_p.get('eps', 0.0)):.3f}/win={win_txt}"
+                            )
+                        else:
+                            rho_txt = (
+                                f"{rho_p.get('module')}@ρ={float(rho_p.get('rho', 0.0)):.2f}"
+                                f":{float(rho_p.get('utility', 0.0)):+.3f}"
+                            )
+                        if not card_p:
+                            card_txt = "-"
+                        elif card_p.get("pairwise"):
+                            card_txt = (
+                                f"{card_p.get('module')}#"
+                                f"{int(card_p.get('index_a', -1))}/{int(card_p.get('index_b', -1))}"
+                                f":Δ={float(card_p.get('delta_u', 0.0)):+.3f}"
+                            )
+                        else:
+                            card_txt = (
+                                f"{card_p.get('module')}#{int(card_p.get('index', -1))}"
+                                f":{float(card_p.get('utility', 0.0)):+.3f}"
+                            )
                         print(
                             f"FOMAML step={result['global_step']} "
                             f"U={step.get('counterfactual_utility', 0.0):+.4f} "

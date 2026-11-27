@@ -12,9 +12,10 @@ from training.experience_bank import (
 )
 from training.retrieval_memory import MODULES
 from training.transfer_policy import (
-    POLICY_KIND, UPSTREAM_OF, ApUtilityHead, card_probe_policy_loss, counterfactual_policy_loss,
-    decide_inject, encode_upstream_state, hard_borrow_gate, mix_cards_from_logits,
-    plan_decision_features, rho_probe_policy_loss, risk_constrained_score, smooth_utility_features,
+    POLICY_KIND, UPSTREAM_OF, ApUtilityHead, card_pair_policy_loss, card_probe_policy_loss,
+    counterfactual_policy_loss, decide_inject, encode_upstream_state, hard_borrow_gate,
+    mix_cards_from_logits, plan_decision_features, rho_pair_policy_loss, rho_probe_policy_loss,
+    risk_constrained_score, smooth_utility_features, utility_ap_sign_agreement,
 )
 
 
@@ -248,31 +249,59 @@ class TransferPolicyTest(unittest.TestCase):
         controller = GammaController()
         self.assertAlmostEqual(float(controller.policy.force_close_prob), 0.25, places=5)
         self.assertEqual(controller.policy.rho_probes, [0.1, 0.2, 0.3])
+        self.assertTrue(controller.policy.rho_pairwise)
         self.assertTrue(controller.policy.card_probe)
+        self.assertTrue(controller.policy.card_pairwise)
+        self.assertFalse(controller.policy.ap_utility_enabled)
+        self.assertEqual(int(controller.policy.ap_utility_every_n_steps), 0)
+        self.assertEqual(
+            controller.policy.rho_probe_pairs(),
+            [(0.1, 0.2), (0.2, 0.3), (0.1, 0.3)],
+        )
 
-    def test_rho_probe_loss_moves_rho_toward_helpful_probe(self):
+    def test_rho_pair_prefers_better_intensity_both_directions(self):
         bank = _bank()
         key = torch.tensor([4.0, 0.0, 0.0, 0.0])
-        controller = GammaController()
-        with torch.no_grad():
-            controller.policy.policy.null_head.bias.fill_(-8.0)
-            controller.policy.policy.rho_head.bias.fill_(0.0)
-        plan = plan_module_borrow(
-            bank, "Backbone", key, 1, {"mvtec:bottle"}, controller, True, support_step_l2=1.0,
-        )
-        before = float(plan["rho"].detach())
-        apply_counterfactual_policy(
-            controller, [plan], {},
-            rho_probe={"module": "Backbone", "rho": 0.3, "utility": 1.0},
-        )
-        plan2 = plan_module_borrow(
-            bank, "Backbone", key, 1, {"mvtec:bottle"}, controller, True, support_step_l2=1.0,
-        )
-        self.assertGreater(float(plan2["rho"].detach()), before)
-        # 负效用把 ρ 拉向 0
-        rho = torch.tensor(0.2, requires_grad=True)
-        loss_neg = rho_probe_policy_loss({"rho": rho}, -1.0, 0.3)
-        self.assertAlmostEqual(float(loss_neg.detach()), 0.04, places=5)
+
+        def _rho_after(pair_probe):
+            controller = GammaController()
+            with torch.no_grad():
+                controller.policy.policy.null_head.bias.fill_(-8.0)
+                controller.policy.policy.rho_head.bias.fill_(0.0)
+            plan = plan_module_borrow(
+                bank, "Backbone", key, 1, {"mvtec:bottle"}, controller, True, support_step_l2=1.0,
+            )
+            before = float(plan["rho"].detach())
+            apply_counterfactual_policy(controller, [plan], {}, rho_probe=pair_probe)
+            plan2 = plan_module_borrow(
+                bank, "Backbone", key, 1, {"mvtec:bottle"}, controller, True, support_step_l2=1.0,
+            )
+            return before, float(plan2["rho"].detach())
+
+        # 0.2 优于 0.1 → ρ 应上调
+        before, after = _rho_after({
+            "module": "Backbone", "pairwise": True,
+            "rho_a": 0.1, "utility_a": 0.03, "rho_b": 0.2, "utility_b": 0.08, "eps": 0.01,
+        })
+        self.assertGreater(after, before)
+        # 0.1 优于 0.2 → ρ 应下调（相对当前偏向更小档）
+        before, after = _rho_after({
+            "module": "Backbone", "pairwise": True,
+            "rho_a": 0.1, "utility_a": 0.08, "rho_b": 0.2, "utility_b": 0.03, "eps": 0.01,
+        })
+        self.assertLess(after, before)
+
+    def test_rho_pair_deadzone_skips_update(self):
+        rho = torch.tensor(0.15, requires_grad=True)
+        with self.assertRaises(ValueError):
+            rho_pair_policy_loss({"rho": rho}, 0.1, 0.03, 0.2, 0.035, eps=0.01)
+
+    def test_rho_pair_loss_has_grad_to_rho(self):
+        rho = torch.tensor(0.15, requires_grad=True)
+        loss = rho_pair_policy_loss({"rho": rho}, 0.1, 0.03, 0.2, 0.08, eps=0.01)
+        loss.backward()
+        self.assertIsNotNone(rho.grad)
+        self.assertGreater(abs(float(rho.grad)), 0.0)
 
     def test_card_probe_loss_only_touches_target_logit(self):
         logits = torch.tensor([0.1, 0.2, 0.3, 0.4], requires_grad=True)
@@ -280,21 +309,21 @@ class TransferPolicyTest(unittest.TestCase):
         loss.backward()
         self.assertAlmostEqual(float(logits.grad[2]), -1.0, places=5)
         self.assertTrue(torch.all(logits.grad[[0, 1, 3]] == 0).item())
-        bank = _bank()
-        key = torch.tensor([4.0, 0.0, 0.0, 0.0])
-        controller = GammaController()
-        with torch.no_grad():
-            controller.policy.policy.null_head.bias.fill_(-8.0)
-        plan = plan_module_borrow(
-            bank, "Backbone", key, 1, {"mvtec:bottle"}, controller, True, support_step_l2=1.0,
-        )
-        before_bias = float(controller.policy.policy.score_head.bias.detach().sum())
-        apply_counterfactual_policy(
-            controller, [plan], {},
-            card_probe={"module": "Backbone", "index": 0, "utility": 1.0},
-        )
-        after_bias = float(controller.policy.policy.score_head.bias.detach().sum())
-        self.assertNotAlmostEqual(before_bias, after_bias, places=6)
+
+    def test_card_pair_ranks_winner_over_loser(self):
+        logits = torch.tensor([0.0, 0.0, 0.0, 0.0], requires_grad=True)
+        loss = card_pair_policy_loss({"card_logits": logits}, 0, 0.08, 1, 0.02, eps=0.01)
+        loss.backward()
+        self.assertLess(float(logits.grad[0]), float(logits.grad[1]))
+
+    def test_utility_ap_sign_agreement_helper(self):
+        agree = utility_ap_sign_agreement(0.1, 0.05)
+        self.assertTrue(agree["comparable"])
+        self.assertTrue(agree["agree"])
+        disagree = utility_ap_sign_agreement(0.1, -0.05)
+        self.assertFalse(disagree["agree"])
+        noisy = utility_ap_sign_agreement(0.001, 0.05, eps_u=0.01)
+        self.assertFalse(noisy["comparable"])
 
 
 if __name__ == "__main__":
