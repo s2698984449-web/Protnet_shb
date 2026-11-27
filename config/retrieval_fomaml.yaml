@@ -16,27 +16,21 @@ trim_sketch_dim: 8192
 trim_splits: 3
 trim_calibration_min_members: 8
 min_members_for_ties: 5
-# 条件化迁移 v4：选卡含历史效用；Null/ρ 分离；ψ 用 Query 反事实效用更新。
+# 条件化迁移 v5.1：任务条件 Null；LOO/Add-One；上游组合条件；硬 z 拒借。
 rho_max: 0.3
-# Backbone / RoiFeature 非 Null 时有效强度落在 [floor, rho_max]。
-rho_floor:
-  Backbone: 0.1
-  RoiFeature: 0.1
-  Where: 0.0
-  Box: 0.0
-  Class: 0.0
 utility_prior_count: 8
-# 正式留出默认 soft：连续 (1-Null)*ρ，不对卡片 Softmax 重归一化。
-# discrete + null_eval_threshold 仅诊断（如 0.95 / 1.01），不作默认读数。
-holdout_null_mode: soft
+# 正式留出：硬门控。禁止靠扫阈值主改进。
 null_eval_threshold: 0.5
-# 反事实损失里对表征块加大有效强度权重（对标 e10 的借用工作点）。
-policy_strength_boost:
-  Backbone: 2.0
-  RoiFeature: 2.0
-  Where: 1.0
-  Box: 1.0
-  Class: 1.0
+module_loo:
+  enabled: true
+  modules_per_step: 1
+  # 训练探索：对本步 LOO 目标模块强制关闭，激活 Add-One 并重规划下游。
+  force_close_prob: 0.25
+ap_utility:
+  enabled: true
+  # 每 N 步做 Borrow/Null 配对 AP50/AP75 监督；20 为稀疏默认。
+  every_n_steps: 20
+  hidden: 64
 policy_hidden: 128
 policy_adam_lr: 0.001
 feature_dim: 256

@@ -557,65 +557,58 @@ def _candidate_utility_stats(bank: dict, module: str, candidate: dict) -> dict:
     }
 
 
-def update_card_utilities(bank: dict, plans: list[dict], module_signals: dict[str, float]) -> None:
-    """单卡片效用用模块信号（反事实下为 -U）；组合效用单独记账，不把混合 AP 摊到单卡。"""
-    index = bank.get("card_index") or {}
-    memory = bank.get("cards_memory") or {}
+def update_module_contributions(bank: dict, module_utilities: dict[str, float], plans: list[dict]) -> None:
+    """记录模块条件贡献与共现；不得把 U_m 广播成单卡独立效用。"""
+    contribution_log = bank.setdefault("module_contribution_log", [])
+    injected = [plan["module"] for plan in plans if plan.get("inject")]
+    contribution_log.append({
+        "modules": list(injected),
+        "utilities": {module: float(value) for module, value in module_utilities.items()},
+        "kind": "module_loo",
+    })
+    if len(contribution_log) > 256:
+        del contribution_log[:-256]
     combo_log = bank.setdefault("combo_utility_log", [])
-    injected_modules = [plan["module"] for plan in plans if plan.get("inject")]
-    combo_signal = -float(sum(float(module_signals.get(module, 0.0)) for module in injected_modules)) if injected_modules else 0.0
-    if injected_modules:
+    if injected:
         combo_log.append({
-            "modules": list(injected_modules),
-            "signal": combo_signal,
-            "kind": "module_combo_counterfactual",
+            "modules": list(injected),
+            "utilities": {module: float(module_utilities.get(module, 0.0)) for module in injected},
+            "kind": "module_combo_loo",
         })
         if len(combo_log) > 256:
             del combo_log[:-256]
+    index = bank.get("card_index") or {}
     for plan in plans:
+        if not plan.get("inject"):
+            continue
         module = plan["module"]
-        # module_signals[m] 约定与旧 FO 点积相同：utility_signal = -signal
-        utility_signal = -float(module_signals.get(module, 0.0))
+        if module not in module_utilities:
+            continue
+        partners = [name for name in injected if name != module]
         metas = list(plan.get("candidate_meta") or [])
-        weights = plan.get("card_weights")
-        for offset, meta in enumerate(metas):
-            weight = 0.0 if weights is None or offset >= int(weights.numel()) else float(weights[offset].detach())
-            if weight < 1e-6:
-                continue
-            for card_id in meta.get("card_ids") or []:
+        for meta in metas[:1]:
+            for card_id in (meta.get("card_ids") or [])[:1]:
                 parts = str(card_id).split("/")
                 if len(parts) != 3:
                     continue
-                cluster = int(parts[1][1:])
-                group = int(parts[2][1:])
-                key = _card_key(module, cluster, group)
+                key = _card_key(module, int(parts[1][1:]), int(parts[2][1:]))
                 row = index.get(key)
                 if row is None:
                     continue
-                stats = _accumulate_utility(row.setdefault("utility", _empty_utility()), utility_signal)
-                row["use_count"] = int(stats["count"])
-                row["neg_rate"] = float(stats["neg_rate"])
-                mem = memory.get((module, cluster, group))
-                if mem is not None:
-                    mem["utility"] = dict(stats)
-        # 组合兼容性只记「与其它已注入模块」的共现，不把 combo AP 写入单卡 mean。
-        if plan.get("inject"):
-            partners = [name for name in injected_modules if name != module]
-            for meta in metas[:1]:
-                for card_id in (meta.get("card_ids") or [])[:1]:
-                    parts = str(card_id).split("/")
-                    if len(parts) != 3:
-                        continue
-                    key = _card_key(module, int(parts[1][1:]), int(parts[2][1:]))
-                    row = index.get(key)
-                    if row is None:
-                        continue
-                    compat = row.setdefault("compatibility", {})
-                    for partner in partners:
-                        bucket = compat.setdefault(partner, _empty_utility())
-                        bucket["count"] = int(bucket.get("count") or 0) + 1
-                        prev = float(bucket.get("ema") or 0.0)
-                        bucket["ema"] = combo_signal if bucket["count"] == 1 else 0.9 * prev + 0.1 * combo_signal
+                compat = row.setdefault("compatibility", {})
+                for partner in partners:
+                    bucket = compat.setdefault(partner, {"count": 0, "ema": 0.0})
+                    bucket["count"] = int(bucket.get("count") or 0) + 1
+                    u_m = float(module_utilities[module])
+                    prev = float(bucket.get("ema") or 0.0)
+                    bucket["ema"] = u_m if bucket["count"] == 1 else 0.9 * prev + 0.1 * u_m
+
+
+def update_card_utilities(bank: dict, plans: list[dict], module_signals: dict[str, float]) -> None:
+    """兼容旧调用名：转发为模块贡献记账，不再把模块 U 写成单卡效用。"""
+    utilities = {module: -float(signal) for module, signal in module_signals.items()}
+    update_module_contributions(bank, utilities, plans)
+
 
 
 def assemble_group_cards(
@@ -1601,13 +1594,12 @@ def plan_module_borrow(
     allowed_families: set[str], controller: GammaController, allow_borrow: bool,
     *, support_step_l2: float | None = None, projected_key: torch.Tensor | None = None,
     upstream_state: torch.Tensor | None = None, prior_plans: dict[str, dict] | None = None,
-    discrete_null: bool = False,
 ) -> dict:
-    """相似度只召回；MLP 结合历史效用选卡；Null 与 ρ 分离。"""
+    """相似度只召回；MLP 结合历史效用选卡；硬 z 与 ρ 分离。"""
     from training.retrieval_memory import project_l2
     from training.transfer_policy import (
-        decide_inject, encode_upstream_state, mix_cards_from_logits, mix_selected_key_embed,
-        null_probability_from_logit, pad_candidates,
+        decide_inject, encode_upstream_state, hard_borrow_gate, mix_cards_from_logits,
+        mix_selected_key_embed, pad_candidates,
     )
 
     retrieved = retrieve_module_experience(
@@ -1660,33 +1652,29 @@ def plan_module_borrow(
         task_key, sim_tensor, norm_tensor, diff_tensor, util_tensor, module, mask, upstream_state,
     )
     mix, card_weights = mix_cards_from_logits(card_logits, units, mask)
-    null_weight = null_probability_from_logit(null_logit)
     selected_key_embed = mix_selected_key_embed(card_weights, key_tensor, mask)
+    threshold = float(controller.policy.null_eval_threshold)
+    # a_m=(z,c,ρ)；硬门控 + STE，z=0 时 named 增量严格为 0。
+    borrow_gate, z_hard_t, null_weight = hard_borrow_gate(null_logit, threshold=threshold)
+    z_hard = float(z_hard_t.detach())
     null_probability = float(null_weight.detach())
     rho = controller.policy.effective_rho(rho_raw, module)
     step = 1.0 if support_step_l2 is None else float(support_step_l2)
-    # 软 Null：delta=(1-Null)*ρ*step*mix；卡片 Softmax 权重保持，不因 Null 重归一化。
-    # 离散 Null 仅诊断：阈值以上整段清零。
-    continuous_scale = (1.0 - null_weight) * rho * float(step)
-    delta_vector = continuous_scale * mix
-    applied_l2 = float(torch.linalg.vector_norm(delta_vector.detach()))
+    delta_vector = borrow_gate * rho * float(step) * mix
+    # 候选增量（不含 z）：供 z=0 时 add-one 反事实；正式 named 仍严格乘 z_hard。
+    candidate_delta = rho.detach() * float(step) * mix.detach()
+    applied_l2 = float(torch.linalg.vector_norm(z_hard_t.detach() * candidate_delta))
     inject = decide_inject(
         allow_borrow=bool(allow_borrow),
         retrieved_valid=bool(retrieved["valid"]),
-        null_weight=null_weight,
+        z_hard=z_hard,
         applied_l2=applied_l2,
         step=float(step),
-        discrete_null=bool(discrete_null),
-        null_threshold=float(controller.policy.null_eval_threshold),
     )
-    if discrete_null and not inject:
-        delta_vector = mix.new_zeros(mix.shape)
-        applied_l2 = 0.0
-    named = {}
-    if inject:
-        named = unpack_named(delta_vector.detach(), bank["layouts"][module])
+    candidate_named = unpack_named(candidate_delta, bank["layouts"][module]) if float(torch.linalg.vector_norm(candidate_delta)) > 1e-8 else {}
+    named = unpack_named(z_hard_t.detach() * candidate_delta, bank["layouts"][module]) if inject else {}
     card_weight_list = [float(value) for value in card_weights.detach().reshape(-1).tolist()]
-    effective_card_weights = [(1.0 - null_probability) * weight for weight in card_weight_list]
+    effective_card_weights = [z_hard * weight for weight in card_weight_list]
     reject = "" if retrieved["valid"] else "empty"
     selection_rows = []
     for offset, meta in enumerate(candidate_meta):
@@ -1708,7 +1696,6 @@ def plan_module_borrow(
         "gamma": rho,
         "rho": rho,
         "rho_raw": rho_raw,
-        "rho_floor": float(controller.policy.rho_floor.get(module, 0.0)),
         "logits": card_logits,
         "card_logits": card_logits,
         "null_logit": null_logit,
@@ -1717,12 +1704,15 @@ def plan_module_borrow(
         "effective_card_weights": effective_card_weights,
         "null_weight": null_weight,
         "null_probability": null_probability,
-        "null_decision": "null" if (discrete_null and not inject) else ("borrow" if inject else "null"),
+        "borrow_gate": borrow_gate,
+        "z_hard": float(z_hard),
+        "null_decision": "null" if not inject else "borrow",
         "selected_key_embed": selected_key_embed,
         "selection": selection_rows,
         "candidate_meta": candidate_meta,
         "inject": inject,
         "named": named,
+        "candidate_named": candidate_named,
         "vector": mix,
         "delta_vector": delta_vector,
         "upstream_state": upstream_state.detach().clone(),
@@ -1740,14 +1730,12 @@ def plan_module_borrow(
         "candidate_borrow_l2": applied_l2,
         "applied_borrow_l2": applied_l2 if inject else 0.0,
         "borrow_over_step": None if step <= 0 else (applied_l2 / step if inject else 0.0),
-        "discrete_null": bool(discrete_null),
     }
 
 
 def plan_modules_in_graph_order(
     bank: dict, keys: dict, excluded_group: int | None, allowed_families: set[str],
     controller: GammaController, allow_borrow: bool, step_l2: dict[str, float],
-    *, discrete_null: bool = False,
 ) -> list[dict]:
     """按 Backbone→Where→RoiFeature→Class/Box 顺序决策，下游读取上游卡片签名嵌入。"""
     from training.transfer_policy import encode_upstream_state
@@ -1760,11 +1748,82 @@ def plan_modules_in_graph_order(
         plan = plan_module_borrow(
             bank, module, keys[KEY_FOR_MODULE[module]], excluded_group, allowed_families,
             controller, allow_borrow, support_step_l2=float(step_l2.get(module, 0.0)),
-            upstream_state=upstream, prior_plans=decided, discrete_null=discrete_null,
+            upstream_state=upstream, prior_plans=decided,
         )
         decided[module] = plan
         plans.append(plan)
     return plans
+
+
+def force_close_plan(plan: dict) -> None:
+    """训练探索：正式注入关掉；gate 前向为 0，反向经 STE 到 null_logit，供 Add-One 重开。"""
+    plan["inject"] = False
+    plan["named"] = {}
+    plan["z_hard"] = 0.0
+    plan["null_decision"] = "null"
+    plan["applied_borrow_l2"] = 0.0
+    plan["borrow_over_step"] = 0.0
+    weights = list(plan.get("card_weight_list") or [])
+    plan["effective_card_weights"] = [0.0 for _ in weights]
+    gate = plan.get("borrow_gate")
+    null_w = plan.get("null_weight")
+    if torch.is_tensor(null_w) and bool(null_w.requires_grad):
+        z_soft = 1.0 - null_w
+        plan["borrow_gate"] = z_soft - z_soft.detach()
+    elif torch.is_tensor(gate) and bool(gate.requires_grad):
+        plan["borrow_gate"] = gate * 0.0
+    plan["force_closed"] = True
+
+
+def apply_force_close_and_replan(
+    plans: list[dict],
+    close_modules: list[str],
+    *,
+    bank: dict,
+    keys: dict,
+    excluded_group: int | None,
+    allowed_families: set[str],
+    controller: GammaController,
+    allow_borrow: bool,
+    step_l2: dict[str, float],
+) -> list[str]:
+    """关闭指定模块后，仅重规划依赖它们的下游，使 upstream z 可见。"""
+    from training.transfer_policy import UPSTREAM_OF, encode_upstream_state
+
+    if not close_modules:
+        return []
+    closed = set()
+    by_module = {plan["module"]: plan for plan in plans}
+    for module in close_modules:
+        plan = by_module.get(module)
+        if plan is None or not plan.get("inject"):
+            continue
+        if not (plan.get("candidate_named") or plan.get("valid")):
+            continue
+        force_close_plan(plan)
+        closed.add(module)
+    if not closed:
+        return []
+    key_dim = int(controller.policy.key_dim)
+    decided = {plan["module"]: plan for plan in plans}
+    for module in MODULES:
+        upstream_names = UPSTREAM_OF.get(module) or ()
+        if not any(name in closed for name in upstream_names):
+            continue
+        if module in closed:
+            continue
+        upstream = encode_upstream_state(decided, module, key_dim=key_dim)
+        plan = plan_module_borrow(
+            bank, module, keys[KEY_FOR_MODULE[module]], excluded_group, allowed_families,
+            controller, allow_borrow, support_step_l2=float(step_l2.get(module, 0.0)),
+            upstream_state=upstream, prior_plans=decided,
+        )
+        decided[module] = plan
+        for index, old in enumerate(plans):
+            if old["module"] == module:
+                plans[index] = plan
+                break
+    return sorted(closed)
 
 
 def support_packed_grads(detector, records, device, settings: dict, layouts: dict) -> dict[str, torch.Tensor]:
@@ -1778,71 +1837,33 @@ def support_packed_grads(detector, records, device, settings: dict, layouts: dic
     return packed
 
 
-def query_total_and_role_packed_grads(
+def query_total_packed_grads(
     detector,
     records,
     device,
     settings: dict,
     layouts: dict,
-    *,
-    role_modules: set[str] | None = None,
-) -> tuple[torch.Tensor, list[torch.Tensor], dict[str, torch.Tensor], dict[str, torch.Tensor]]:
-    """一次前向同时得到整体 Query 梯度与职责分项梯度，避免双倍扫图。
-
-    role_modules 为空时跳过职责反传。Backbone 职责=total，直接复用整体梯度。
-    """
-    from training.fomaml_roi import live_detection_loss_parts
+) -> tuple[torch.Tensor, list[torch.Tensor], dict[str, torch.Tensor]]:
+    """Query 总损失与打包梯度；ψ 用模块 LOO/Add-One，不再做职责分项反传。"""
+    from training.fomaml_roi import live_detection_loss
     from training.theta0 import InsufficientEpisodeAnnotations
-    from training.transfer_policy import MODULE_ROLE_LOSS
 
     trainable = [parameter for parameter in detector.parameters() if parameter.requires_grad]
     total_accum = [torch.zeros_like(parameter) for parameter in trainable]
-    role_accum = {
-        module: [torch.zeros_like(parameter) for parameter in trainable]
-        for module in MODULES
-    }
     total_loss = None
     used = 0
-    wanted = set(MODULES if role_modules is None else role_modules)
     detector.train()
     for record in records:
-        parts = live_detection_loss_parts(
+        total = live_detection_loss(
             detector, record, device, settings["loss"], settings["where_loss_weight"], settings["ignore_iou"],
         )
-        total = parts["total"]
-        pending: list[tuple[str, torch.Tensor]] = []
-        for module in MODULES:
-            if module not in wanted:
-                continue
-            keys = MODULE_ROLE_LOSS[module]
-            if keys == ("total",):
-                continue
-            loss = None
-            for name in keys:
-                term = parts[name]
-                loss = term if loss is None else loss + term
-            if loss is not None and torch.is_tensor(loss) and bool(loss.requires_grad):
-                pending.append((module, loss))
-        total_grads = torch.autograd.grad(
-            total, trainable, allow_unused=True, retain_graph=bool(pending),
-        )
+        total_grads = torch.autograd.grad(total, trainable, allow_unused=True)
         for slot, grad in zip(total_accum, total_grads):
             if grad is not None:
                 slot.add_(grad.detach())
-        if "Backbone" in wanted:
-            for slot, grad in zip(role_accum["Backbone"], total_grads):
-                if grad is not None:
-                    slot.add_(grad.detach())
-        for index, (module, loss) in enumerate(pending):
-            grads = torch.autograd.grad(
-                loss, trainable, allow_unused=True, retain_graph=(index + 1 < len(pending)),
-            )
-            for slot, grad in zip(role_accum[module], grads):
-                if grad is not None:
-                    slot.add_(grad.detach())
         total_loss = total.detach() if total_loss is None else total_loss + total.detach()
         used += 1
-        del parts, total, pending, total_grads
+        del total, total_grads
     if used == 0 or total_loss is None:
         raise InsufficientEpisodeAnnotations("Support 或 Query 没有可用的检测监督")
     scale = float(used)
@@ -1850,15 +1871,10 @@ def query_total_and_role_packed_grads(
     packed_query = {
         module: _pack_module_grad(detector, query_grads, module, layouts[module]) for module in MODULES
     }
-    packed_role = {}
-    for module in MODULES:
-        role_grads = [grad / scale for grad in role_accum[module]]
-        packed_role[module] = _pack_module_grad(detector, role_grads, module, layouts[module])
-        del role_grads
     detector.zero_grad(set_to_none=True)
     detector.eval()
-    del total_accum, role_accum
-    return total_loss / scale, query_grads, packed_query, packed_role
+    del total_accum
+    return total_loss / scale, query_grads, packed_query
 
 
 def gate_borrow_by_support(plans: list[dict], module_grads: dict[str, torch.Tensor]) -> None:
@@ -1919,21 +1935,15 @@ def attach_first_order_ratio(
 
 
 def gamma_runtime_values(controller: GammaController) -> dict:
-    """条件化决策网络运行时读数：ρ 上下限与共享 Null 头偏置。"""
+    """条件化决策网络运行时读数：ρ 上限与 Null 头偏置。"""
     null_bias = float(controller.policy.policy.null_head.bias.detach().reshape(-1)[0])
-    report = {
+    return {
         "rho_max": float(controller.rho_max),
-        "rho_floor": dict(controller.policy.rho_floor),
         "null_bias": null_bias,
         "kind": str(controller.state_dict().get("kind")),
-        "modules": {},
+        "force_close_prob": float(getattr(controller.policy, "force_close_prob", 0.0)),
+        "null_eval_threshold": float(controller.policy.null_eval_threshold),
     }
-    for module in MODULES:
-        report["modules"][module] = {
-            "rho_max": float(controller.rho_max),
-            "rho_floor": float(controller.policy.rho_floor.get(module, 0.0)),
-        }
-    return report
 
 
 def bank_card_attenuation(bank: dict) -> dict:
@@ -1975,7 +1985,6 @@ def module_utility_report(plans: list[dict], alphas: dict[str, float]) -> dict:
         report[module] = {
             "gamma": float(plan["gamma"].detach()),
             "rho": float(plan["rho"].detach()) if plan.get("rho") is not None else float(plan["gamma"].detach()),
-            "rho_floor": float(plan.get("rho_floor") or 0.0),
             "null_probability": null_p,
             "null_decision": plan.get("null_decision") or ("borrow" if plan["inject"] else "null"),
             "card_weights": card_weights,
@@ -2046,29 +2055,54 @@ def mean_query_detection_loss(detector, records, device, settings: dict) -> floa
 def apply_counterfactual_policy(
     controller: GammaController,
     plans: list[dict],
-    utility: float,
+    module_utilities: dict[str, float],
+    *,
+    ap_targets: dict | None = None,
 ) -> dict:
-    """U=L_Null-L_Borrow（越大越好）。经 soft 注入幅度更新选卡/Null/ρ。"""
-    from training.transfer_policy import counterfactual_policy_loss
+    """按模块条件贡献 U_m 更新 ψ；可选稀疏 AP 效用头监督。"""
+    from training.transfer_policy import (
+        ap_utility_nll, counterfactual_policy_loss, plan_decision_features,
+    )
 
     try:
-        loss = counterfactual_policy_loss(plans, utility, controller.policy.strength_boost)
+        loss = counterfactual_policy_loss(plans, module_utilities)
     except ValueError:
+        loss = None
+    ap_loss = None
+    prediction = None
+    if ap_targets is not None and controller.policy.ap_utility_enabled:
+        features = plan_decision_features(plans)
+        prediction = controller.policy.ap_head(features)
+        ap_loss = ap_utility_nll(
+            prediction,
+            float(ap_targets["ap50"]),
+            None if ap_targets.get("ap75") is None else float(ap_targets["ap75"]),
+        )
+        loss = ap_loss if loss is None else loss + ap_loss
+    if loss is None:
         return {
             "loss": 0.0,
-            "utility": float(utility),
-            "dots": {module: -float(utility) for module in MODULES},
+            "module_utilities": {module: float(module_utilities.get(module, 0.0)) for module in MODULES},
+            "dots": {module: -float(module_utilities.get(module, 0.0)) for module in MODULES},
             "gain_grads": {module: 0.0 for module in MODULES},
+            "ap_loss": None,
+            "ap_prediction": None,
         }
     controller.policy.optimizer.zero_grad(set_to_none=True)
     loss.backward()
     controller.policy.optimizer.step()
     return {
         "loss": float(loss.detach()),
-        "utility": float(utility),
-        # 与 update_card_utilities 约定：signal=-U → utility_signal=U
-        "dots": {module: -float(utility) for module in MODULES},
+        "module_utilities": {module: float(module_utilities.get(module, 0.0)) for module in MODULES},
+        "dots": {module: -float(module_utilities.get(module, 0.0)) for module in MODULES},
         "gain_grads": {module: 0.0 for module in MODULES},
+        "ap_loss": None if ap_loss is None else float(ap_loss.detach()),
+        "ap_prediction": None if prediction is None else {
+            "mu_ap50": float(prediction["mu_ap50"].detach()),
+            "mu_ap75": float(prediction["mu_ap75"].detach()),
+            "log_sigma_ap50": float(prediction["log_sigma_ap50"].detach()),
+            "log_sigma_ap75": float(prediction["log_sigma_ap75"].detach()),
+        },
     }
 
 
@@ -2326,6 +2360,73 @@ def _pack_module_grad(detector, grads: list[torch.Tensor], module: str, layout: 
     return pack_named(named, layout)
 
 
+def module_leave_one_out_utilities(
+    detector,
+    snapshot: dict,
+    plans: list[dict],
+    support_records,
+    query_records,
+    device,
+    settings: dict,
+    alphas: dict[str, float],
+    layouts: dict,
+    loss_all: float,
+    loo_modules: list[str],
+    *,
+    rng_cpu,
+    rng_cuda,
+) -> tuple[dict[str, float], dict[str, str]]:
+    """模块条件贡献。已注入：U_m=L_{-m}-L_all；未注入：U_m=L_all-L_{all+m}（add-one，供重开）。"""
+    utilities: dict[str, float] = {}
+    kinds: dict[str, str] = {}
+    by_module = {plan["module"]: plan for plan in plans}
+
+    def _adapt_and_loss(borrow: dict) -> float:
+        detector.load_state_dict(snapshot, strict=True)
+        torch.set_rng_state(rng_cpu)
+        if rng_cuda is not None:
+            torch.cuda.set_rng_state(rng_cuda, device)
+        retrieval_support_adapt(
+            detector, support_records, device, settings, alphas, borrow, layouts,
+        )
+        torch.set_rng_state(rng_cpu)
+        if rng_cuda is not None:
+            torch.cuda.set_rng_state(rng_cuda, device)
+        return float(mean_query_detection_loss(detector, query_records, device, settings))
+
+    for module in loo_modules:
+        plan = by_module.get(module)
+        if plan is None or not plan.get("valid"):
+            utilities[module] = 0.0
+            kinds[module] = "skip"
+            continue
+        if plan.get("inject"):
+            borrow = {}
+            for other in plans:
+                if other["module"] == module or not other.get("inject"):
+                    continue
+                borrow.update(other["named"])
+            loss_without = _adapt_and_loss(borrow)
+            utilities[module] = float(loss_without - float(loss_all))
+            kinds[module] = "leave_one_out"
+            continue
+        candidate = plan.get("candidate_named") or {}
+        if not candidate:
+            utilities[module] = 0.0
+            kinds[module] = "closed_empty"
+            continue
+        borrow = {}
+        for other in plans:
+            if other.get("inject"):
+                borrow.update(other["named"])
+        borrow.update(candidate)
+        loss_with = _adapt_and_loss(borrow)
+        utilities[module] = float(float(loss_all) - loss_with)
+        kinds[module] = "add_one"
+    detector.load_state_dict(snapshot, strict=True)
+    return utilities, kinds
+
+
 def retrieval_fomaml_step(
     detector, optimizer, support_records, query_records, episode: dict, bank: dict,
     controller: GammaController, device, settings: dict, *, allow_borrow: bool,
@@ -2354,6 +2455,23 @@ def retrieval_fomaml_step(
     plans = plan_modules_in_graph_order(
         bank, signature["keys"], excluded, allowed, controller, allow_borrow, step_l2,
     )
+    loo_modules: list[str] = []
+    force_closed: list[str] = []
+    if allow_borrow:
+        loo_modules = controller.policy.next_loo_modules()
+        prob = float(getattr(controller.policy, "force_close_prob", 0.0) or 0.0)
+        to_close = []
+        if prob > 0.0 and loo_modules:
+            for module in loo_modules:
+                if float(torch.rand(()).item()) < prob:
+                    to_close.append(module)
+        if to_close:
+            force_closed = apply_force_close_and_replan(
+                plans, to_close,
+                bank=bank, keys=signature["keys"], excluded_group=excluded,
+                allowed_families=allowed, controller=controller, allow_borrow=allow_borrow,
+                step_l2=step_l2,
+            )
     retrieval_seconds = perf_counter() - started
     gate_borrow_by_support(plans, gate_grads)
     snapshot = _state_snapshot(detector)
@@ -2378,10 +2496,9 @@ def retrieval_fomaml_step(
     outer_started = perf_counter()
     rng_cpu = torch.get_rng_state()
     rng_cuda = torch.cuda.get_rng_state(device) if device.type == "cuda" else None
-    # 借用臂：Query 损失 + θ 外循环梯度（不再算职责分项代理）
-    query_loss, query_grads, packed_query, _role_query = query_total_and_role_packed_grads(
+    # 借用臂：Query 损失 + θ 外循环梯度
+    query_loss, query_grads, packed_query = query_total_packed_grads(
         detector, query_records, device, settings, bank["layouts"],
-        role_modules=set(),
     )
     loss_borrow = float(query_loss.detach()) if torch.is_tensor(query_loss) else float(query_loss)
     detector.load_state_dict(snapshot, strict=True)
@@ -2395,6 +2512,13 @@ def retrieval_fomaml_step(
         torch.cuda.set_rng_state(rng_cuda, device)
     loss_null = mean_query_detection_loss(detector, query_records, device, settings)
     utility = float(loss_null - loss_borrow)
+    if allow_borrow and loo_modules:
+        module_utilities, loo_kinds = module_leave_one_out_utilities(
+            detector, snapshot, plans, support_records, query_records, device, settings, alphas,
+            bank["layouts"], loss_borrow, loo_modules, rng_cpu=rng_cpu, rng_cuda=rng_cuda,
+        )
+    else:
+        module_utilities, loo_kinds = {}, {}
     detector.load_state_dict(snapshot, strict=True)
     restored, owner = _state_difference(detector, snapshot)
     if restored != 0.0:
@@ -2415,8 +2539,57 @@ def retrieval_fomaml_step(
     outer_change = max(float((updated[name] - before[name]).abs().max()) for name in before)
     if grad_norm <= 0 or outer_change <= 0:
         raise AssertionError("Query 外循环没有更新共享检测器")
-    proxy = apply_counterfactual_policy(controller, plans, utility)
-    update_card_utilities(bank, plans, proxy["dots"])
+    ap_targets = None
+    step_id = int(getattr(controller.policy, "_loo_cursor", 0))
+    every = int(controller.policy.ap_utility_every_n_steps)
+    if controller.policy.ap_utility_enabled and every > 0 and adapter is not None and (step_id % every == 0):
+        from training.evaluation import evaluate_detector
+        eval_cfg = {
+            "iou_thresholds": list(settings.get("eval_iou_thresholds") or [0.5, 0.75]),
+            "working_iou": float(settings.get("working_iou", 0.5)),
+            "ignore_iou": float(settings["ignore_iou"]),
+            "score_threshold": float(settings.get("score_threshold", 0.05)),
+            "batch_size": 1,
+            "prefetch_images": False,
+        }
+        detector.load_state_dict(snapshot, strict=True)
+        torch.set_rng_state(rng_cpu)
+        if rng_cuda is not None:
+            torch.cuda.set_rng_state(rng_cuda, device)
+        retrieval_support_adapt(
+            detector, support_records, device, settings, alphas,
+            {k: v for plan in plans if plan.get("inject") for k, v in plan["named"].items()},
+            bank["layouts"],
+        )
+        borrow_ap = evaluate_detector(detector, [episode], adapter, device, eval_cfg)
+        detector.load_state_dict(snapshot, strict=True)
+        torch.set_rng_state(rng_cpu)
+        if rng_cuda is not None:
+            torch.cuda.set_rng_state(rng_cuda, device)
+        retrieval_support_adapt(detector, support_records, device, settings, alphas, {}, bank["layouts"])
+        null_ap = evaluate_detector(detector, [episode], adapter, device, eval_cfg)
+        detector.load_state_dict(snapshot, strict=True)
+        ap_targets = {
+            "ap50": float(borrow_ap["product_macro"]["ap50"]) - float(null_ap["product_macro"]["ap50"]),
+            "ap75": (
+                None if borrow_ap["product_macro"].get("ap75") is None or null_ap["product_macro"].get("ap75") is None
+                else float(borrow_ap["product_macro"]["ap75"]) - float(null_ap["product_macro"]["ap75"])
+            ),
+        }
+        for name, parameter in detector.named_parameters():
+            parameter.data.copy_(updated[name].to(device=parameter.device, dtype=parameter.dtype))
+    if allow_borrow and module_utilities:
+        proxy = apply_counterfactual_policy(controller, plans, module_utilities, ap_targets=ap_targets)
+        update_module_contributions(bank, module_utilities, plans)
+    else:
+        proxy = {
+            "loss": 0.0,
+            "module_utilities": {},
+            "dots": {module: 0.0 for module in MODULES},
+            "gain_grads": {module: 0.0 for module in MODULES},
+            "ap_loss": None,
+            "ap_prediction": None,
+        }
     alpha_report = None
     if inner_lr_controller is not None:
         alpha_report = apply_alpha_proxy(inner_lr_controller, adapted["support_grads"], packed_query)
@@ -2440,7 +2613,7 @@ def retrieval_fomaml_step(
             choices[module] = "Borrow"
         else:
             choices[module] = "Null"
-        weights[module] = float(plan["rho"].detach()) * max(0.0, 1.0 - float(plan.get("null_probability") or 0.0))
+        weights[module] = float(plan["rho"].detach()) * float(plan.get("z_hard") or 0.0)
     del before, adapted, query_grads, packed_query
     return {
         "support_losses": support_losses,
@@ -2448,6 +2621,11 @@ def retrieval_fomaml_step(
         "query_loss_borrow": loss_borrow,
         "query_loss_null": loss_null,
         "counterfactual_utility": utility,
+        "module_utilities": module_utilities,
+        "loo_modules": list(loo_modules),
+        "loo_kinds": loo_kinds,
+        "force_closed": list(force_closed),
+        "ap_targets": ap_targets,
         "inner_max_weight_change": inner_change,
         "outer_max_weight_change": outer_change,
         "query_grad_norm": grad_norm,
@@ -2481,10 +2659,9 @@ def retrieval_fomaml_step(
 def holdout_borrow_plan(
     bank: dict, episode: dict, keys: dict, controller: GammaController, records=None,
     *, step_l2: dict[str, float] | None = None,
-    discrete_null: bool = False,
     null_eval_threshold: float | None = None,
 ) -> list[dict]:
-    """留出只读检索。默认 soft Null；discrete+阈值仅诊断。不更新 θ/库/决策网。"""
+    """留出只读检索：硬门控；阈值可覆盖配置。不更新 θ/库/决策网。"""
     if records is not None:
         roles = {row["split_role"] for row in records}
         if roles - {"R", "SUPPORT"}:
@@ -2498,9 +2675,7 @@ def holdout_borrow_plan(
     allowed = allowed_source_families(episode)
     excluded = excluded_experience_group(bank, family_id)
     scales = step_l2 or {module: 1.0 for module in MODULES}
-    return plan_modules_in_graph_order(
-        bank, keys, excluded, allowed, controller, True, scales, discrete_null=bool(discrete_null),
-    )
+    return plan_modules_in_graph_order(bank, keys, excluded, allowed, controller, True, scales)
 
 
 def retrieval_holdout_pair(

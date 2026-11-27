@@ -1994,37 +1994,22 @@ def _score_adapted_episode(detector, episode, adapter, device, evaluation) -> di
     }
 
 
-def _resolve_holdout_null_mode(
-    *,
-    soft_null: bool | None,
-    discrete_null: bool | None,
-    null_eval_threshold: float | None,
-) -> tuple[bool, float]:
-    """正式默认 soft；discrete + 阈值仅诊断。返回 (use_soft, threshold)。"""
+def _resolve_holdout_null_threshold(null_eval_threshold: float | None) -> float:
+    """硬门控阈值：CLI 覆盖，否则读配置。"""
     from training.retrieval_memory import load_retrieval_config
 
     config = load_retrieval_config()
-    threshold = float(
+    return float(
         config.get("null_eval_threshold", 0.5)
         if null_eval_threshold is None
         else null_eval_threshold
     )
-    mode = str(config.get("holdout_null_mode", "soft")).lower()
-    if discrete_null:
-        return False, threshold
-    if soft_null:
-        return True, threshold
-    if null_eval_threshold is not None:
-        return False, threshold
-    return mode != "discrete", threshold
 
 
 def run_retrieval_holdout(
     supervised: Path, checkpoint: Path, run_name: str,
     device: str = "cuda", decode_workers: int | None = None,
     *,
-    soft_null: bool | None = None,
-    discrete_null: bool | None = None,
     null_eval_threshold: float | None = None,
 ) -> dict:
     """检索式 FOMAML 的留出：同一 Support 上比较无借用与检索借用，再报 Query AP50/AP75。"""
@@ -2118,23 +2103,17 @@ def run_retrieval_holdout(
             torch.cuda.reset_peak_memory_stats(device)
         detector = build_faster_rcnn(model_config, initialize_backbone=False).to(device)
         detector.load_state_dict(retrieval["model"], strict=True)
-        use_soft, threshold = _resolve_holdout_null_mode(
-            soft_null=soft_null, discrete_null=discrete_null, null_eval_threshold=null_eval_threshold,
-        )
-        discrete_null_flag = not use_soft
+        threshold = _resolve_holdout_null_threshold(null_eval_threshold)
         gamma.policy.null_eval_threshold = threshold
         holdout_seed = int(config.get("seed", 20261120))
         result["provenance"]["holdout_null"] = {
-            "discrete_null": discrete_null_flag,
-            "null_eval_threshold": threshold,
-            "soft_null": bool(use_soft),
-            "holdout_null_mode": "soft" if use_soft else "discrete",
+            "holdout_null_mode": "hard",
+            "null_eval_threshold": float(threshold),
             "seed": holdout_seed,
         }
         print(
             f"检索式留出：{len(episodes)} 条 Episode，经验库 {Path(retrieval['experience_bank_dir']).name}，"
-            f"epoch={retrieval['epoch']} soft_null={int(use_soft)} discrete_null={int(discrete_null_flag)} "
-            f"null_threshold={threshold:.3f} seed={holdout_seed}",
+            f"epoch={retrieval['epoch']} hard_null threshold={threshold:.3f} seed={holdout_seed}",
             flush=True,
         )
 
@@ -2189,7 +2168,7 @@ def run_retrieval_holdout(
             }
             plans = holdout_borrow_plan(
                 bank, episode, keys, gamma, support, step_l2=step_l2,
-                discrete_null=discrete_null_flag, null_eval_threshold=threshold,
+                null_eval_threshold=threshold,
             )
             gate_borrow_by_support(plans, support_grads)
             attach_first_order_ratio(plans, support_grads, query_grads, values)
@@ -2365,8 +2344,6 @@ def run_holdout(
     supervised: Path, fomaml: Path, run_name: str,
     device: str = "cuda", decode_workers: int | None = None,
     *,
-    soft_null: bool | None = None,
-    discrete_null: bool | None = None,
     null_eval_threshold: float | None = None,
 ) -> dict:
     fomaml = Path(fomaml)
@@ -2376,7 +2353,6 @@ def run_holdout(
         if payload.get("experience_bank_dir"):
             return run_retrieval_holdout(
                 supervised, query_best, run_name, device, decode_workers,
-                soft_null=soft_null, discrete_null=discrete_null,
                 null_eval_threshold=null_eval_threshold,
             )
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{0,79}", run_name):

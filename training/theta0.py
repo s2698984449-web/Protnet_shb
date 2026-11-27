@@ -245,6 +245,37 @@ def _memory_part_name(episode_id: str) -> str:
     return episode_id.replace(":", "_") + ".pt"
 
 
+def _prune_old_experience_epochs(run_dir: Path, keep_epoch: int) -> list[str]:
+    """只保留当前经验库目录，删除更早的 experience_epoch_*。"""
+    import shutil
+
+    kept = f"experience_epoch_{int(keep_epoch)}"
+    removed = []
+    for path in sorted(run_dir.glob("experience_epoch_*")):
+        if not path.is_dir() or path.name == kept:
+            continue
+        shutil.rmtree(path, ignore_errors=True)
+        removed.append(path.name)
+    return removed
+
+
+def _discard_module_memory_parts(run_dir: Path, module_memory: dict) -> None:
+    """训练结束后丢掉任务差卸盘；检索式留出只依赖 experience_epoch + last/best。"""
+    import shutil
+
+    for row in module_memory.values():
+        if not isinstance(row, dict):
+            continue
+        row.pop("delta", None)
+        row.pop("delta_file", None)
+    parts = run_dir / "module_memory_parts"
+    if parts.is_dir():
+        shutil.rmtree(parts, ignore_errors=True)
+    resume = run_dir / "resume.pt"
+    if resume.is_file():
+        resume.unlink(missing_ok=True)
+
+
 def _spill_episode_delta(directory: Path, episode_id: str, row: dict, *, release: bool = True) -> None:
     """把任务差写到单独文件。release 为真时从这条记录里丢掉张量，库里仍可留着最新一份。"""
     if isinstance(row.get("delta"), dict) and not row.get("delta_file"):
@@ -1220,6 +1251,12 @@ def _train(detector, adapter, episodes, provenance, run_dir, device, resume_stat
                     )
                     retrieval_bank = load_experience_bank(epoch_dir, current_hash)
                     library = _hydrate_library(module_memory, library_index, memory_parts)
+                    pruned = _prune_old_experience_epochs(run_dir, epoch)
+                    if pruned:
+                        print(
+                            f"FOMAML 只保留当前经验库 experience_epoch_{epoch}，已删 {','.join(pruned)}",
+                            flush=True,
+                        )
             for index, episode in enumerate(order):
                 if index < start_index:
                     continue
@@ -1397,11 +1434,20 @@ def _train(detector, adapter, episodes, provenance, run_dir, device, resume_stat
                     if touched:
                         print(f"FOMAML 模块学习率触及边界 step={result['global_step']} {touched}", flush=True)
                     if step.get("gamma_proxy_meaning") == "query_counterfactual_utility":
+                        module_u = step.get("module_utilities") or {}
+                        kinds = step.get("loo_kinds") or {}
+                        loo = ",".join(
+                            f"{name}={float(module_u.get(name, 0.0)):+.3f}"
+                            f"/{kinds.get(name, '?')}"
+                            for name in (step.get("loo_modules") or [])
+                        ) or "-"
+                        closed = ",".join(step.get("force_closed") or []) or "-"
                         print(
                             f"FOMAML step={result['global_step']} "
                             f"U={step.get('counterfactual_utility', 0.0):+.4f} "
                             f"L_null={step.get('query_loss_null', 0.0):.4f} "
-                            f"L_borrow={step.get('query_loss_borrow', 0.0):.4f}",
+                            f"L_borrow={step.get('query_loss_borrow', 0.0):.4f} "
+                            f"LOO[{loo}] force_close[{closed}]",
                             flush=True,
                         )
                 write_resume(epoch, index + 1, index + 1 == len(order))
@@ -1499,16 +1545,31 @@ def _train(detector, adapter, episodes, provenance, run_dir, device, resume_stat
     result["best_query_detection_mean"] = best_loss
     provenance["fomaml_trained_family_ids"] = sorted(trained_families)
     provenance["stopped_epoch"] = stopped_epoch
-    for episode_id, row in module_memory.items():
-        _spill_episode_delta(memory_parts, episode_id, row)
     library.clear()
     gc.collect()
     from training.retrieval_memory import MODULES as _MEMORY_MODULES
 
-    save_checkpoint(run_dir / "module_memory.pt", {
-        "episodes": module_memory, "modules": list(_MEMORY_MODULES),
-        "delta_storage": memory_parts.name,
-    })
+    # 检索式：不把每任务 Δ 永久卸盘；非检索式仍 spill 供旧库路径。
+    if retrieval_bank is not None:
+        _discard_module_memory_parts(run_dir, module_memory)
+        keep_epoch = stopped_epoch if stopped_epoch else best_epoch
+        bank_name = Path(str(retrieval_bank.get("directory") or "")).name
+        if bank_name.startswith("experience_epoch_"):
+            try:
+                keep_epoch = int(bank_name.rsplit("_", 1)[-1])
+            except ValueError:
+                pass
+        _prune_old_experience_epochs(run_dir, keep_epoch)
+        save_checkpoint(run_dir / "module_memory.pt", {
+            "episodes": module_memory, "modules": list(_MEMORY_MODULES),
+        })
+    else:
+        for episode_id, row in module_memory.items():
+            _spill_episode_delta(memory_parts, episode_id, row)
+        save_checkpoint(run_dir / "module_memory.pt", {
+            "episodes": module_memory, "modules": list(_MEMORY_MODULES),
+            "delta_storage": memory_parts.name,
+        })
     save_checkpoint(run_dir / "last.pt", {"model": detector.state_dict(), "provenance": provenance,
                                          "epoch": best_epoch, "global_step": result["global_step"]})
     result["complete"] = True

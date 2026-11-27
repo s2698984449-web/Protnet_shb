@@ -72,16 +72,8 @@ def main() -> None:
     holdout.add_argument("--device", choices=("cuda", "cpu"), default="cuda")
     holdout.add_argument("--decode-workers", type=int, choices=(0, 1))
     holdout.add_argument(
-        "--soft-null", action="store_true",
-        help="正式默认已是 soft；显式指定连续 (1-Null)*ρ",
-    )
-    holdout.add_argument(
-        "--discrete-null", action="store_true",
-        help="诊断：离散 Null 关断（配合 --null-eval-threshold，如 0.95 / 1.01）",
-    )
-    holdout.add_argument(
         "--null-eval-threshold", type=float, default=None,
-        help="诊断：离散 Null 阈值；省略时读配置。单独给出该参数也视为 discrete",
+        help="硬门控 P_Null 阈值；省略时读 retrieval_fomaml.yaml（默认 0.5）",
     )
 
     rpn = commands.add_parser("diagnose-rpn", help="诊断 RPN 各阶段覆盖")
@@ -134,8 +126,6 @@ def main() -> None:
     elif args.command == "holdout":
         run_holdout(
             args.supervised, args.fomaml, args.run_name, args.device, args.decode_workers,
-            soft_null=True if args.soft_null else None,
-            discrete_null=True if args.discrete_null else None,
             null_eval_threshold=args.null_eval_threshold,
         )
     elif args.command == "diagnose-rpn":

@@ -1,8 +1,10 @@
-"""条件化模块知识迁移决策：选卡、Null、迁移强度 ρ。
+"""条件化模块知识迁移 v5.1：任务条件 Null + LOO/Add-One + 上游组合。
 
-相似度只负责召回；MLP 结合任务签名差与卡片历史效用选卡。
-Null 与 ρ 分离：训练/正式评价均为 soft (1-Null)*ρ。
-ψ 用 Query 反事实效用 U=L_Null-L_Borrow 更新，不再使用一阶梯度代理。
+相似度只负责召回；MLP 选卡、硬门控 z、强度 ρ。
+动作 a_m=(z_m, c_m, ρ_m)：z_m=0 时注入严格为 0。
+ψ 用模块条件贡献 U_m（Leave-One-Out / Add-One）更新，不再广播整任务 U。
+Null 头用有效候选 mask-mean，并直连 task∥module∥upstream，避免模块固定偏置。
+AP50/AP75 效用单独预测，与损失效用分账。
 """
 
 from __future__ import annotations
@@ -16,9 +18,8 @@ import torch.nn.functional as F
 from training.retrieval_memory import MODULES, load_retrieval_config
 
 _EPS = 1e-12
-POLICY_KIND = "conditional_transfer_v4"
+POLICY_KIND = "conditional_transfer_v51"
 UTILITY_FEATURE_DIM = 4  # mean, std, log1p(count), neg_rate
-FEATURE_MODULES = ("Backbone", "RoiFeature")
 
 # Backbone → Where → RoiFeature → Class / Box
 UPSTREAM_OF: dict[str, tuple[str, ...]] = {
@@ -30,18 +31,9 @@ UPSTREAM_OF: dict[str, tuple[str, ...]] = {
 }
 MAX_UPSTREAM = 3
 
-# Query 外循环仍可按职责拆梯度；ψ 不再用其做代理损失。
-MODULE_ROLE_LOSS: dict[str, tuple[str, ...]] = {
-    "Backbone": ("total",),
-    "Where": ("where",),
-    "RoiFeature": ("roi_total",),
-    "Box": ("localization",),
-    "Class": ("positive", "ranking", "hard_negative"),
-}
-
 
 def upstream_slot_dim(key_dim: int) -> int:
-    """每个上游模块：selected_key_embed[key_dim] + ρ + null_weight。"""
+    """每个上游模块：selected_key_embed[key_dim] + ρ + z。"""
     return int(key_dim) + 2
 
 
@@ -99,7 +91,7 @@ def encode_upstream_state(
     *,
     key_dim: int = 64,
 ) -> torch.Tensor:
-    """上游已选卡片签名嵌入 + 实际 ρ/Null，供下游条件化。"""
+    """上游已选卡片签名嵌入 + ρ + 硬门控 z，供下游条件化。"""
     slot = upstream_slot_dim(key_dim)
     parts: list[torch.Tensor] = []
     for name in UPSTREAM_OF[module]:
@@ -115,15 +107,28 @@ def encode_upstream_state(
                 embed = F.pad(embed, (0, key_dim - int(embed.numel())))
         rho = plan.get("rho")
         rho_v = float(rho.detach()) if torch.is_tensor(rho) else float(plan.get("rho") or 0.0)
-        null_w = plan.get("null_weight")
-        if torch.is_tensor(null_w):
-            null_v = float(null_w.detach())
+        z = plan.get("borrow_gate")
+        if torch.is_tensor(z):
+            z_v = float(z.detach())
         else:
-            null_v = float(plan.get("null_probability") or 1.0)
-        parts.append(torch.cat([embed, torch.tensor([rho_v, null_v], dtype=torch.float32)]))
+            z_v = float(plan.get("z_hard") or 0.0)
+        parts.append(torch.cat([embed, torch.tensor([rho_v, z_v], dtype=torch.float32)]))
     while len(parts) < MAX_UPSTREAM:
         parts.append(torch.zeros(slot, dtype=torch.float32))
     return torch.cat(parts[:MAX_UPSTREAM])
+
+
+def hard_borrow_gate(
+    null_logit: torch.Tensor,
+    *,
+    threshold: float = 0.5,
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """返回 (z_ste, z_hard, p_null)。前向硬门控，反向走 (1-p_null)。"""
+    p_null = torch.sigmoid(null_logit)
+    z_soft = 1.0 - p_null
+    z_hard = (p_null < float(threshold)).to(dtype=z_soft.dtype)
+    z_ste = z_hard + z_soft - z_soft.detach()
+    return z_ste, z_hard, p_null
 
 
 class ConditionalTransferMLP(nn.Module):
@@ -136,7 +141,6 @@ class ConditionalTransferMLP(nn.Module):
         self.utility_dim = UTILITY_FEATURE_DIM
         self.upstream_dim = upstream_state_dim(self.key_dim)
         self.module_emb = nn.Embedding(len(MODULES), 16)
-        # task_key + emb + sim + norm + key_diff + utility[4] + upstream
         in_dim = self.key_dim + 16 + 2 + 1 + self.utility_dim + self.upstream_dim
         self.trunk = nn.Sequential(
             nn.Linear(in_dim, hidden),
@@ -146,6 +150,13 @@ class ConditionalTransferMLP(nn.Module):
         )
         self.score_head = nn.Linear(hidden, 1)
         self.rho_head = nn.Linear(hidden, 1)
+        # Null：有效候选 mask-mean 与 task∥module∥upstream 直连摘要融合，避免 pad 稀释与模块塌缩。
+        null_direct_dim = self.key_dim + 16 + self.upstream_dim
+        self.null_direct = nn.Sequential(
+            nn.Linear(null_direct_dim, hidden),
+            nn.ReLU(inplace=True),
+        )
+        self.null_fuse = nn.Linear(hidden * 2, hidden)
         self.null_head = nn.Linear(hidden, 1)
 
     def _fit_key(self, key: torch.Tensor) -> torch.Tensor:
@@ -209,51 +220,137 @@ class ConditionalTransferMLP(nn.Module):
             scores.append(logit)
         stacked = torch.stack(pooled)
         card_logits = torch.stack(scores)
-        context = stacked.mean(dim=0)
-        null_logit = self.null_head(context).reshape(())
-        rho_raw = self.rho_head(context).reshape(())
+        mask_f = mask.to(dtype=stacked.dtype).unsqueeze(1)
+        mask_sum = mask_f.sum().clamp_min(1.0)
+        cand_context = (stacked * mask_f).sum(dim=0) / mask_sum
+        if int(mask.sum()) == 0:
+            cand_context = torch.zeros_like(cand_context)
+        direct = self.null_direct(torch.cat([key, emb, upstream], dim=0))
+        null_context = F.relu(self.null_fuse(torch.cat([cand_context, direct], dim=0)))
+        null_logit = self.null_head(null_context).reshape(())
+        rho_raw = self.rho_head(cand_context).reshape(())
         return card_logits, null_logit, rho_raw
 
 
+class ApUtilityHead(nn.Module):
+    """由各模块决策摘要预测 AP50/AP75 差及其不确定性（与损失效用分账）。"""
+
+    def __init__(self, module_count: int = 5, hidden: int = 64):
+        super().__init__()
+        in_dim = int(module_count) * 4  # rho, z, p_null, sim_max
+        self.net = nn.Sequential(
+            nn.Linear(in_dim, hidden),
+            nn.ReLU(inplace=True),
+            nn.Linear(hidden, 4),  # mu50, log_sigma50, mu75, log_sigma75
+        )
+
+    def forward(self, features: torch.Tensor) -> dict[str, torch.Tensor]:
+        raw = self.net(features.float().reshape(1, -1)).reshape(-1)
+        return {
+            "mu_ap50": raw[0],
+            "log_sigma_ap50": raw[1],
+            "mu_ap75": raw[2],
+            "log_sigma_ap75": raw[3],
+        }
+
+
+def plan_decision_features(plans: list[dict]) -> torch.Tensor:
+    """拼装 AP 效用头输入；不含产品名。"""
+    rows = []
+    by_module = {plan["module"]: plan for plan in plans}
+    for module in MODULES:
+        plan = by_module.get(module) or {}
+        rho = plan.get("rho")
+        rho_v = float(rho.detach()) if torch.is_tensor(rho) else float(plan.get("rho") or 0.0)
+        z_v = float(plan.get("z_hard") or 0.0)
+        p_null = float(plan.get("null_probability") or 1.0)
+        sim = float(plan.get("sim_max") or 0.0)
+        rows.extend([rho_v, z_v, p_null, sim])
+    return torch.tensor(rows, dtype=torch.float32)
+
+
+def ap_utility_nll(
+    prediction: dict[str, torch.Tensor],
+    target_ap50: float,
+    target_ap75: float | None = None,
+) -> torch.Tensor:
+    """高斯负对数似然；缺 AP75 时只监督 AP50。"""
+    loss = _gaussian_nll(prediction["mu_ap50"], prediction["log_sigma_ap50"], float(target_ap50))
+    if target_ap75 is not None:
+        loss = loss + _gaussian_nll(prediction["mu_ap75"], prediction["log_sigma_ap75"], float(target_ap75))
+    return loss
+
+
+def _gaussian_nll(mu: torch.Tensor, log_sigma: torch.Tensor, target: float) -> torch.Tensor:
+    sigma = F.softplus(log_sigma) + 1e-3
+    err = mu - float(target)
+    return 0.5 * (err * err) / (sigma * sigma) + torch.log(sigma)
+
+
+def risk_constrained_score(
+    mu: float,
+    log_sigma: float,
+    *,
+    risk_lambda: float = 1.0,
+) -> float:
+    """Score = μ − λσ；不足覆盖风险时调用方选 Null。"""
+    sigma = float(F.softplus(torch.tensor(float(log_sigma))) + 1e-3)
+    return float(mu) - float(risk_lambda) * sigma
+
+
 class TransferPolicyController:
-    """Top-K 召回后由 MLP 决策；Null 与 ρ 分离。"""
+    """Top-K 召回后由 MLP 决策；硬 z 与 ρ 分离。"""
 
     def __init__(self, config: dict | None = None):
         config = load_retrieval_config() if config is None else config
         self.rho_max = float(config.get("rho_max", 0.3))
         if not 0 < self.rho_max <= 1:
             raise ValueError("ρ 上限必须在 (0, 1]")
-        floors = config.get("rho_floor") or {}
-        self.rho_floor = {module: float(floors.get(module, 0.0)) for module in MODULES}
-        for module, floor in self.rho_floor.items():
-            if not 0 <= floor < self.rho_max:
-                raise ValueError(f"{module} 的 ρ 下限必须在 [0, rho_max)")
         self.utility_prior_count = float(config.get("utility_prior_count", 8.0))
         self.null_eval_threshold = float(config.get("null_eval_threshold", 0.5))
-        boosts = config.get("policy_strength_boost") or {}
-        self.strength_boost = {module: float(boosts.get(module, 1.0)) for module in MODULES}
-        for module, boost in self.strength_boost.items():
-            if boost <= 0:
-                raise ValueError(f"{module} 的 policy_strength_boost 必须为正")
         self.key_dim = int(config.get("pca_dim", 64))
         self.max_candidates = int(config.get("max_top_k", 4))
+        loo = config.get("module_loo") or {}
+        self.loo_enabled = bool(loo.get("enabled", True))
+        self.loo_modules_per_step = max(1, int(loo.get("modules_per_step", 1)))
+        self.force_close_prob = float(loo.get("force_close_prob", 0.25))
+        if not 0.0 <= self.force_close_prob <= 1.0:
+            raise ValueError("module_loo.force_close_prob 必须在 [0, 1]")
+        self._loo_cursor = 0
+        ap_cfg = config.get("ap_utility") or {}
+        self.ap_utility_enabled = bool(ap_cfg.get("enabled", True))
+        self.ap_utility_every_n_steps = max(0, int(ap_cfg.get("every_n_steps", 0)))
         self.policy = ConditionalTransferMLP(
             key_dim=self.key_dim,
             hidden=int(config.get("policy_hidden", 128)),
             max_candidates=self.max_candidates,
         )
+        self.ap_head = ApUtilityHead(module_count=len(MODULES), hidden=int(ap_cfg.get("hidden", 64)))
         self.optimizer = torch.optim.Adam(
-            self.policy.parameters(), lr=float(config.get("policy_adam_lr", 0.001)),
+            list(self.policy.parameters()) + list(self.ap_head.parameters()),
+            lr=float(config.get("policy_adam_lr", 0.001)),
         )
+
+    def next_loo_modules(self) -> list[str]:
+        """轮换抽出本步要做 Leave-One-Out 的模块。"""
+        if not self.loo_enabled:
+            return []
+        count = min(self.loo_modules_per_step, len(MODULES))
+        chosen = []
+        for _ in range(count):
+            chosen.append(MODULES[self._loo_cursor % len(MODULES)])
+            self._loo_cursor += 1
+        return chosen
 
     def state_dict(self) -> dict:
         return {
             "policy": self.policy.state_dict(),
+            "ap_head": self.ap_head.state_dict(),
             "optimizer": self.optimizer.state_dict(),
             "policy_optimizer_state": self.optimizer.state_dict(),
             "rho_max": self.rho_max,
-            "rho_floor": dict(self.rho_floor),
             "key_dim": self.key_dim,
+            "loo_cursor": int(self._loo_cursor),
             "kind": POLICY_KIND,
         }
 
@@ -264,19 +361,19 @@ class TransferPolicyController:
         if "key_dim" in payload and int(payload["key_dim"]) != self.key_dim:
             raise ValueError("决策网络 key_dim 与当前配置不一致")
         self.policy.load_state_dict(payload["policy"])
+        if payload.get("ap_head") is not None:
+            self.ap_head.load_state_dict(payload["ap_head"])
         opt_state = payload.get("policy_optimizer_state") or payload.get("optimizer")
         if opt_state is not None:
             self.optimizer.load_state_dict(opt_state)
         if "rho_max" in payload:
             self.rho_max = float(payload["rho_max"])
-        if payload.get("rho_floor"):
-            for module, value in payload["rho_floor"].items():
-                if module in self.rho_floor:
-                    self.rho_floor[module] = float(value)
+        if "loo_cursor" in payload:
+            self._loo_cursor = int(payload["loo_cursor"])
 
     def effective_rho(self, raw: torch.Tensor, module: str) -> torch.Tensor:
-        floor = float(self.rho_floor.get(module, 0.0))
-        return floor + (self.rho_max - floor) * torch.sigmoid(raw)
+        del module
+        return self.rho_max * torch.sigmoid(raw)
 
 
 def pad_candidates(
@@ -348,11 +445,7 @@ def mix_cards_from_logits(
     units: torch.Tensor,
     mask: torch.Tensor,
 ) -> tuple[torch.Tensor, torch.Tensor]:
-    """仅对真实候选 Softmax；返回单位 mix 与 card_weights（和为 1）。
-
-    Null 不进入该 Softmax。软借用时有效卡片质量为 (1-Null)*w_i，
-    不对非 Null 卡片再归一化。
-    """
+    """仅对真实候选 Softmax；Null/z 不进入该 Softmax。"""
     logits = card_logits.clone()
     if int(mask.sum()) == 0:
         weights = torch.zeros_like(logits)
@@ -366,47 +459,53 @@ def mix_cards_from_logits(
     return mix, weights
 
 
-def null_probability_from_logit(null_logit: torch.Tensor) -> torch.Tensor:
-    return torch.sigmoid(null_logit)
-
-
 def decide_inject(
     *,
     allow_borrow: bool,
     retrieved_valid: bool,
-    null_weight: torch.Tensor,
+    z_hard: float,
     applied_l2: float,
     step: float,
-    discrete_null: bool,
-    null_threshold: float,
 ) -> bool:
-    """训练连续稀释；评价时 Null 可变成真正的离散不借。"""
+    """z_hard=0 时绝不注入。"""
     if not allow_borrow or not retrieved_valid or step <= 0.0:
         return False
-    if discrete_null and float(null_weight.detach()) >= float(null_threshold):
+    if float(z_hard) < 0.5:
         return False
     return applied_l2 > 1e-8
 
 
 def counterfactual_policy_loss(
     plans: list[dict],
-    utility: float,
-    strength_boost: dict[str, float] | None = None,
+    module_utilities: dict[str, float],
 ) -> torch.Tensor:
-    """用 stopgrad(U) 经 soft 注入幅度回传选卡/Null/ρ。U=L_Null-L_Borrow。"""
-    boost = strength_boost or {}
+    """按模块条件贡献 U_m 更新选卡/z/ρ；不得把整任务 U 广播到所有模块。
+
+    幅度项 = z_ste · ρ · step · ||mix||。
+    z=0 时前向为 0，反向仍经 STE 到 null_logit，并经 mix 到 card logits，
+    从而支持 add-one 效用下的重新开启。
+    """
     total = None
     for plan in plans:
-        if not plan.get("valid") or not plan.get("inject"):
+        module = plan["module"]
+        if module not in module_utilities:
             continue
-        delta = plan.get("delta_vector")
-        if delta is None or not torch.is_tensor(delta):
+        if not plan.get("valid"):
             continue
-        if not bool(delta.requires_grad):
+        utility = float(module_utilities[module])
+        gate = plan.get("borrow_gate")
+        rho = plan.get("rho")
+        mix = plan.get("vector")
+        if not torch.is_tensor(gate) or not torch.is_tensor(rho) or not torch.is_tensor(mix):
             continue
-        weight = float(boost.get(plan["module"], 1.0))
-        term = weight * torch.linalg.vector_norm(delta.float().reshape(-1))
-        total = term if total is None else total + term
+        if not (bool(gate.requires_grad) or bool(rho.requires_grad) or bool(mix.requires_grad)):
+            continue
+        step = float(plan.get("support_step_l2") or 1.0)
+        if step <= 0.0:
+            continue
+        amplitude = gate * rho * step * torch.linalg.vector_norm(mix.float().reshape(-1))
+        weighted = (-utility) * amplitude
+        total = weighted if total is None else total + weighted
     if total is None:
-        raise ValueError("没有可微的迁移决策")
-    return -float(utility) * total
+        raise ValueError("没有可微的模块条件贡献")
+    return total

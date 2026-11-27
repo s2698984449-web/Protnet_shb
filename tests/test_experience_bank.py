@@ -258,10 +258,12 @@ class RetrievalWiringTest(unittest.TestCase):
         self.assertTrue(all(float(plan["rho"].detach()) <= controller.rho_max for plan in closed))
         self.assertEqual({plan["inject"] for plan in closed}, {False})
         before = {name: float(param.detach().sum()) for name, param in controller.policy.policy.named_parameters()}
-        # 关闭借用时没有可微注入，反事实更新应为空操作
-        apply_counterfactual_policy(controller, closed, utility=1.0)
+        # 关闭借用时训练步不调用策略更新（空 module_utilities）
+        apply_counterfactual_policy(controller, closed, {})
         after = {name: float(param.detach().sum()) for name, param in controller.policy.policy.named_parameters()}
         self.assertEqual(after, before)
+        with torch.no_grad():
+            controller.policy.policy.null_head.bias.fill_(-8.0)
         opened = [
             plan_module_borrow(
                 bank, module, key, 1, {"mvtec:bottle"}, controller, True, support_step_l2=1.0,
@@ -269,7 +271,8 @@ class RetrievalWiringTest(unittest.TestCase):
             for module in MODULES
         ]
         self.assertTrue(any(plan["inject"] for plan in opened))
-        apply_counterfactual_policy(controller, opened, utility=0.8)
+        utilities = {plan["module"]: 0.8 for plan in opened if plan["inject"]}
+        apply_counterfactual_policy(controller, opened, utilities)
         after_open = {name: float(param.detach().sum()) for name, param in controller.policy.policy.named_parameters()}
         self.assertTrue(any(after_open[name] != before[name] for name in before))
 
@@ -277,14 +280,16 @@ class RetrievalWiringTest(unittest.TestCase):
         bank = _retrieval_bank()
         key = torch.tensor([4.0, 0.0, 0.0, 0.0])
         helpful = GammaController()
+        with torch.no_grad():
+            helpful.policy.policy.null_head.bias.fill_(-8.0)
         helpful_plan = [
             plan_module_borrow(
                 bank, "Backbone", key, 1, {"mvtec:bottle"}, helpful, True, support_step_l2=1.0,
             )
         ]
         before = float(helpful_plan[0]["rho"].detach())
-        result = apply_counterfactual_policy(helpful, helpful_plan, utility=1.0)
-        self.assertAlmostEqual(result["utility"], 1.0)
+        result = apply_counterfactual_policy(helpful, helpful_plan, {"Backbone": 1.0})
+        self.assertAlmostEqual(result["module_utilities"]["Backbone"], 1.0)
         after_plan = plan_module_borrow(
             bank, "Backbone", key, 1, {"mvtec:bottle"}, helpful, True, support_step_l2=1.0,
         )
@@ -355,7 +360,7 @@ class RetrievalWiringTest(unittest.TestCase):
         self.assertTrue(all(plan["named"] == {} for plan in plans))
         discrete = plan_module_borrow(
             bank, "Backbone", key, 1, {"mvtec:bottle"}, controller, True,
-            support_step_l2=1.0, discrete_null=True,
+            support_step_l2=1.0,
         )
         self.assertEqual(discrete["null_decision"], "null")
         self.assertFalse(discrete["inject"])
