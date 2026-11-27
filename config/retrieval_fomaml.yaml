@@ -26,6 +26,10 @@ module_loo:
   modules_per_step: 1
   # 训练探索：对本步 LOO 目标模块强制关闭，激活 Add-One 并重规划下游。
   force_close_prob: 0.25
+  # 强度探针：每步对目标模块轮换 1 档（正式注入仍用策略 ρ）。
+  rho_probes: [0.1, 0.2, 0.3]
+  # 单卡探针：Top-K 内轮换 1 张，相对「无该模块」算独立信用。
+  card_probe: true
 ap_utility:
   enabled: true
   # 每 N 步做 Borrow/Null 配对 AP50/AP75 监督；20 为稀疏默认。

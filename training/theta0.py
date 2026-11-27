@@ -1442,12 +1442,23 @@ def _train(detector, adapter, episodes, provenance, run_dir, device, resume_stat
                             for name in (step.get("loo_modules") or [])
                         ) or "-"
                         closed = ",".join(step.get("force_closed") or []) or "-"
+                        rho_p = step.get("rho_probe") or {}
+                        card_p = step.get("card_probe") or {}
+                        rho_txt = (
+                            "-" if not rho_p else
+                            f"{rho_p.get('module')}@ρ={float(rho_p.get('rho', 0.0)):.2f}:{float(rho_p.get('utility', 0.0)):+.3f}"
+                        )
+                        card_txt = (
+                            "-" if not card_p else
+                            f"{card_p.get('module')}#{int(card_p.get('index', -1))}:{float(card_p.get('utility', 0.0)):+.3f}"
+                        )
                         print(
                             f"FOMAML step={result['global_step']} "
                             f"U={step.get('counterfactual_utility', 0.0):+.4f} "
                             f"L_null={step.get('query_loss_null', 0.0):.4f} "
                             f"L_borrow={step.get('query_loss_borrow', 0.0):.4f} "
-                            f"LOO[{loo}] force_close[{closed}]",
+                            f"LOO[{loo}] force_close[{closed}] "
+                            f"rho_probe[{rho_txt}] card_probe[{card_txt}]",
                             flush=True,
                         )
                 write_resume(epoch, index + 1, index + 1 == len(order))

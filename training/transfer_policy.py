@@ -316,7 +316,17 @@ class TransferPolicyController:
         self.force_close_prob = float(loo.get("force_close_prob", 0.25))
         if not 0.0 <= self.force_close_prob <= 1.0:
             raise ValueError("module_loo.force_close_prob 必须在 [0, 1]")
+        probes = loo.get("rho_probes")
+        if probes is None:
+            probes = [0.1, 0.2, 0.3]
+        self.rho_probes = [float(value) for value in probes]
+        for value in self.rho_probes:
+            if not 0.0 < value <= self.rho_max + 1e-8:
+                raise ValueError(f"module_loo.rho_probes 须在 (0, rho_max]，收到 {value}")
+        self.card_probe = bool(loo.get("card_probe", True))
         self._loo_cursor = 0
+        self._rho_probe_cursor = 0
+        self._card_probe_cursor = 0
         ap_cfg = config.get("ap_utility") or {}
         self.ap_utility_enabled = bool(ap_cfg.get("enabled", True))
         self.ap_utility_every_n_steps = max(0, int(ap_cfg.get("every_n_steps", 0)))
@@ -342,6 +352,25 @@ class TransferPolicyController:
             self._loo_cursor += 1
         return chosen
 
+    def next_rho_probe(self) -> float | None:
+        """轮换一档 ρ 探针；无配置则跳过。"""
+        if not self.rho_probes:
+            return None
+        value = float(self.rho_probes[self._rho_probe_cursor % len(self.rho_probes)])
+        self._rho_probe_cursor += 1
+        return value
+
+    def next_card_probe_index(self, mask: torch.Tensor) -> int | None:
+        """在有效候选中轮换一张卡；无有效候选则跳过。"""
+        if not self.card_probe:
+            return None
+        valid = [index for index, flag in enumerate(mask.bool().reshape(-1).tolist()) if flag]
+        if not valid:
+            return None
+        choice = valid[self._card_probe_cursor % len(valid)]
+        self._card_probe_cursor += 1
+        return int(choice)
+
     def state_dict(self) -> dict:
         return {
             "policy": self.policy.state_dict(),
@@ -351,6 +380,8 @@ class TransferPolicyController:
             "rho_max": self.rho_max,
             "key_dim": self.key_dim,
             "loo_cursor": int(self._loo_cursor),
+            "rho_probe_cursor": int(self._rho_probe_cursor),
+            "card_probe_cursor": int(self._card_probe_cursor),
             "kind": POLICY_KIND,
         }
 
@@ -370,6 +401,10 @@ class TransferPolicyController:
             self.rho_max = float(payload["rho_max"])
         if "loo_cursor" in payload:
             self._loo_cursor = int(payload["loo_cursor"])
+        if "rho_probe_cursor" in payload:
+            self._rho_probe_cursor = int(payload["rho_probe_cursor"])
+        if "card_probe_cursor" in payload:
+            self._card_probe_cursor = int(payload["card_probe_cursor"])
 
     def effective_rho(self, raw: torch.Tensor, module: str) -> torch.Tensor:
         del module
@@ -509,3 +544,23 @@ def counterfactual_policy_loss(
     if total is None:
         raise ValueError("没有可微的模块条件贡献")
     return total
+
+
+def rho_probe_policy_loss(plan: dict, utility: float, rho_probe: float) -> torch.Tensor:
+    """强度探针：U>0 拉向 ρ_probe，U<0 拉向 0。"""
+    rho = plan.get("rho")
+    if not torch.is_tensor(rho) or not bool(rho.requires_grad):
+        raise ValueError("ρ 探针需要可微的 rho")
+    target = float(rho_probe) if float(utility) > 0.0 else 0.0
+    return (rho - rho.new_tensor(target)) ** 2
+
+
+def card_probe_policy_loss(plan: dict, utility: float, card_index: int) -> torch.Tensor:
+    """单卡探针：只更新对应 card_logit，正 U 抬高、负 U 压低。"""
+    logits = plan.get("card_logits")
+    if not torch.is_tensor(logits) or not bool(logits.requires_grad):
+        raise ValueError("卡探针需要可微的 card_logits")
+    index = int(card_index)
+    if index < 0 or index >= int(logits.numel()):
+        raise ValueError("卡探针下标越界")
+    return (-float(utility)) * logits[index]

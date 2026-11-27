@@ -12,9 +12,9 @@ from training.experience_bank import (
 )
 from training.retrieval_memory import MODULES
 from training.transfer_policy import (
-    POLICY_KIND, UPSTREAM_OF, ApUtilityHead, counterfactual_policy_loss, decide_inject,
-    encode_upstream_state, hard_borrow_gate, mix_cards_from_logits, plan_decision_features,
-    risk_constrained_score, smooth_utility_features,
+    POLICY_KIND, UPSTREAM_OF, ApUtilityHead, card_probe_policy_loss, counterfactual_policy_loss,
+    decide_inject, encode_upstream_state, hard_borrow_gate, mix_cards_from_logits,
+    plan_decision_features, rho_probe_policy_loss, risk_constrained_score, smooth_utility_features,
 )
 
 
@@ -247,6 +247,54 @@ class TransferPolicyTest(unittest.TestCase):
     def test_force_close_prob_config(self):
         controller = GammaController()
         self.assertAlmostEqual(float(controller.policy.force_close_prob), 0.25, places=5)
+        self.assertEqual(controller.policy.rho_probes, [0.1, 0.2, 0.3])
+        self.assertTrue(controller.policy.card_probe)
+
+    def test_rho_probe_loss_moves_rho_toward_helpful_probe(self):
+        bank = _bank()
+        key = torch.tensor([4.0, 0.0, 0.0, 0.0])
+        controller = GammaController()
+        with torch.no_grad():
+            controller.policy.policy.null_head.bias.fill_(-8.0)
+            controller.policy.policy.rho_head.bias.fill_(0.0)
+        plan = plan_module_borrow(
+            bank, "Backbone", key, 1, {"mvtec:bottle"}, controller, True, support_step_l2=1.0,
+        )
+        before = float(plan["rho"].detach())
+        apply_counterfactual_policy(
+            controller, [plan], {},
+            rho_probe={"module": "Backbone", "rho": 0.3, "utility": 1.0},
+        )
+        plan2 = plan_module_borrow(
+            bank, "Backbone", key, 1, {"mvtec:bottle"}, controller, True, support_step_l2=1.0,
+        )
+        self.assertGreater(float(plan2["rho"].detach()), before)
+        # 负效用把 ρ 拉向 0
+        rho = torch.tensor(0.2, requires_grad=True)
+        loss_neg = rho_probe_policy_loss({"rho": rho}, -1.0, 0.3)
+        self.assertAlmostEqual(float(loss_neg.detach()), 0.04, places=5)
+
+    def test_card_probe_loss_only_touches_target_logit(self):
+        logits = torch.tensor([0.1, 0.2, 0.3, 0.4], requires_grad=True)
+        loss = card_probe_policy_loss({"card_logits": logits}, 1.0, 2)
+        loss.backward()
+        self.assertAlmostEqual(float(logits.grad[2]), -1.0, places=5)
+        self.assertTrue(torch.all(logits.grad[[0, 1, 3]] == 0).item())
+        bank = _bank()
+        key = torch.tensor([4.0, 0.0, 0.0, 0.0])
+        controller = GammaController()
+        with torch.no_grad():
+            controller.policy.policy.null_head.bias.fill_(-8.0)
+        plan = plan_module_borrow(
+            bank, "Backbone", key, 1, {"mvtec:bottle"}, controller, True, support_step_l2=1.0,
+        )
+        before_bias = float(controller.policy.policy.score_head.bias.detach().sum())
+        apply_counterfactual_policy(
+            controller, [plan], {},
+            card_probe={"module": "Backbone", "index": 0, "utility": 1.0},
+        )
+        after_bias = float(controller.policy.policy.score_head.bias.detach().sum())
+        self.assertNotAlmostEqual(before_bias, after_bias, places=6)
 
 
 if __name__ == "__main__":

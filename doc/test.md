@@ -146,4 +146,5 @@ B0-V3 已完成正式训练并作为后续模块对照，三域性能差距记�
 | FOMAML 落盘只留当前经验库 | `training/theta0.py`：`_prune_old_experience_epochs`、`_discard_module_memory_parts` | 2026-11-27。每轮刷新后删旧 `experience_epoch_*`；检索式结束后不保留 `module_memory_parts`/`resume.pt`。检测器仍只写 `last.pt`+`query_best.pt` |
 | 条件化迁移 v5.1 任务条件 Null / Add-One | `POLICY_KIND=conditional_transfer_v51`；Null mask-mean+task∥module∥upstream；`force_close_prob`+下游重规划；`tests/test_transfer_policy.py` | 2026-11-27。正式 run-name：`fold0-fomaml-conditional-v51-e10`。单测：`python -m unittest discover -s tests -p test_transfer_policy.py` |
 | v5.1 轻量化清理 | 删 soft-null CLI/死职责分项/`rho_floor`；合并策略单测；holdout 只留 v5 基线 | 2026-11-27 **已清理**：`test_transfer_policy_v5.py`/`v51.py`；15 个过期 holdout 目录（保留 `fold0-fomaml-conditional-v5-e10-holdout`）。结论见实验记录 |
+| v5.1 ρ/卡条件效用探针 | `module_loo.rho_probes`/`card_probe`；`module_rho_and_card_probes`；`rho_probe_policy_loss`/`card_probe_policy_loss`；`tests/test_transfer_policy.py` | 2026-11-27。每步对 LOO 目标模块轮换 1 档 ρ + 1 张卡；不重建经验库、不改检测器 |
 

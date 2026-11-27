@@ -1714,6 +1714,8 @@ def plan_module_borrow(
         "named": named,
         "candidate_named": candidate_named,
         "vector": mix,
+        "units": units.detach().clone(),
+        "candidate_mask": mask.detach().clone(),
         "delta_vector": delta_vector,
         "upstream_state": upstream_state.detach().clone(),
         "anchor": anchor,
@@ -2058,16 +2060,36 @@ def apply_counterfactual_policy(
     module_utilities: dict[str, float],
     *,
     ap_targets: dict | None = None,
+    rho_probe: dict | None = None,
+    card_probe: dict | None = None,
 ) -> dict:
-    """按模块条件贡献 U_m 更新 ψ；可选稀疏 AP 效用头监督。"""
+    """按模块条件贡献 U_m 更新 ψ；可选 ρ/卡探针与稀疏 AP 监督。"""
     from training.transfer_policy import (
-        ap_utility_nll, counterfactual_policy_loss, plan_decision_features,
+        ap_utility_nll, card_probe_policy_loss, counterfactual_policy_loss,
+        plan_decision_features, rho_probe_policy_loss,
     )
 
+    by_module = {plan["module"]: plan for plan in plans}
     try:
         loss = counterfactual_policy_loss(plans, module_utilities)
     except ValueError:
         loss = None
+    if rho_probe and rho_probe.get("module") in by_module:
+        try:
+            term = rho_probe_policy_loss(
+                by_module[rho_probe["module"]], float(rho_probe["utility"]), float(rho_probe["rho"]),
+            )
+            loss = term if loss is None else loss + term
+        except ValueError:
+            pass
+    if card_probe and card_probe.get("module") in by_module:
+        try:
+            term = card_probe_policy_loss(
+                by_module[card_probe["module"]], float(card_probe["utility"]), int(card_probe["index"]),
+            )
+            loss = term if loss is None else loss + term
+        except ValueError:
+            pass
     ap_loss = None
     prediction = None
     if ap_targets is not None and controller.policy.ap_utility_enabled:
@@ -2087,6 +2109,8 @@ def apply_counterfactual_policy(
             "gain_grads": {module: 0.0 for module in MODULES},
             "ap_loss": None,
             "ap_prediction": None,
+            "rho_probe": rho_probe,
+            "card_probe": card_probe,
         }
     controller.policy.optimizer.zero_grad(set_to_none=True)
     loss.backward()
@@ -2103,6 +2127,8 @@ def apply_counterfactual_policy(
             "log_sigma_ap50": float(prediction["log_sigma_ap50"].detach()),
             "log_sigma_ap75": float(prediction["log_sigma_ap75"].detach()),
         },
+        "rho_probe": rho_probe,
+        "card_probe": card_probe,
     }
 
 
@@ -2427,6 +2453,99 @@ def module_leave_one_out_utilities(
     return utilities, kinds
 
 
+def module_rho_and_card_probes(
+    detector,
+    snapshot: dict,
+    plans: list[dict],
+    support_records,
+    query_records,
+    device,
+    settings: dict,
+    alphas: dict[str, float],
+    layouts: dict,
+    loo_modules: list[str],
+    controller: GammaController,
+    *,
+    rng_cpu,
+    rng_cuda,
+) -> dict:
+    """对 LOO 目标模块各探 1 档 ρ 与 1 张卡；相对「无该模块」算 Query 效用。"""
+    by_module = {plan["module"]: plan for plan in plans}
+    rho_probe = None
+    card_probe = None
+
+    def _adapt_and_loss(borrow: dict) -> float:
+        detector.load_state_dict(snapshot, strict=True)
+        torch.set_rng_state(rng_cpu)
+        if rng_cuda is not None:
+            torch.cuda.set_rng_state(rng_cuda, device)
+        retrieval_support_adapt(
+            detector, support_records, device, settings, alphas, borrow, layouts,
+        )
+        torch.set_rng_state(rng_cpu)
+        if rng_cuda is not None:
+            torch.cuda.set_rng_state(rng_cuda, device)
+        return float(mean_query_detection_loss(detector, query_records, device, settings))
+
+    def _others_borrow(module: str) -> dict:
+        borrow = {}
+        for other in plans:
+            if other["module"] == module or not other.get("inject"):
+                continue
+            borrow.update(other["named"])
+        return borrow
+
+    for module in loo_modules:
+        plan = by_module.get(module)
+        if plan is None or not plan.get("valid"):
+            continue
+        step = float(plan.get("support_step_l2") or 0.0)
+        mix = plan.get("vector")
+        if step <= 0.0 or not torch.is_tensor(mix):
+            continue
+        loss_without = _adapt_and_loss(_others_borrow(module))
+        rho_value = controller.policy.next_rho_probe()
+        if rho_value is not None and rho_probe is None:
+            probe_flat = float(rho_value) * step * mix.detach().float().reshape(-1)
+            if float(torch.linalg.vector_norm(probe_flat)) > 1e-8:
+                probe_named = dict(_others_borrow(module))
+                probe_named.update(unpack_named(probe_flat, layouts[module]))
+                loss_with = _adapt_and_loss(probe_named)
+                rho_probe = {
+                    "module": module,
+                    "rho": float(rho_value),
+                    "utility": float(loss_without - loss_with),
+                }
+        mask = plan.get("candidate_mask")
+        units = plan.get("units")
+        if (
+            card_probe is None
+            and torch.is_tensor(mask)
+            and torch.is_tensor(units)
+        ):
+            card_index = controller.policy.next_card_probe_index(mask)
+            if card_index is not None:
+                rho_card = float(plan["rho"].detach()) if torch.is_tensor(plan.get("rho")) else float(plan.get("rho") or 0.0)
+                if rho_card <= 1e-8 and rho_value is not None:
+                    rho_card = float(rho_value)
+                unit = units.detach().float()[int(card_index)].reshape(-1)
+                card_flat = rho_card * step * unit
+                if float(torch.linalg.vector_norm(card_flat)) > 1e-8:
+                    card_named = dict(_others_borrow(module))
+                    card_named.update(unpack_named(card_flat, layouts[module]))
+                    loss_with = _adapt_and_loss(card_named)
+                    card_probe = {
+                        "module": module,
+                        "index": int(card_index),
+                        "rho": float(rho_card),
+                        "utility": float(loss_without - loss_with),
+                    }
+        if rho_probe is not None and card_probe is not None:
+            break
+    detector.load_state_dict(snapshot, strict=True)
+    return {"rho_probe": rho_probe, "card_probe": card_probe}
+
+
 def retrieval_fomaml_step(
     detector, optimizer, support_records, query_records, episode: dict, bank: dict,
     controller: GammaController, device, settings: dict, *, allow_borrow: bool,
@@ -2512,11 +2631,19 @@ def retrieval_fomaml_step(
         torch.cuda.set_rng_state(rng_cuda, device)
     loss_null = mean_query_detection_loss(detector, query_records, device, settings)
     utility = float(loss_null - loss_borrow)
+    rho_probe = None
+    card_probe = None
     if allow_borrow and loo_modules:
         module_utilities, loo_kinds = module_leave_one_out_utilities(
             detector, snapshot, plans, support_records, query_records, device, settings, alphas,
             bank["layouts"], loss_borrow, loo_modules, rng_cpu=rng_cpu, rng_cuda=rng_cuda,
         )
+        probes = module_rho_and_card_probes(
+            detector, snapshot, plans, support_records, query_records, device, settings, alphas,
+            bank["layouts"], loo_modules, controller, rng_cpu=rng_cpu, rng_cuda=rng_cuda,
+        )
+        rho_probe = probes.get("rho_probe")
+        card_probe = probes.get("card_probe")
     else:
         module_utilities, loo_kinds = {}, {}
     detector.load_state_dict(snapshot, strict=True)
@@ -2578,9 +2705,13 @@ def retrieval_fomaml_step(
         }
         for name, parameter in detector.named_parameters():
             parameter.data.copy_(updated[name].to(device=parameter.device, dtype=parameter.dtype))
-    if allow_borrow and module_utilities:
-        proxy = apply_counterfactual_policy(controller, plans, module_utilities, ap_targets=ap_targets)
-        update_module_contributions(bank, module_utilities, plans)
+    if allow_borrow and (module_utilities or rho_probe or card_probe):
+        proxy = apply_counterfactual_policy(
+            controller, plans, module_utilities, ap_targets=ap_targets,
+            rho_probe=rho_probe, card_probe=card_probe,
+        )
+        if module_utilities:
+            update_module_contributions(bank, module_utilities, plans)
     else:
         proxy = {
             "loss": 0.0,
@@ -2589,6 +2720,8 @@ def retrieval_fomaml_step(
             "gain_grads": {module: 0.0 for module in MODULES},
             "ap_loss": None,
             "ap_prediction": None,
+            "rho_probe": None,
+            "card_probe": None,
         }
     alpha_report = None
     if inner_lr_controller is not None:
@@ -2625,6 +2758,8 @@ def retrieval_fomaml_step(
         "loo_modules": list(loo_modules),
         "loo_kinds": loo_kinds,
         "force_closed": list(force_closed),
+        "rho_probe": rho_probe,
+        "card_probe": card_probe,
         "ap_targets": ap_targets,
         "inner_max_weight_change": inner_change,
         "outer_max_weight_change": outer_change,
