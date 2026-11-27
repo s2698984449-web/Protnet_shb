@@ -1,4 +1,4 @@
-"""条件化迁移 v5.1：硬 z、模块 LOO/Add-One、任务条件 Null、force-close。"""
+"""条件化迁移 v5.2：Null 符号边际、卡温度锐化、硬 z / LOO / force-close。"""
 
 from __future__ import annotations
 
@@ -14,8 +14,9 @@ from training.retrieval_memory import MODULES
 from training.transfer_policy import (
     POLICY_KIND, UPSTREAM_OF, ApUtilityHead, card_pair_policy_loss, card_probe_policy_loss,
     counterfactual_policy_loss, decide_inject, encode_upstream_state, hard_borrow_gate,
-    mix_cards_from_logits, plan_decision_features, rho_pair_policy_loss, rho_probe_policy_loss,
-    risk_constrained_score, smooth_utility_features, utility_ap_sign_agreement,
+    mix_cards_from_logits, null_sign_policy_loss, plan_decision_features, rho_pair_policy_loss,
+    rho_probe_policy_loss, risk_constrained_score, smooth_utility_features,
+    utility_ap_sign_agreement,
 )
 
 
@@ -87,11 +88,11 @@ def _pad_inputs(controller, *, task_key, module="Backbone", upstream=None):
 
 class TransferPolicyTest(unittest.TestCase):
     def test_policy_kind_rejects_old(self):
-        self.assertEqual(POLICY_KIND, "conditional_transfer_v51")
+        self.assertEqual(POLICY_KIND, "conditional_transfer_v52")
         controller = GammaController()
         self.assertEqual(controller.state_dict()["kind"], POLICY_KIND)
         with self.assertRaises(ValueError):
-            controller.load_state_dict({"kind": "conditional_transfer_v5", "policy_state": {}})
+            controller.load_state_dict({"kind": "conditional_transfer_v51", "policy_state": {}})
 
     def test_hard_gate_zero_inject(self):
         z_ste, z_hard, p_null = hard_borrow_gate(torch.tensor(8.0), threshold=0.5)
@@ -169,6 +170,23 @@ class TransferPolicyTest(unittest.TestCase):
         mask = torch.tensor([True, True])
         _, weights = mix_cards_from_logits(torch.tensor([2.0, 0.0]), units, mask)
         self.assertAlmostEqual(float(weights.sum()), 1.0, places=5)
+        _, sharp = mix_cards_from_logits(torch.tensor([2.0, 0.0]), units, mask, temperature=0.5)
+        self.assertGreater(float(sharp[0]), float(weights[0]))
+
+    def test_null_sign_pushes_past_margin(self):
+        logit = torch.tensor(0.0, requires_grad=True)
+        plan = {"null_logit": logit}
+        refuse = null_sign_policy_loss(plan, -0.1, refuse_weight=2.0, accept_weight=1.0, margin=0.5)
+        refuse.backward()
+        # 最小化：负梯度抬高 null_logit → Null
+        self.assertLess(float(logit.grad), 0.0)
+        logit2 = torch.tensor(0.0, requires_grad=True)
+        accept = null_sign_policy_loss(
+            {"null_logit": logit2}, 0.1, refuse_weight=2.0, accept_weight=1.0, margin=0.5,
+        )
+        accept.backward()
+        # 正梯度压低 null_logit → Borrow
+        self.assertGreater(float(logit2.grad), 0.0)
 
     def test_ap_head_and_risk_score(self):
         head = ApUtilityHead(module_count=5, hidden=32)
@@ -254,6 +272,11 @@ class TransferPolicyTest(unittest.TestCase):
         self.assertTrue(controller.policy.card_pairwise)
         self.assertTrue(controller.policy.probe_alternate)
         self.assertAlmostEqual(float(controller.policy.rho_deadzone_rel), 0.05, places=5)
+        self.assertAlmostEqual(float(controller.policy.null_sign_refuse_weight), 2.0, places=5)
+        self.assertAlmostEqual(float(controller.policy.null_sign_accept_weight), 1.0, places=5)
+        self.assertAlmostEqual(float(controller.policy.null_sign_margin), 0.5, places=5)
+        self.assertAlmostEqual(float(controller.policy.card_temperature), 0.5, places=5)
+        self.assertAlmostEqual(float(controller.policy.card_pair_loss_weight), 2.0, places=5)
         self.assertFalse(controller.policy.ap_utility_enabled)
         self.assertEqual(int(controller.policy.ap_utility_every_n_steps), 0)
         self.assertEqual(

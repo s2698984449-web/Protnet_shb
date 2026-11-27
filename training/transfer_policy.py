@@ -1,9 +1,10 @@
-"""条件化模块知识迁移 v5.1：任务条件 Null + LOO/Add-One + 上游组合。
+"""条件化模块知识迁移 v5.2：v5.1 + Null 符号边际监督 + 卡温度锐化。
 
 相似度只负责召回；MLP 选卡、硬门控 z、强度 ρ。
 动作 a_m=(z_m, c_m, ρ_m)：z_m=0 时注入严格为 0。
 ψ 用模块条件贡献 U_m（Leave-One-Out / Add-One）更新，不再广播整任务 U。
-Null 头用有效候选 mask-mean，并直连 task∥module∥upstream，避免模块固定偏置。
+Null：有效候选 mask-mean + 直连摘要；另按 U_m 符号把 null_logit 推过阈值边际。
+卡混合支持 temperature<1；配对损失可加权。
 AP50/AP75 效用单独预测，与损失效用分账。
 """
 
@@ -18,7 +19,7 @@ import torch.nn.functional as F
 from training.retrieval_memory import MODULES, load_retrieval_config
 
 _EPS = 1e-12
-POLICY_KIND = "conditional_transfer_v51"
+POLICY_KIND = "conditional_transfer_v52"
 UTILITY_FEATURE_DIM = 4  # mean, std, log1p(count), neg_rate
 
 # Backbone → Where → RoiFeature → Class / Box
@@ -332,6 +333,21 @@ class TransferPolicyController:
         self.rho_deadzone_rel = float(loo.get("rho_deadzone_rel", 0.05))
         if self.rho_deadzone_rel < 0.0:
             raise ValueError("module_loo.rho_deadzone_rel 必须 ≥ 0")
+        # v5.2：对 null_logit 做符号边际监督，纠正留出 null_p≈0.49 卡阈值。
+        self.null_sign_refuse_weight = float(loo.get("null_sign_refuse_weight", 2.0))
+        self.null_sign_accept_weight = float(loo.get("null_sign_accept_weight", 1.0))
+        self.null_sign_margin = float(loo.get("null_sign_margin", 0.5))
+        if self.null_sign_refuse_weight < 0.0 or self.null_sign_accept_weight < 0.0:
+            raise ValueError("module_loo.null_sign_*_weight 必须 ≥ 0")
+        if self.null_sign_margin < 0.0:
+            raise ValueError("module_loo.null_sign_margin 必须 ≥ 0")
+        # 卡 Softmax 温度 <1 更锐；配对项可加权。
+        self.card_temperature = float(loo.get("card_temperature", 0.5))
+        if self.card_temperature <= 0.0:
+            raise ValueError("module_loo.card_temperature 必须 > 0")
+        self.card_pair_loss_weight = float(loo.get("card_pair_loss_weight", 2.0))
+        if self.card_pair_loss_weight < 0.0:
+            raise ValueError("module_loo.card_pair_loss_weight 必须 ≥ 0")
         self._loo_cursor = 0
         self._rho_probe_cursor = 0
         self._rho_pair_cursor = 0
@@ -540,13 +556,16 @@ def mix_cards_from_logits(
     card_logits: torch.Tensor,
     units: torch.Tensor,
     mask: torch.Tensor,
+    *,
+    temperature: float = 1.0,
 ) -> tuple[torch.Tensor, torch.Tensor]:
-    """仅对真实候选 Softmax；Null/z 不进入该 Softmax。"""
+    """仅对真实候选 Softmax；Null/z 不进入该 Softmax。temperature<1 更锐。"""
     logits = card_logits.clone()
     if int(mask.sum()) == 0:
         weights = torch.zeros_like(logits)
         return torch.zeros(units.shape[-1]), weights
-    logits = torch.where(mask, logits, torch.full_like(logits, -1e6))
+    temp = max(float(temperature), 1e-3)
+    logits = torch.where(mask, logits / temp, torch.full_like(logits, -1e6))
     weights = torch.softmax(logits, dim=0)
     weights = torch.where(mask, weights, torch.zeros_like(weights))
     total = weights.sum().clamp_min(_EPS)
@@ -571,15 +590,42 @@ def decide_inject(
     return applied_l2 > 1e-8
 
 
+def null_sign_policy_loss(
+    plan: dict,
+    utility: float,
+    *,
+    refuse_weight: float = 2.0,
+    accept_weight: float = 1.0,
+    margin: float = 0.5,
+) -> torch.Tensor:
+    """按 U_m 符号把 null_logit 推过阈值边际：U≤0→Null，U>0→Borrow。
+
+    幅度损失在 null_p≈0.5 时梯度弱；本项直接监督 logit，拒借侧默认加权更高。
+    """
+    null_logit = plan.get("null_logit")
+    if not torch.is_tensor(null_logit) or not bool(null_logit.requires_grad):
+        raise ValueError("Null 符号监督需要可微的 null_logit")
+    if float(utility) <= 0.0:
+        # 目标 null_logit ≥ +margin（p_null 明显高于 0.5）
+        return float(refuse_weight) * F.softplus(-(null_logit - float(margin)))
+    # 目标 null_logit ≤ −margin
+    return float(accept_weight) * F.softplus(null_logit + float(margin))
+
+
 def counterfactual_policy_loss(
     plans: list[dict],
     module_utilities: dict[str, float],
+    *,
+    null_sign_refuse_weight: float = 2.0,
+    null_sign_accept_weight: float = 1.0,
+    null_sign_margin: float = 0.5,
 ) -> torch.Tensor:
     """按模块条件贡献 U_m 更新选卡/z/ρ；不得把整任务 U 广播到所有模块。
 
     幅度项 = z_ste · ρ · step · ||mix||。
     z=0 时前向为 0，反向仍经 STE 到 null_logit，并经 mix 到 card logits，
     从而支持 add-one 效用下的重新开启。
+    另加 null_logit 符号边际项，避免留出卡在阈值下沿。
     """
     total = None
     for plan in plans:
@@ -601,6 +647,16 @@ def counterfactual_policy_loss(
             continue
         amplitude = gate * rho * step * torch.linalg.vector_norm(mix.float().reshape(-1))
         weighted = (-utility) * amplitude
+        try:
+            weighted = weighted + null_sign_policy_loss(
+                plan,
+                utility,
+                refuse_weight=null_sign_refuse_weight,
+                accept_weight=null_sign_accept_weight,
+                margin=null_sign_margin,
+            )
+        except ValueError:
+            pass
         total = weighted if total is None else total + weighted
     if total is None:
         raise ValueError("没有可微的模块条件贡献")

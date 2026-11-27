@@ -1651,7 +1651,9 @@ def plan_module_borrow(
     card_logits, null_logit, rho_raw = controller.policy.policy(
         task_key, sim_tensor, norm_tensor, diff_tensor, util_tensor, module, mask, upstream_state,
     )
-    mix, card_weights = mix_cards_from_logits(card_logits, units, mask)
+    mix, card_weights = mix_cards_from_logits(
+        card_logits, units, mask, temperature=float(controller.policy.card_temperature),
+    )
     selected_key_embed = mix_selected_key_embed(card_weights, key_tensor, mask)
     threshold = float(controller.policy.null_eval_threshold)
     # a_m=(z,c,ρ)；硬门控 + STE，z=0 时 named 增量严格为 0。
@@ -2078,8 +2080,15 @@ def apply_counterfactual_policy(
     )
 
     by_module = {plan["module"]: plan for plan in plans}
+    policy = controller.policy
     try:
-        loss = counterfactual_policy_loss(plans, module_utilities)
+        loss = counterfactual_policy_loss(
+            plans,
+            module_utilities,
+            null_sign_refuse_weight=float(policy.null_sign_refuse_weight),
+            null_sign_accept_weight=float(policy.null_sign_accept_weight),
+            null_sign_margin=float(policy.null_sign_margin),
+        )
     except ValueError:
         loss = None
     if rho_probe and rho_probe.get("module") in by_module:
@@ -2117,6 +2126,9 @@ def apply_counterfactual_policy(
                 term = card_probe_policy_loss(
                     plan, float(card_probe["utility"]), int(card_probe["index"]),
                 )
+            weight = float(policy.card_pair_loss_weight)
+            if weight != 1.0:
+                term = weight * term
             loss = term if loss is None else loss + term
         except ValueError:
             pass
