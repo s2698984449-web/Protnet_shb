@@ -2181,6 +2181,8 @@ def apply_counterfactual_policy(
     fo_gate_loss = None
     if bool(getattr(policy, "fo_enabled", False)) and bool(getattr(policy, "fo_supervise", False)):
         for plan in plans:
+            if not policy.fo_supervises(plan["module"]):
+                continue
             utilities = plan.get("fo_card_utilities")
             if not torch.is_tensor(utilities):
                 continue
@@ -2203,7 +2205,10 @@ def apply_counterfactual_policy(
             except ValueError:
                 pass
     if fo_gate is None and any(plan.get("fo_card_utilities") is not None for plan in plans):
-        fo_gate = first_order_gate_report(plans, module_utilities)
+        fo_gate = first_order_gate_report(
+            plans, module_utilities,
+            corr_min_cards=int(getattr(policy, "fo_corr_min_cards", 3)),
+        )
     if rho_probe and rho_probe.get("module") in by_module:
         plan = by_module[rho_probe["module"]]
         try:
@@ -3039,7 +3044,10 @@ def retrieval_fomaml_step(
     if allow_borrow and bool(getattr(controller.policy, "fo_enabled", False)):
         from training.transfer_policy import first_order_gate_report
 
-        fo_gate = first_order_gate_report(plans, module_utilities)
+        fo_gate = first_order_gate_report(
+            plans, module_utilities,
+            corr_min_cards=int(getattr(controller.policy, "fo_corr_min_cards", 3)),
+        )
     if allow_borrow and (
         module_utilities or rho_probe or card_probe or ap_targets is not None
         or (fo_gate is not None and bool(getattr(controller.policy, "fo_supervise", False)))

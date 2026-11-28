@@ -150,4 +150,5 @@ B0-V3 已完成正式训练并作为后续模块对照，三域性能差距记�
 | v5.1 ρ/卡相对排序 + AP 隔离 | `rho_pairwise`/`card_pairwise`；`rho_pair_policy_loss`/`card_pair_policy_loss`；`utility_ap_sign_agreement`；`ap_utility.every_n_steps=0` | 2026-11-27。同任务配对+噪声死区；双向排序单测；AP 不进主损失 |
 | 条件化迁移 v5.2 Null 校准 / 卡锐化 | `POLICY_KIND=conditional_transfer_v52`；`null_sign_policy_loss`；`card_temperature`/`card_pair_loss_weight`；`tests/test_transfer_policy.py` | 2026-11-27。针对留出 null_p≈0.49 全注入；不重建经验库。正式 run-name：`fold0-fomaml-conditional-v52-e10`。**已被 v5.3 取代** |
 | 条件化迁移 v5.3 一阶对齐 / 日志闸门 | `POLICY_KIND=conditional_transfer_v53`；`first_order.*`；`card_support_align_features`；`attach_dense_first_order_labels`；`first_order_gate_report`；监督默认关 | 2026-11-28。不重建经验库；先 1 epoch 日志闸门 `fold0-fomaml-conditional-v53-e1-loggate` |
+| v5.3 模块白名单一阶监督 | `supervise_modules`；`corr_min_cards`；`fo_supervises` | 2026-11-28。闸门后仅 Backbone/RoiFeature 开稠密监督；正式 `fold0-fomaml-conditional-v53-e10` |
 

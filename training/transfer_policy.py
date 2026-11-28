@@ -416,10 +416,18 @@ class TransferPolicyController:
         if self.card_pair_loss_weight < 0.0:
             raise ValueError("module_loo.card_pair_loss_weight 必须 ≥ 0")
         fo = config.get("first_order") or {}
-        # 默认：特征可喂 ψ、稠密标签只日志；supervise=false 时不开辅助损失。
+        # 稠密一阶可按模块白名单监督；日志 corr 需足够多有效卡。
         self.fo_enabled = bool(fo.get("enabled", True))
         self.fo_feed_policy = bool(fo.get("feed_policy", True))
         self.fo_supervise = bool(fo.get("supervise", False))
+        raw_modules = fo.get("supervise_modules")
+        if raw_modules is None:
+            raw_modules = ["Backbone", "RoiFeature"]
+        self.fo_supervise_modules = {str(name) for name in raw_modules}
+        unknown = self.fo_supervise_modules - set(MODULES)
+        if unknown:
+            raise ValueError(f"first_order.supervise_modules 含未知模块：{sorted(unknown)}")
+        self.fo_corr_min_cards = max(2, int(fo.get("corr_min_cards", 3)))
         self.fo_card_loss_weight = float(fo.get("card_loss_weight", 0.1))
         self.fo_gate_loss_weight = float(fo.get("gate_loss_weight", 0.1))
         self.fo_listwise_tau = float(fo.get("listwise_tau", 0.1))
@@ -454,6 +462,10 @@ class TransferPolicyController:
             list(self.policy.parameters()) + list(self.ap_head.parameters()),
             lr=float(config.get("policy_adam_lr", 0.001)),
         )
+
+    def fo_supervises(self, module: str) -> bool:
+        """是否对该模块施加稠密一阶辅助损失。"""
+        return bool(self.fo_enabled) and bool(self.fo_supervise) and module in self.fo_supervise_modules
 
     def next_loo_modules(self) -> list[str]:
         """轮换抽出本步要做 Leave-One-Out 的模块。"""
@@ -913,11 +925,17 @@ def first_order_gate_report(
     module_utilities: dict[str, float] | None = None,
     *,
     eps: float = 1e-12,
+    corr_min_cards: int = 3,
 ) -> dict:
-    """日志闸门：Û↔U_m 符号一致率；分模块 corr(cos,u) / corr(orth,u)。"""
+    """日志闸门：Û↔U_m 符号一致率；分模块 corr(cos,u) / corr(orth,u)。
+
+    corr 仅在有效卡数 ≥ corr_min_cards 时计算，避免 K=2 时 Pearson 恒为 ±1。
+    """
     module_utilities = module_utilities or {}
+    min_cards = max(2, int(corr_min_cards))
     agrees: list[bool] = []
     modules: dict[str, dict] = {}
+    n_corr = 0
     for plan in plans:
         module = plan["module"]
         u_hat = plan.get("fo_module_utility")
@@ -931,14 +949,18 @@ def first_order_gate_report(
                 agrees.append(bool(sign_agree))
         corr_cos = None
         corr_orth = None
+        n_valid = 0
         align = plan.get("candidate_align")
         fo_u = plan.get("fo_card_utilities")
         mask = plan.get("candidate_mask")
         if torch.is_tensor(align) and torch.is_tensor(fo_u) and torch.is_tensor(mask):
             valid = mask.bool().reshape(-1)
-            if int(valid.sum()) >= 2 and int(align.shape[-1]) >= 3:
+            n_valid = int(valid.sum())
+            if n_valid >= min_cards and int(align.shape[-1]) >= 3:
                 corr_cos = _masked_pearson(align[valid, 0], fo_u[valid])
                 corr_orth = _masked_pearson(align[valid, 2], fo_u[valid])
+                if corr_cos is not None or corr_orth is not None:
+                    n_corr += 1
         max_u = None
         if torch.is_tensor(fo_u) and torch.is_tensor(mask) and int(mask.bool().sum()) > 0:
             max_u = float(fo_u[mask.bool()].max())
@@ -949,6 +971,7 @@ def first_order_gate_report(
             "sign_agree": sign_agree,
             "corr_cos_u": corr_cos,
             "corr_orth_u": corr_orth,
+            "n_valid_cards": n_valid,
             "max_card_u": max_u,
             "align_cos_selected": None if not plan.get("candidate_align_selected") else float(plan["candidate_align_selected"]),
         }
@@ -956,5 +979,7 @@ def first_order_gate_report(
     return {
         "sign_agree_rate": rate,
         "n_comparable": len(agrees),
+        "n_corr_eligible": n_corr,
+        "corr_min_cards": min_cards,
         "modules": modules,
     }

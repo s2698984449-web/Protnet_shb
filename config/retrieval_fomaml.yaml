@@ -48,8 +48,11 @@ first_order:
   enabled: true
   # 把 Support 对齐特征喂给 ψ（新输入列零初始化）；关掉则喂零。
   feed_policy: true
-  # 稠密一阶标签的辅助监督；默认关，先跑日志闸门。
-  supervise: false
+  # e1 闸门：仅 Backbone/RoiFeature 符号一致率≥0.75；Where/Class≈0.2 不开。
+  supervise: true
+  supervise_modules: [Backbone, RoiFeature]
+  # corr(cos,u) 仅当有效卡数 ≥ 该值才记，避免 K=2 时 Pearson 退化成 ±1。
+  corr_min_cards: 3
   card_loss_weight: 0.1
   gate_loss_weight: 0.1
   listwise_tau: 0.1

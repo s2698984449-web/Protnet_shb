@@ -280,7 +280,11 @@ class TransferPolicyTest(unittest.TestCase):
         self.assertAlmostEqual(float(controller.policy.card_pair_loss_weight), 2.0, places=5)
         self.assertTrue(controller.policy.fo_enabled)
         self.assertTrue(controller.policy.fo_feed_policy)
-        self.assertFalse(controller.policy.fo_supervise)
+        self.assertTrue(controller.policy.fo_supervise)
+        self.assertEqual(controller.policy.fo_supervise_modules, {"Backbone", "RoiFeature"})
+        self.assertTrue(controller.policy.fo_supervises("Backbone"))
+        self.assertFalse(controller.policy.fo_supervises("Where"))
+        self.assertEqual(int(controller.policy.fo_corr_min_cards), 3)
         self.assertAlmostEqual(float(controller.policy.fo_null_sign_scale), 0.0, places=5)
         self.assertEqual(int(controller.policy.policy.align_dim), ALIGN_FEATURE_DIM)
         self.assertFalse(controller.policy.ap_utility_enabled)
@@ -322,18 +326,38 @@ class TransferPolicyTest(unittest.TestCase):
         self.assertGreater(float(null_logit.grad), 0.0)
 
     def test_first_order_gate_report_sign_and_corr(self):
-        align = torch.tensor([[1.0, 0.0, 0.0, 0.0, 0.0], [-1.0, 0.0, 1.0, 0.0, 0.0],
-                              [0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0]])
-        fo_u = torch.tensor([0.5, -0.4, 0.0, 0.0])
+        # K=2：默认 corr_min_cards=3 → 不记 corr，避免 ±1 假信号
+        align2 = torch.tensor([[1.0, 0.0, 0.0, 0.0, 0.0], [-1.0, 0.0, 1.0, 0.0, 0.0],
+                               [0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0]])
+        plan2 = {
+            "module": "Backbone",
+            "fo_module_utility": 0.3,
+            "fo_card_utilities": torch.tensor([0.5, -0.4, 0.0, 0.0]),
+            "candidate_align": align2,
+            "candidate_mask": torch.tensor([True, True, False, False]),
+            "candidate_align_selected": 1.0,
+        }
+        report2 = first_order_gate_report([plan2], {"Backbone": 0.2})
+        self.assertEqual(report2["n_comparable"], 1)
+        self.assertIsNone(report2["modules"]["Backbone"]["corr_cos_u"])
+        self.assertEqual(int(report2["n_corr_eligible"]), 0)
+        # K=3：可记 corr
+        align = torch.tensor([
+            [1.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 1.0, 0.0, 0.0],
+            [-1.0, 0.0, 0.5, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0, 0.0],
+        ])
+        fo_u = torch.tensor([0.5, 0.0, -0.4, 0.0])
         plan = {
             "module": "Backbone",
             "fo_module_utility": 0.3,
             "fo_card_utilities": fo_u,
             "candidate_align": align,
-            "candidate_mask": torch.tensor([True, True, False, False]),
+            "candidate_mask": torch.tensor([True, True, True, False]),
             "candidate_align_selected": 1.0,
         }
-        report = first_order_gate_report([plan], {"Backbone": 0.2})
+        report = first_order_gate_report([plan], {"Backbone": 0.2}, corr_min_cards=3)
         self.assertEqual(report["n_comparable"], 1)
         self.assertAlmostEqual(float(report["sign_agree_rate"]), 1.0, places=5)
         self.assertIsNotNone(report["modules"]["Backbone"]["corr_cos_u"])
