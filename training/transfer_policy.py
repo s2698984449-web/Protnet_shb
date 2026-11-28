@@ -1,11 +1,9 @@
-"""条件化模块知识迁移 v5.2：v5.1 + Null 符号边际监督 + 卡温度锐化。
+"""条件化模块知识迁移 v5.3：v5.2 + Support/Query 一阶对齐特征与稠密标签。
 
 相似度只负责召回；MLP 选卡、硬门控 z、强度 ρ。
 动作 a_m=(z_m, c_m, ρ_m)：z_m=0 时注入严格为 0。
-ψ 用模块条件贡献 U_m（Leave-One-Out / Add-One）更新，不再广播整任务 U。
-Null：有效候选 mask-mean + 直连摘要；另按 U_m 符号把 null_logit 推过阈值边际。
-卡混合支持 temperature<1；配对损失可加权。
-AP50/AP75 效用单独预测，与损失效用分账。
+ψ 默认可读 Support 对齐特征（非硬规则）；稠密一阶 Query 标签默认只日志。
+精确 LOO/Add-One 仍可作稀疏校准；AP 效用与损失效用分账。
 """
 
 from __future__ import annotations
@@ -19,8 +17,10 @@ import torch.nn.functional as F
 from training.retrieval_memory import MODULES, load_retrieval_config
 
 _EPS = 1e-12
-POLICY_KIND = "conditional_transfer_v52"
+POLICY_KIND = "conditional_transfer_v53"
 UTILITY_FEATURE_DIM = 4  # mean, std, log1p(count), neg_rate
+# cos(g,d), ⟨g,d⟩/‖g‖, ‖d_⊥‖/‖d‖, log‖d‖, log‖g‖
+ALIGN_FEATURE_DIM = 5
 
 # Backbone → Where → RoiFeature → Class / Box
 UPSTREAM_OF: dict[str, tuple[str, ...]] = {
@@ -132,6 +132,57 @@ def hard_borrow_gate(
     return z_ste, z_hard, p_null
 
 
+def card_support_align_features(
+    grad: torch.Tensor,
+    direction: torch.Tensor,
+) -> torch.Tensor:
+    """Support 侧逐卡对齐特征（全部 stop-grad 友好：调用方应对输入 detach）。
+
+    返回 [cos, ⟨g,d⟩/‖g‖, ‖d_⊥‖/‖d‖, log‖d‖, log‖g‖]。
+    正交分量表示卡在 Support 步之外可能带来的新方向；不对齐就借。
+    """
+    g = grad.detach().float().reshape(-1)
+    d = direction.detach().float().reshape(-1)
+    if int(g.numel()) != int(d.numel()):
+        raise AssertionError("对齐特征要求梯度与卡向量同维")
+    g_norm = torch.linalg.vector_norm(g).clamp_min(_EPS)
+    d_norm = torch.linalg.vector_norm(d).clamp_min(_EPS)
+    dot = torch.dot(g, d)
+    cos = dot / (g_norm * d_norm)
+    scaled = dot / g_norm
+    u_g = g / g_norm
+    d_par = torch.dot(d, u_g) * u_g
+    orth = torch.linalg.vector_norm(d - d_par) / d_norm
+    return torch.stack(
+        [
+            cos,
+            scaled,
+            orth,
+            torch.log(d_norm),
+            torch.log(g_norm),
+        ]
+    )
+
+
+def aggregate_align_features(align: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
+    """对有效卡做 mean∥max 聚合，供 Null 头使用。"""
+    feats = align.detach().float()
+    if feats.ndim != 2 or int(feats.shape[-1]) != ALIGN_FEATURE_DIM:
+        raise ValueError(f"align 须为 [K, {ALIGN_FEATURE_DIM}]")
+    mask_f = mask.bool().reshape(-1)
+    if int(mask_f.sum()) == 0:
+        return torch.zeros(ALIGN_FEATURE_DIM * 2, dtype=torch.float32)
+    valid = feats[mask_f]
+    return torch.cat([valid.mean(dim=0), valid.max(dim=0).values], dim=0)
+
+
+def _zero_new_input_columns(linear: nn.Linear, old_in_dim: int) -> None:
+    """新输入列零初始化，避免一上来扰动旧特征通路。"""
+    with torch.no_grad():
+        if int(linear.weight.shape[1]) > int(old_in_dim):
+            linear.weight[:, int(old_in_dim) :].zero_()
+
+
 class ConditionalTransferMLP(nn.Module):
     """共享主干 + 模块嵌入；输出选卡 logits、独立 Null logit、标量 ρ。"""
 
@@ -140,9 +191,12 @@ class ConditionalTransferMLP(nn.Module):
         self.key_dim = int(key_dim)
         self.max_candidates = int(max_candidates)
         self.utility_dim = UTILITY_FEATURE_DIM
+        self.align_dim = ALIGN_FEATURE_DIM
         self.upstream_dim = upstream_state_dim(self.key_dim)
         self.module_emb = nn.Embedding(len(MODULES), 16)
-        in_dim = self.key_dim + 16 + 2 + 1 + self.utility_dim + self.upstream_dim
+        # 旧列：key+emb+sim+norm+diff+util+upstream；新列：align[5]
+        self._trunk_old_in = self.key_dim + 16 + 2 + 1 + self.utility_dim + self.upstream_dim
+        in_dim = self._trunk_old_in + self.align_dim
         self.trunk = nn.Sequential(
             nn.Linear(in_dim, hidden),
             nn.ReLU(inplace=True),
@@ -151,14 +205,17 @@ class ConditionalTransferMLP(nn.Module):
         )
         self.score_head = nn.Linear(hidden, 1)
         self.rho_head = nn.Linear(hidden, 1)
-        # Null：有效候选 mask-mean 与 task∥module∥upstream 直连摘要融合，避免 pad 稀释与模块塌缩。
-        null_direct_dim = self.key_dim + 16 + self.upstream_dim
+        # Null：mask-mean 隐状态 + task∥module∥upstream∥(align_mean∥align_max)
+        self._null_old_in = self.key_dim + 16 + self.upstream_dim
+        null_direct_dim = self._null_old_in + self.align_dim * 2
         self.null_direct = nn.Sequential(
             nn.Linear(null_direct_dim, hidden),
             nn.ReLU(inplace=True),
         )
         self.null_fuse = nn.Linear(hidden * 2, hidden)
         self.null_head = nn.Linear(hidden, 1)
+        _zero_new_input_columns(self.trunk[0], self._trunk_old_in)
+        _zero_new_input_columns(self.null_direct[0], self._null_old_in)
 
     def _fit_key(self, key: torch.Tensor) -> torch.Tensor:
         key = key.detach().float().reshape(-1)
@@ -178,8 +235,9 @@ class ConditionalTransferMLP(nn.Module):
         module: str,
         candidate_mask: torch.Tensor,
         upstream_state: torch.Tensor,
+        candidate_align: torch.Tensor | None = None,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        """返回 (card_logits[K], null_logit, rho_raw)。"""
+        """返回 (card_logits[K], null_logit, rho_raw)。align 必须已 stop-grad。"""
         if module not in MODULES:
             raise ValueError(f"未知模块：{module}")
         module_index = MODULES.index(module)
@@ -198,10 +256,18 @@ class ConditionalTransferMLP(nn.Module):
                 upstream = upstream[: self.upstream_dim]
             else:
                 upstream = F.pad(upstream, (0, self.upstream_dim - int(upstream.numel())))
+        if candidate_align is None:
+            align = torch.zeros(self.max_candidates, self.align_dim, dtype=torch.float32)
+        else:
+            align = candidate_align.detach().float()
+            if align.ndim == 1:
+                align = align.reshape(self.max_candidates, self.align_dim)
         if sims.numel() != self.max_candidates:
             raise ValueError("候选相似度长度必须等于 max_candidates")
         if int(utilities.shape[0]) != self.max_candidates or int(utilities.shape[-1]) != self.utility_dim:
             raise ValueError("候选效用特征形状必须是 [K, 4]")
+        if int(align.shape[0]) != self.max_candidates or int(align.shape[-1]) != self.align_dim:
+            raise ValueError(f"候选对齐特征形状必须是 [K, {self.align_dim}]")
         scores = []
         pooled = []
         for index in range(self.max_candidates):
@@ -209,7 +275,7 @@ class ConditionalTransferMLP(nn.Module):
                 [
                     key, emb,
                     sims[index].reshape(1), norms[index].reshape(1), diffs[index].reshape(1),
-                    utilities[index].reshape(-1), upstream,
+                    utilities[index].reshape(-1), upstream, align[index].reshape(-1),
                 ],
                 dim=0,
             )
@@ -226,7 +292,8 @@ class ConditionalTransferMLP(nn.Module):
         cand_context = (stacked * mask_f).sum(dim=0) / mask_sum
         if int(mask.sum()) == 0:
             cand_context = torch.zeros_like(cand_context)
-        direct = self.null_direct(torch.cat([key, emb, upstream], dim=0))
+        align_agg = aggregate_align_features(align, mask)
+        direct = self.null_direct(torch.cat([key, emb, upstream, align_agg], dim=0))
         null_context = F.relu(self.null_fuse(torch.cat([cand_context, direct], dim=0)))
         null_logit = self.null_head(null_context).reshape(())
         rho_raw = self.rho_head(cand_context).reshape(())
@@ -348,6 +415,24 @@ class TransferPolicyController:
         self.card_pair_loss_weight = float(loo.get("card_pair_loss_weight", 2.0))
         if self.card_pair_loss_weight < 0.0:
             raise ValueError("module_loo.card_pair_loss_weight 必须 ≥ 0")
+        fo = config.get("first_order") or {}
+        # 默认：特征可喂 ψ、稠密标签只日志；supervise=false 时不开辅助损失。
+        self.fo_enabled = bool(fo.get("enabled", True))
+        self.fo_feed_policy = bool(fo.get("feed_policy", True))
+        self.fo_supervise = bool(fo.get("supervise", False))
+        self.fo_card_loss_weight = float(fo.get("card_loss_weight", 0.1))
+        self.fo_gate_loss_weight = float(fo.get("gate_loss_weight", 0.1))
+        self.fo_listwise_tau = float(fo.get("listwise_tau", 0.1))
+        self.fo_gate_deadzone = float(fo.get("gate_deadzone", 1e-4))
+        self.fo_null_sign_scale = float(fo.get("null_sign_scale", 0.0))
+        if self.fo_card_loss_weight < 0.0 or self.fo_gate_loss_weight < 0.0:
+            raise ValueError("first_order.*_loss_weight 必须 ≥ 0")
+        if self.fo_listwise_tau <= 0.0:
+            raise ValueError("first_order.listwise_tau 必须 > 0")
+        if self.fo_gate_deadzone < 0.0:
+            raise ValueError("first_order.gate_deadzone 必须 ≥ 0")
+        if self.fo_null_sign_scale < 0.0:
+            raise ValueError("first_order.null_sign_scale 必须 ≥ 0")
         self._loo_cursor = 0
         self._rho_probe_cursor = 0
         self._rho_pair_cursor = 0
@@ -749,3 +834,127 @@ def utility_ap_sign_agreement(
         return {"comparable": False, "agree": None, "utility": u_value, "delta_ap": ap_value}
     agree = (u_value > 0.0) == (ap_value > 0.0)
     return {"comparable": True, "agree": bool(agree), "utility": u_value, "delta_ap": ap_value}
+
+
+def _masked_pearson(x: torch.Tensor, y: torch.Tensor) -> float | None:
+    if int(x.numel()) < 2:
+        return None
+    x = x.detach().float().reshape(-1)
+    y = y.detach().float().reshape(-1)
+    x = x - x.mean()
+    y = y - y.mean()
+    denom = torch.linalg.vector_norm(x) * torch.linalg.vector_norm(y)
+    if float(denom) <= _EPS:
+        return None
+    return float(torch.dot(x, y) / denom)
+
+
+def first_order_card_listwise_loss(
+    plan: dict,
+    utilities: torch.Tensor,
+    *,
+    tau: float = 0.1,
+) -> torch.Tensor:
+    """对有效卡做 listwise：CE(softmax(logits), softmax(u/τ))。"""
+    logits = plan.get("card_logits")
+    mask = plan.get("candidate_mask")
+    if not torch.is_tensor(logits) or not bool(logits.requires_grad):
+        raise ValueError("一阶卡监督需要可微的 card_logits")
+    if not torch.is_tensor(mask):
+        raise ValueError("一阶卡监督需要 candidate_mask")
+    u = utilities.detach().float().reshape(-1)
+    if int(u.numel()) != int(logits.numel()):
+        raise ValueError("一阶卡效用长度须等于候选数")
+    valid = mask.bool().reshape(-1)
+    if int(valid.sum()) == 0:
+        raise ValueError("一阶卡监督没有有效候选")
+    temp = max(float(tau), 1e-3)
+    masked_logits = torch.where(valid, logits, torch.full_like(logits, -1e6))
+    log_p = F.log_softmax(masked_logits, dim=0)
+    target_logits = torch.where(valid, u / temp, torch.full_like(u, -1e6))
+    target = F.softmax(target_logits, dim=0)
+    target = torch.where(valid, target, torch.zeros_like(target))
+    target = target / target.sum().clamp_min(_EPS)
+    return -(target * log_p).sum()
+
+
+def first_order_gate_loss(
+    plan: dict,
+    utilities: torch.Tensor,
+    *,
+    deadzone: float = 1e-4,
+) -> torch.Tensor:
+    """按 max_c u 的符号监督 Borrow/Null；死区内跳过。
+
+    p_borrow = σ(−null_logit)；正样本（应借）与负样本对称 BCE。
+    """
+    null_logit = plan.get("null_logit")
+    mask = plan.get("candidate_mask")
+    if not torch.is_tensor(null_logit) or not bool(null_logit.requires_grad):
+        raise ValueError("一阶门控监督需要可微的 null_logit")
+    if not torch.is_tensor(mask):
+        raise ValueError("一阶门控监督需要 candidate_mask")
+    u = utilities.detach().float().reshape(-1)
+    valid = mask.bool().reshape(-1)
+    if int(valid.sum()) == 0:
+        raise ValueError("一阶门控监督没有有效候选")
+    max_u = float(u[valid].max())
+    if abs(max_u) <= float(deadzone):
+        raise ValueError("一阶门控落在死区")
+    # borrow_logit = -null_logit；目标 1=借、0=拒
+    target = 1.0 if max_u > 0.0 else 0.0
+    return F.binary_cross_entropy_with_logits(
+        -null_logit, null_logit.new_tensor(target),
+    )
+
+
+def first_order_gate_report(
+    plans: list[dict],
+    module_utilities: dict[str, float] | None = None,
+    *,
+    eps: float = 1e-12,
+) -> dict:
+    """日志闸门：Û↔U_m 符号一致率；分模块 corr(cos,u) / corr(orth,u)。"""
+    module_utilities = module_utilities or {}
+    agrees: list[bool] = []
+    modules: dict[str, dict] = {}
+    for plan in plans:
+        module = plan["module"]
+        u_hat = plan.get("fo_module_utility")
+        u_exact = module_utilities.get(module)
+        sign_agree = None
+        comparable = False
+        if u_hat is not None and u_exact is not None:
+            if abs(float(u_hat)) > float(eps) and abs(float(u_exact)) > float(eps):
+                comparable = True
+                sign_agree = (float(u_hat) > 0.0) == (float(u_exact) > 0.0)
+                agrees.append(bool(sign_agree))
+        corr_cos = None
+        corr_orth = None
+        align = plan.get("candidate_align")
+        fo_u = plan.get("fo_card_utilities")
+        mask = plan.get("candidate_mask")
+        if torch.is_tensor(align) and torch.is_tensor(fo_u) and torch.is_tensor(mask):
+            valid = mask.bool().reshape(-1)
+            if int(valid.sum()) >= 2 and int(align.shape[-1]) >= 3:
+                corr_cos = _masked_pearson(align[valid, 0], fo_u[valid])
+                corr_orth = _masked_pearson(align[valid, 2], fo_u[valid])
+        max_u = None
+        if torch.is_tensor(fo_u) and torch.is_tensor(mask) and int(mask.bool().sum()) > 0:
+            max_u = float(fo_u[mask.bool()].max())
+        modules[module] = {
+            "fo_utility": None if u_hat is None else float(u_hat),
+            "exact_utility": None if u_exact is None else float(u_exact),
+            "comparable": comparable,
+            "sign_agree": sign_agree,
+            "corr_cos_u": corr_cos,
+            "corr_orth_u": corr_orth,
+            "max_card_u": max_u,
+            "align_cos_selected": None if not plan.get("candidate_align_selected") else float(plan["candidate_align_selected"]),
+        }
+    rate = None if not agrees else float(sum(1 for row in agrees if row) / len(agrees))
+    return {
+        "sign_agree_rate": rate,
+        "n_comparable": len(agrees),
+        "modules": modules,
+    }

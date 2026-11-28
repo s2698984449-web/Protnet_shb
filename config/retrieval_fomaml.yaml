@@ -16,7 +16,7 @@ trim_sketch_dim: 8192
 trim_splits: 3
 trim_calibration_min_members: 8
 min_members_for_ties: 5
-# 条件化迁移 v5.2：v5.1 + Null 符号边际 + 卡温度锐化。不兼容旧 ψ 权重。
+# 条件化迁移 v5.3：v5.2 + Support/Query 一阶对齐特征与稠密标签（默认只日志）。
 rho_max: 0.3
 utility_prior_count: 8
 # 正式留出：硬门控。禁止靠扫阈值主改进。
@@ -43,6 +43,19 @@ module_loo:
   # 卡 Softmax 温度 <1 更锐；配对损失加权。
   card_temperature: 0.5
   card_pair_loss_weight: 2.0
+# 一阶对齐：卡本是 −αg；Support 对齐≠Query 有用，只作特征/日志，不作硬规则。
+first_order:
+  enabled: true
+  # 把 Support 对齐特征喂给 ψ（新输入列零初始化）；关掉则喂零。
+  feed_policy: true
+  # 稠密一阶标签的辅助监督；默认关，先跑日志闸门。
+  supervise: false
+  card_loss_weight: 0.1
+  gate_loss_weight: 0.1
+  listwise_tau: 0.1
+  gate_deadzone: 0.0001
+  # supervise=true 时乘到 null_sign_*_weight 上；0=关掉符号边际。
+  null_sign_scale: 0.0
 ap_utility:
   # 默认隔离：不进主决策损失；every_n=0 关闭训练步。符号一致率留给 Meta-Val/诊断。
   enabled: false

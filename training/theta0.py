@@ -1501,13 +1501,26 @@ def _train(detector, adapter, episodes, provenance, run_dir, device, resume_stat
                                 f"{card_p.get('module')}#{int(card_p.get('index', -1))}"
                                 f":{float(card_p.get('utility', 0.0)):+.3f}"
                             )
+                        fo = step.get("fo_gate") or {}
+                        fo_rate = fo.get("sign_agree_rate")
+                        fo_n = int(fo.get("n_comparable") or 0)
+                        fo_corr = []
+                        for name, row in (fo.get("modules") or {}).items():
+                            corr = row.get("corr_cos_u")
+                            if corr is not None:
+                                fo_corr.append(f"{name}:{float(corr):+.2f}")
+                        fo_txt = (
+                            f"agree={'-' if fo_rate is None else f'{float(fo_rate):.2f}'}@{fo_n}"
+                            f" corr_cos[{','.join(fo_corr) or '-'}]"
+                        )
                         print(
                             f"FOMAML step={result['global_step']} "
                             f"U={step.get('counterfactual_utility', 0.0):+.4f} "
                             f"L_null={step.get('query_loss_null', 0.0):.4f} "
                             f"L_borrow={step.get('query_loss_borrow', 0.0):.4f} "
                             f"LOO[{loo}] force_close[{closed}] "
-                            f"rho_probe[{rho_txt}] card_probe[{card_txt}]",
+                            f"rho_probe[{rho_txt}] card_probe[{card_txt}] "
+                            f"FO[{fo_txt}]",
                             flush=True,
                         )
                 write_resume(epoch, index + 1, index + 1 == len(order))

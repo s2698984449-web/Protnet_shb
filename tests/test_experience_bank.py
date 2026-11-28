@@ -384,6 +384,28 @@ class RetrievalWiringTest(unittest.TestCase):
         self.assertAlmostEqual(plan["candidate_borrow_l2"], 0.5)
         self.assertAlmostEqual(plan["alpha_grad_l2"], 1.0)
 
+    def test_dense_first_order_labels_match_inner_product(self):
+        from training.experience_bank import attach_dense_first_order_labels
+
+        units = torch.tensor([[1.0, 0.0], [0.0, 1.0], [0.0, 0.0], [0.0, 0.0]])
+        plan = {
+            "module": "Backbone",
+            "units": units,
+            "candidate_mask": torch.tensor([True, True, False, False]),
+            "support_step_l2": 2.0,
+            "vector": torch.tensor([1.0, 0.0]),
+            "rho": torch.tensor(0.5),
+            "z_hard": 1.0,
+        }
+        attach_dense_first_order_labels(
+            [plan], {"Backbone": torch.tensor([1.0, -2.0])}, rho_ref=0.1,
+        )
+        # u0 = -⟨g,[1,0]⟩ * 0.1 * 2 = -0.2；u1 = -⟨g,[0,1]⟩ * 0.2 = +0.4
+        self.assertAlmostEqual(float(plan["fo_card_utilities"][0]), -0.2, places=5)
+        self.assertAlmostEqual(float(plan["fo_card_utilities"][1]), 0.4, places=5)
+        # Û = -⟨g, mix⟩ * z * ρ * step = -1 * 1 * 0.5 * 2 = -1
+        self.assertAlmostEqual(float(plan["fo_module_utility"]), -1.0, places=5)
+
     def test_support_alignment_is_diagnostic_only(self):
         uphill = {
             "module": "Backbone", "inject": True, "named": {"w": torch.ones(2)},

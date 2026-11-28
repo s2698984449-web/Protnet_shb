@@ -2168,7 +2168,7 @@ def run_retrieval_holdout(
             }
             plans = holdout_borrow_plan(
                 bank, episode, keys, gamma, support, step_l2=step_l2,
-                null_eval_threshold=threshold,
+                null_eval_threshold=threshold, support_grads=support_grads,
             )
             gate_borrow_by_support(plans, support_grads)
             attach_first_order_ratio(plans, support_grads, query_grads, values)

@@ -1,4 +1,4 @@
-"""条件化迁移 v5.2：Null 符号边际、卡温度锐化、硬 z / LOO / force-close。"""
+"""条件化迁移 v5.3：Support 对齐特征、一阶稠密标签闸门、硬 z / LOO / force-close。"""
 
 from __future__ import annotations
 
@@ -12,11 +12,12 @@ from training.experience_bank import (
 )
 from training.retrieval_memory import MODULES
 from training.transfer_policy import (
-    POLICY_KIND, UPSTREAM_OF, ApUtilityHead, card_pair_policy_loss, card_probe_policy_loss,
-    counterfactual_policy_loss, decide_inject, encode_upstream_state, hard_borrow_gate,
-    mix_cards_from_logits, null_sign_policy_loss, plan_decision_features, rho_pair_policy_loss,
-    rho_probe_policy_loss, risk_constrained_score, smooth_utility_features,
-    utility_ap_sign_agreement,
+    ALIGN_FEATURE_DIM, POLICY_KIND, UPSTREAM_OF, ApUtilityHead, card_pair_policy_loss,
+    card_probe_policy_loss, card_support_align_features, counterfactual_policy_loss, decide_inject,
+    encode_upstream_state, first_order_card_listwise_loss, first_order_gate_loss,
+    first_order_gate_report, hard_borrow_gate, mix_cards_from_logits, null_sign_policy_loss,
+    plan_decision_features, rho_pair_policy_loss, rho_probe_policy_loss, risk_constrained_score,
+    smooth_utility_features, utility_ap_sign_agreement,
 )
 
 
@@ -88,11 +89,11 @@ def _pad_inputs(controller, *, task_key, module="Backbone", upstream=None):
 
 class TransferPolicyTest(unittest.TestCase):
     def test_policy_kind_rejects_old(self):
-        self.assertEqual(POLICY_KIND, "conditional_transfer_v52")
+        self.assertEqual(POLICY_KIND, "conditional_transfer_v53")
         controller = GammaController()
         self.assertEqual(controller.state_dict()["kind"], POLICY_KIND)
         with self.assertRaises(ValueError):
-            controller.load_state_dict({"kind": "conditional_transfer_v51", "policy_state": {}})
+            controller.load_state_dict({"kind": "conditional_transfer_v52", "policy_state": {}})
 
     def test_hard_gate_zero_inject(self):
         z_ste, z_hard, p_null = hard_borrow_gate(torch.tensor(8.0), threshold=0.5)
@@ -277,12 +278,66 @@ class TransferPolicyTest(unittest.TestCase):
         self.assertAlmostEqual(float(controller.policy.null_sign_margin), 0.5, places=5)
         self.assertAlmostEqual(float(controller.policy.card_temperature), 0.5, places=5)
         self.assertAlmostEqual(float(controller.policy.card_pair_loss_weight), 2.0, places=5)
+        self.assertTrue(controller.policy.fo_enabled)
+        self.assertTrue(controller.policy.fo_feed_policy)
+        self.assertFalse(controller.policy.fo_supervise)
+        self.assertAlmostEqual(float(controller.policy.fo_null_sign_scale), 0.0, places=5)
+        self.assertEqual(int(controller.policy.policy.align_dim), ALIGN_FEATURE_DIM)
         self.assertFalse(controller.policy.ap_utility_enabled)
         self.assertEqual(int(controller.policy.ap_utility_every_n_steps), 0)
         self.assertEqual(
             controller.policy.rho_probe_pairs(),
             [(0.1, 0.2), (0.2, 0.3), (0.1, 0.3)],
         )
+
+    def test_align_features_orthogonal_component(self):
+        g = torch.tensor([1.0, 0.0, 0.0, 0.0])
+        d = torch.tensor([1.0, 1.0, 0.0, 0.0])
+        feats = card_support_align_features(g, d)
+        self.assertEqual(int(feats.numel()), ALIGN_FEATURE_DIM)
+        self.assertAlmostEqual(float(feats[0]), float(1.0 / (2.0 ** 0.5)), places=5)
+        self.assertAlmostEqual(float(feats[2]), float(1.0 / (2.0 ** 0.5)), places=5)
+
+    def test_align_input_columns_zero_initialized(self):
+        controller = GammaController()
+        trunk = controller.policy.policy.trunk[0]
+        old = int(controller.policy.policy._trunk_old_in)
+        self.assertTrue(torch.all(trunk.weight[:, old:] == 0).item())
+        null_in = controller.policy.policy.null_direct[0]
+        null_old = int(controller.policy.policy._null_old_in)
+        self.assertTrue(torch.all(null_in.weight[:, null_old:] == 0).item())
+
+    def test_first_order_listwise_and_gate_losses(self):
+        logits = torch.tensor([0.0, 0.0, 0.0, 0.0], requires_grad=True)
+        null_logit = torch.tensor(0.0, requires_grad=True)
+        mask = torch.tensor([True, True, False, False])
+        utilities = torch.tensor([0.2, -0.1, 0.0, 0.0])
+        plan = {"card_logits": logits, "null_logit": null_logit, "candidate_mask": mask}
+        card_loss = first_order_card_listwise_loss(plan, utilities, tau=0.1)
+        card_loss.backward(retain_graph=True)
+        self.assertLess(float(logits.grad[0]), float(logits.grad[1]))
+        gate_loss = first_order_gate_loss(plan, utilities, deadzone=1e-4)
+        gate_loss.backward()
+        # max_u>0 → 目标 borrow → −null_logit 升高 → null_logit 梯度为正被压低
+        self.assertGreater(float(null_logit.grad), 0.0)
+
+    def test_first_order_gate_report_sign_and_corr(self):
+        align = torch.tensor([[1.0, 0.0, 0.0, 0.0, 0.0], [-1.0, 0.0, 1.0, 0.0, 0.0],
+                              [0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0]])
+        fo_u = torch.tensor([0.5, -0.4, 0.0, 0.0])
+        plan = {
+            "module": "Backbone",
+            "fo_module_utility": 0.3,
+            "fo_card_utilities": fo_u,
+            "candidate_align": align,
+            "candidate_mask": torch.tensor([True, True, False, False]),
+            "candidate_align_selected": 1.0,
+        }
+        report = first_order_gate_report([plan], {"Backbone": 0.2})
+        self.assertEqual(report["n_comparable"], 1)
+        self.assertAlmostEqual(float(report["sign_agree_rate"]), 1.0, places=5)
+        self.assertIsNotNone(report["modules"]["Backbone"]["corr_cos_u"])
+        self.assertGreater(float(report["modules"]["Backbone"]["corr_cos_u"]), 0.9)
 
     def test_rho_pair_prefers_better_intensity_both_directions(self):
         bank = _bank()

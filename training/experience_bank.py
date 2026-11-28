@@ -1594,12 +1594,13 @@ def plan_module_borrow(
     allowed_families: set[str], controller: GammaController, allow_borrow: bool,
     *, support_step_l2: float | None = None, projected_key: torch.Tensor | None = None,
     upstream_state: torch.Tensor | None = None, prior_plans: dict[str, dict] | None = None,
+    support_grad: torch.Tensor | None = None,
 ) -> dict:
-    """相似度只召回；MLP 结合历史效用选卡；硬 z 与 ρ 分离。"""
+    """相似度只召回；MLP 结合历史效用与可选 Support 对齐特征选卡；硬 z 与 ρ 分离。"""
     from training.retrieval_memory import project_l2
     from training.transfer_policy import (
-        decide_inject, encode_upstream_state, hard_borrow_gate, mix_cards_from_logits,
-        mix_selected_key_embed, pad_candidates,
+        ALIGN_FEATURE_DIM, card_support_align_features, decide_inject, encode_upstream_state,
+        hard_borrow_gate, mix_cards_from_logits, mix_selected_key_embed, pad_candidates,
     )
 
     retrieved = retrieve_module_experience(
@@ -1648,8 +1649,26 @@ def plan_module_borrow(
     )
     if upstream_state is None:
         upstream_state = encode_upstream_state(prior_plans or {}, module, key_dim=key_dim)
+    # Support 对齐特征：只作 ψ 输入，不作硬规则；全部 stop-grad。
+    align_rows = []
+    for index in range(int(controller.policy.max_candidates)):
+        if (
+            support_grad is not None
+            and bool(mask[index])
+            and float(torch.linalg.vector_norm(units[index].reshape(-1))) > 1e-12
+        ):
+            align_rows.append(card_support_align_features(support_grad, units[index]))
+        else:
+            align_rows.append(torch.zeros(ALIGN_FEATURE_DIM, dtype=torch.float32))
+    candidate_align = torch.stack(align_rows)
+    feed_align = None
+    if bool(getattr(controller.policy, "fo_enabled", True)) and bool(
+        getattr(controller.policy, "fo_feed_policy", True)
+    ):
+        feed_align = candidate_align
     card_logits, null_logit, rho_raw = controller.policy.policy(
         task_key, sim_tensor, norm_tensor, diff_tensor, util_tensor, module, mask, upstream_state,
+        candidate_align=feed_align,
     )
     mix, card_weights = mix_cards_from_logits(
         card_logits, units, mask, temperature=float(controller.policy.card_temperature),
@@ -1718,6 +1737,11 @@ def plan_module_borrow(
         "vector": mix,
         "units": units.detach().clone(),
         "candidate_mask": mask.detach().clone(),
+        "candidate_align": candidate_align.detach().clone(),
+        "candidate_align_selected": (
+            None if int(mask.sum()) == 0
+            else float(candidate_align[int(torch.argmax(card_weights.detach() * mask.float())) , 0])
+        ),
         "delta_vector": delta_vector,
         "upstream_state": upstream_state.detach().clone(),
         "anchor": anchor,
@@ -1740,6 +1764,8 @@ def plan_module_borrow(
 def plan_modules_in_graph_order(
     bank: dict, keys: dict, excluded_group: int | None, allowed_families: set[str],
     controller: GammaController, allow_borrow: bool, step_l2: dict[str, float],
+    *,
+    support_grads: dict[str, torch.Tensor] | None = None,
 ) -> list[dict]:
     """按 Backbone→Where→RoiFeature→Class/Box 顺序决策，下游读取上游卡片签名嵌入。"""
     from training.transfer_policy import encode_upstream_state
@@ -1749,10 +1775,11 @@ def plan_modules_in_graph_order(
     key_dim = int(controller.policy.key_dim)
     for module in MODULES:
         upstream = encode_upstream_state(decided, module, key_dim=key_dim)
+        grad = None if support_grads is None else support_grads.get(module)
         plan = plan_module_borrow(
             bank, module, keys[KEY_FOR_MODULE[module]], excluded_group, allowed_families,
             controller, allow_borrow, support_step_l2=float(step_l2.get(module, 0.0)),
-            upstream_state=upstream, prior_plans=decided,
+            upstream_state=upstream, prior_plans=decided, support_grad=grad,
         )
         decided[module] = plan
         plans.append(plan)
@@ -1790,6 +1817,7 @@ def apply_force_close_and_replan(
     controller: GammaController,
     allow_borrow: bool,
     step_l2: dict[str, float],
+    support_grads: dict[str, torch.Tensor] | None = None,
 ) -> list[str]:
     """关闭指定模块后，仅重规划依赖它们的下游，使 upstream z 可见。"""
     from training.transfer_policy import UPSTREAM_OF, encode_upstream_state
@@ -1817,10 +1845,11 @@ def apply_force_close_and_replan(
         if module in closed:
             continue
         upstream = encode_upstream_state(decided, module, key_dim=key_dim)
+        grad = None if support_grads is None else support_grads.get(module)
         plan = plan_module_borrow(
             bank, module, keys[KEY_FOR_MODULE[module]], excluded_group, allowed_families,
             controller, allow_borrow, support_step_l2=float(step_l2.get(module, 0.0)),
-            upstream_state=upstream, prior_plans=decided,
+            upstream_state=upstream, prior_plans=decided, support_grad=grad,
         )
         decided[module] = plan
         for index, old in enumerate(plans):
@@ -1942,6 +1971,52 @@ def attach_first_order_ratio(
         plan["query_dot_borrow"] = borrow_dot
         plan["query_dot_step"] = step_dot
         plan["first_order_ratio"] = None if abs(step_dot) < 1e-12 else borrow_dot / step_dot
+
+
+def attach_dense_first_order_labels(
+    plans: list[dict],
+    query_grads: dict[str, torch.Tensor],
+    *,
+    rho_ref: float = 0.1,
+) -> None:
+    """Null 臂 θ' 上的稠密一阶 Query 标签。
+
+    u[m,c] = −⟨g_Q^{(m)}, ρ_ref · step · d_c⟩；
+    Û_m = −⟨g_Q^{(m)}, z · ρ · step · mix⟩。
+    与精确 U_m 同量纲（Query loss），默认只日志。
+    """
+    rho_ref = float(rho_ref)
+    for plan in plans:
+        module = plan["module"]
+        g_q = query_grads[module].detach().float().reshape(-1)
+        units = plan.get("units")
+        mask = plan.get("candidate_mask")
+        step = float(plan.get("support_step_l2") or 0.0)
+        if not torch.is_tensor(units) or not torch.is_tensor(mask):
+            plan["fo_card_utilities"] = torch.zeros(0)
+            plan["fo_module_utility"] = 0.0
+            continue
+        utilities = torch.zeros(int(units.shape[0]), dtype=torch.float32)
+        if step > 0.0:
+            for index in range(int(units.shape[0])):
+                if not bool(mask[index]):
+                    continue
+                direction = units[index].detach().float().reshape(-1)
+                if int(direction.numel()) != int(g_q.numel()):
+                    raise AssertionError(f"{module} 候选卡与 Query 梯度维度不一致")
+                utilities[index] = -float(torch.dot(g_q, direction)) * rho_ref * step
+        plan["fo_card_utilities"] = utilities
+        mix = plan.get("vector")
+        rho = plan.get("rho")
+        z = float(plan.get("z_hard") or 0.0)
+        rho_v = float(rho.detach()) if torch.is_tensor(rho) else float(rho or 0.0)
+        if torch.is_tensor(mix) and step > 0.0:
+            mix_flat = mix.detach().float().reshape(-1)
+            if int(mix_flat.numel()) != int(g_q.numel()):
+                raise AssertionError(f"{module} mix 与 Query 梯度维度不一致")
+            plan["fo_module_utility"] = -float(torch.dot(g_q, mix_flat)) * z * rho_v * step
+        else:
+            plan["fo_module_utility"] = 0.0
 
 
 def gamma_runtime_values(controller: GammaController) -> dict:
@@ -2071,26 +2146,64 @@ def apply_counterfactual_policy(
     rho_probe: dict | None = None,
     card_probe: dict | None = None,
     task_utility: float | None = None,
+    fo_gate: dict | None = None,
 ) -> dict:
-    """按模块条件贡献 U_m 更新 ψ；可选 ρ/卡相对排序探针。AP Head 默认不进主损失。"""
+    """按模块条件贡献 U_m 更新 ψ；可选 ρ/卡相对排序探针。AP Head 默认不进主损失。
+
+    first_order.supervise=true 时附加稠密一阶 listwise/门控损失，并把 null_sign 权重乘 scale。
+    """
     from training.transfer_policy import (
         ap_utility_nll, card_pair_policy_loss, card_probe_policy_loss, counterfactual_policy_loss,
+        first_order_card_listwise_loss, first_order_gate_loss, first_order_gate_report,
         plan_decision_features, rho_pair_policy_loss, rho_probe_policy_loss,
         utility_ap_sign_agreement,
     )
 
     by_module = {plan["module"]: plan for plan in plans}
     policy = controller.policy
+    refuse_w = float(policy.null_sign_refuse_weight)
+    accept_w = float(policy.null_sign_accept_weight)
+    if bool(getattr(policy, "fo_enabled", False)) and bool(getattr(policy, "fo_supervise", False)):
+        scale = float(getattr(policy, "fo_null_sign_scale", 0.0))
+        refuse_w *= scale
+        accept_w *= scale
     try:
         loss = counterfactual_policy_loss(
             plans,
             module_utilities,
-            null_sign_refuse_weight=float(policy.null_sign_refuse_weight),
-            null_sign_accept_weight=float(policy.null_sign_accept_weight),
+            null_sign_refuse_weight=refuse_w,
+            null_sign_accept_weight=accept_w,
             null_sign_margin=float(policy.null_sign_margin),
         )
     except ValueError:
         loss = None
+    fo_card_loss = None
+    fo_gate_loss = None
+    if bool(getattr(policy, "fo_enabled", False)) and bool(getattr(policy, "fo_supervise", False)):
+        for plan in plans:
+            utilities = plan.get("fo_card_utilities")
+            if not torch.is_tensor(utilities):
+                continue
+            try:
+                card_term = first_order_card_listwise_loss(
+                    plan, utilities, tau=float(policy.fo_listwise_tau),
+                )
+                card_term = float(policy.fo_card_loss_weight) * card_term
+                fo_card_loss = card_term if fo_card_loss is None else fo_card_loss + card_term
+                loss = card_term if loss is None else loss + card_term
+            except ValueError:
+                pass
+            try:
+                gate_term = first_order_gate_loss(
+                    plan, utilities, deadzone=float(policy.fo_gate_deadzone),
+                )
+                gate_term = float(policy.fo_gate_loss_weight) * gate_term
+                fo_gate_loss = gate_term if fo_gate_loss is None else fo_gate_loss + gate_term
+                loss = gate_term if loss is None else loss + gate_term
+            except ValueError:
+                pass
+    if fo_gate is None and any(plan.get("fo_card_utilities") is not None for plan in plans):
+        fo_gate = first_order_gate_report(plans, module_utilities)
     if rho_probe and rho_probe.get("module") in by_module:
         plan = by_module[rho_probe["module"]]
         try:
@@ -2172,6 +2285,9 @@ def apply_counterfactual_policy(
             "sign_agreement": sign_agree,
             "rho_probe": rho_probe,
             "card_probe": card_probe,
+            "fo_gate": fo_gate,
+            "fo_card_loss": None,
+            "fo_gate_loss": None,
         }
     controller.policy.optimizer.zero_grad(set_to_none=True)
     loss.backward()
@@ -2191,6 +2307,9 @@ def apply_counterfactual_policy(
         "sign_agreement": sign_agree,
         "rho_probe": rho_probe,
         "card_probe": card_probe,
+        "fo_gate": fo_gate,
+        "fo_card_loss": None if fo_card_loss is None else float(fo_card_loss.detach()),
+        "fo_gate_loss": None if fo_gate_loss is None else float(fo_gate_loss.detach()),
     }
 
 
@@ -2756,6 +2875,7 @@ def retrieval_fomaml_step(
     }
     plans = plan_modules_in_graph_order(
         bank, signature["keys"], excluded, allowed, controller, allow_borrow, step_l2,
+        support_grads=gate_grads,
     )
     loo_modules: list[str] = []
     force_closed: list[str] = []
@@ -2772,7 +2892,7 @@ def retrieval_fomaml_step(
                 plans, to_close,
                 bank=bank, keys=signature["keys"], excluded_group=excluded,
                 allowed_families=allowed, controller=controller, allow_borrow=allow_borrow,
-                step_l2=step_l2,
+                step_l2=step_l2, support_grads=gate_grads,
             )
     retrieval_seconds = perf_counter() - started
     gate_borrow_by_support(plans, gate_grads)
@@ -2813,12 +2933,25 @@ def retrieval_fomaml_step(
     loss_borrow = float(query_loss.detach()) if torch.is_tensor(query_loss) else float(query_loss)
     outer_parts["query_grad"] = perf_counter() - part_t
     detector.load_state_dict(snapshot, strict=True)
-    # 对照臂：相同 Support/Query/RNG，无借用（轻路径，不打包梯度）
+    # 对照臂：相同 Support/Query/RNG，无借用；FO 开启时在 Null θ' 上再取 Query 打包梯度作稠密标签。
     part_t = perf_counter()
     loss_null = counterfactual_adapt_query_loss(
         detector, snapshot, support_records, query_records, device, settings, alphas, {},
         rng_cpu=rng_cpu, rng_cuda=rng_cuda,
     )
+    fo_gate = None
+    if allow_borrow and bool(getattr(controller.policy, "fo_enabled", False)):
+        # counterfactual 结束后检测器仍在 Null 适应权重上，直接反传 Query。
+        _fo_loss, _fo_grads, packed_null_query = query_total_packed_grads(
+            detector, query_records, device, settings, bank["layouts"],
+        )
+        del _fo_loss, _fo_grads
+        rho_ref = 0.1
+        probes = list(getattr(controller.policy, "rho_probes", None) or [])
+        if probes:
+            rho_ref = float(probes[0])
+        attach_dense_first_order_labels(plans, packed_null_query, rho_ref=rho_ref)
+        del packed_null_query
     outer_parts["null"] = perf_counter() - part_t
     utility = float(loss_null - loss_borrow)
     rho_probe = None
@@ -2903,10 +3036,18 @@ def retrieval_fomaml_step(
         }
         for name, parameter in detector.named_parameters():
             parameter.data.copy_(updated[name].to(device=parameter.device, dtype=parameter.dtype))
-    if allow_borrow and (module_utilities or rho_probe or card_probe or ap_targets is not None):
+    if allow_borrow and bool(getattr(controller.policy, "fo_enabled", False)):
+        from training.transfer_policy import first_order_gate_report
+
+        fo_gate = first_order_gate_report(plans, module_utilities)
+    if allow_borrow and (
+        module_utilities or rho_probe or card_probe or ap_targets is not None
+        or (fo_gate is not None and bool(getattr(controller.policy, "fo_supervise", False)))
+    ):
         proxy = apply_counterfactual_policy(
             controller, plans, module_utilities, ap_targets=ap_targets,
             rho_probe=rho_probe, card_probe=card_probe, task_utility=utility,
+            fo_gate=fo_gate,
         )
         if module_utilities:
             update_module_contributions(bank, module_utilities, plans)
@@ -2921,6 +3062,9 @@ def retrieval_fomaml_step(
             "sign_agreement": None,
             "rho_probe": None,
             "card_probe": None,
+            "fo_gate": fo_gate,
+            "fo_card_loss": None,
+            "fo_gate_loss": None,
         }
     alpha_report = None
     if inner_lr_controller is not None:
@@ -2960,6 +3104,9 @@ def retrieval_fomaml_step(
         "rho_probe": rho_probe,
         "card_probe": card_probe,
         "sign_agreement": proxy.get("sign_agreement"),
+        "fo_gate": proxy.get("fo_gate") if proxy.get("fo_gate") is not None else fo_gate,
+        "fo_card_loss": proxy.get("fo_card_loss"),
+        "fo_gate_loss": proxy.get("fo_gate_loss"),
         "ap_targets": ap_targets,
         "inner_max_weight_change": inner_change,
         "outer_max_weight_change": outer_change,
@@ -2996,6 +3143,7 @@ def holdout_borrow_plan(
     bank: dict, episode: dict, keys: dict, controller: GammaController, records=None,
     *, step_l2: dict[str, float] | None = None,
     null_eval_threshold: float | None = None,
+    support_grads: dict[str, torch.Tensor] | None = None,
 ) -> list[dict]:
     """留出只读检索：硬门控；阈值可覆盖配置。不更新 θ/库/决策网。"""
     if records is not None:
@@ -3011,7 +3159,9 @@ def holdout_borrow_plan(
     allowed = allowed_source_families(episode)
     excluded = excluded_experience_group(bank, family_id)
     scales = step_l2 or {module: 1.0 for module in MODULES}
-    return plan_modules_in_graph_order(bank, keys, excluded, allowed, controller, True, scales)
+    return plan_modules_in_graph_order(
+        bank, keys, excluded, allowed, controller, True, scales, support_grads=support_grads,
+    )
 
 
 def retrieval_holdout_pair(
@@ -3027,7 +3177,9 @@ def retrieval_holdout_pair(
         module: float(values[module]) * float(torch.linalg.vector_norm(support_grads[module].reshape(-1)))
         for module in MODULES
     }
-    plans = holdout_borrow_plan(bank, episode, keys, gamma, support_records, step_l2=step_l2)
+    plans = holdout_borrow_plan(
+        bank, episode, keys, gamma, support_records, step_l2=step_l2, support_grads=support_grads,
+    )
     snapshot = _state_snapshot(detector)
     retrieval_support_adapt(detector, support_records, device, settings, values, {})
     detector.load_state_dict(snapshot, strict=True)
